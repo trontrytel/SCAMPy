@@ -359,7 +359,11 @@ cdef class UpdraftMicrophysics:
         self.prec_source_h_tot = np.zeros((Gr.nzg,), dtype=np.double, order='c')
         self.prec_source_qt_tot = np.zeros((Gr.nzg,), dtype=np.double, order='c')
         return
+
     cpdef compute_sources(self, UpdraftVariables UpdVar):
+        """
+        Compute precipitation source terms for QT and H
+        """
         cdef:
             Py_ssize_t k, i
             double psat, qsat, lh
@@ -382,6 +386,9 @@ cdef class UpdraftMicrophysics:
         return
 
     cpdef update_updraftvars(self, UpdraftVariables UpdVar):
+        """
+        Apply precipitation source terms to QL and H
+        """
         cdef:
             Py_ssize_t k, i
 
@@ -396,6 +403,9 @@ cdef class UpdraftMicrophysics:
 
     cdef void compute_update_combined_local_thetal(self, double p0, double t, double *qt, double *ql, double *h,
                                                    Py_ssize_t i, Py_ssize_t k) nogil:
+        """
+        Compute and apply precipitation source terms to QT and H
+        """
         cdef:
             double psat, qsat, lh
         # Language note: array indexing must be used to dereference pointers in Cython. * notation (C-style dereferencing)
