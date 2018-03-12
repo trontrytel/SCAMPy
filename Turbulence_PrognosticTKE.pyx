@@ -734,14 +734,17 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 for i in xrange(self.n_updrafts):
                     self.UpdVar.H.new[i,gw] = self.h_surface_bc[i]
                     self.UpdVar.QT.new[i,gw]  = self.qt_surface_bc[i]
-
+                     
+                    # do saturation adjustment
                     sa = eos(self.UpdThermo.t_to_prog_fp,self.UpdThermo.prog_to_t_fp,
                              self.Ref.p0_half[gw], self.UpdVar.QT.new[i,gw], self.UpdVar.H.new[i,gw])
                     self.UpdVar.QL.new[i,gw] = sa.ql
                     self.UpdVar.T.new[i,gw] = sa.T
+                    # remove precipitation (update QT, QL and H)
                     self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[gw], self.UpdVar.T.new[i,gw],
                                                                        &self.UpdVar.QT.new[i,gw], &self.UpdVar.QL.new[i,gw],
                                                                        &self.UpdVar.H.new[i,gw], i, gw)
+                    # starting from the bottom do entrainment at each level
                     for k in xrange(gw+1, self.Gr.nzg-gw):
                         H_entr = self.EnvVar.H.values[k]
                         QT_entr = self.EnvVar.QT.values[k]
@@ -765,13 +768,16 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                         else:
                             self.UpdVar.H.new[i,k] = GMV.H.values[k]
                             self.UpdVar.QT.new[i,k] = GMV.QT.values[k]
+                        # find new temperature
                         sa = eos(self.UpdThermo.t_to_prog_fp,self.UpdThermo.prog_to_t_fp, self.Ref.p0_half[k],
                                  self.UpdVar.QT.new[i,k], self.UpdVar.H.new[i,k])
                         self.UpdVar.QL.new[i,k] = sa.ql
                         self.UpdVar.T.new[i,k] = sa.T
+                        # remove precipitation (pdate QT, QL and H)
                         self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[k], self.UpdVar.T.new[i,k],
                                                                        &self.UpdVar.QT.new[i,k], &self.UpdVar.QL.new[i,k],
                                                                        &self.UpdVar.H.new[i,k], i, k)
+            # save the total source terms for H and QT due to precipitation
             self.UpdMicro.prec_source_h_tot = np.sum(np.multiply(self.UpdMicro.prec_source_h,
                                                                  self.UpdVar.Area.values), axis=0)
             self.UpdMicro.prec_source_qt_tot = np.sum(np.multiply(self.UpdMicro.prec_source_qt,
@@ -810,7 +816,9 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                                  self.UpdVar.QT.new[i,k], self.UpdVar.H.new[i,k])
                         self.UpdVar.QL.new[i,k] = sa.ql
                         self.UpdVar.T.new[i,k] = sa.T
+            # Compute the updraft microphysical sources (precipitation) after the entrainment loop is finished
             self.UpdMicro.compute_sources(self.UpdVar)
+            # Update updraft variables with microphysical source tendencies
             self.UpdMicro.update_updraftvars(self.UpdVar)
 
         self.UpdVar.H.set_bcs(self.Gr)
