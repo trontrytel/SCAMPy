@@ -50,7 +50,7 @@ def data(request):
 
 
 @pytest.mark.parametrize("case", case_list)
-def test_mean(data, case, eps = 1e-2):
+def test_mean_qt(data, case, eps = 1e-2):
     """
     Check if the mean qt is equal to updraft_area * updraft_qt + (1 - updraft_area) * env_q
     """
@@ -68,11 +68,10 @@ def test_mean(data, case, eps = 1e-2):
     # calculate the mean qt basing un updraft and environmet means
     tmp_mean = udr_area * udr_qt + (1 - udr_area) * env_qt
 
-    print "case = ", case
-    for it in xrange(len(tmp_mean[-1,:])):
-        print tmp_mean[-1, it], " vs ", qt_mean[-1, it]
+    #print "case = ", case
+    #for it in xrange(len(tmp_mean[-1,:])):
+    #    print tmp_mean[-1, it], " vs ", qt_mean[-1, it]
 
     for idx in [1, -1]:
-        assert np.allclose(qt_mean[idx,:], tmp_mean[idx,:], atol = 0, rtol = eps),\
+        assert np.allclose(qt_mean[idx,:], tmp_mean[idx,:], rtol = eps),\
             "mean != updraft_area * updraft_mean + (1-updraft_area) * env_mean"
-
