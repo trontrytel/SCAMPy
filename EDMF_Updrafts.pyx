@@ -7,6 +7,7 @@
 import numpy as np
 include "parameters.pxi"
 from thermodynamic_functions cimport  *
+from microphysics_functions cimport  *
 import cython
 cimport Grid
 cimport ReferenceState
@@ -359,25 +360,29 @@ cdef class UpdraftMicrophysics:
         self.prec_source_h_tot = np.zeros((Gr.nzg,), dtype=np.double, order='c')
         self.prec_source_qt_tot = np.zeros((Gr.nzg,), dtype=np.double, order='c')
         return
+
     cpdef compute_sources(self, UpdraftVariables UpdVar):
         cdef:
             Py_ssize_t k, i
-            double psat, qsat, lh
-
+            #double psat, qsat, lh
 
         with nogil:
             for i in xrange(self.n_updraft):
                 for k in xrange(self.Gr.nzg):
-                    lh = latent_heat(UpdVar.T.values[i,k])
-                    psat = pv_star(UpdVar.T.values[i,k])
-                    qsat = qv_star_c(self.Ref.p0_half[k], UpdVar.QT.values[i,k], psat)
+                    #lh = latent_heat(UpdVar.T.values[i,k])
+                    #psat = pv_star(UpdVar.T.values[i,k])
+                    #qsat = qv_star_c(self.Ref.p0_half[k], UpdVar.QT.values[i,k], psat)
+                    #dupa
+                    #self.prec_source_qt[i,k] = -fmax(0.0, UpdVar.QL.values[i,k] - self.max_supersaturation*qsat )
+                    self.prec_source_qt[i,k] = acnv_rate(UpdVar.QL.values[i,k], UpdVar.QT.values[i,k], 
+                                                         self.max_supersaturation, 
+                                                         UpdVar.T.values[i,k], self.Ref.p0_half[k])
+                    self.prec_source_h[i,k]  = -self.prec_source_qt[i,k] \
+                                               / exner_c(self.Ref.p0_half[k]) \
+                                               * latent_heat(UpdVar.T.values[i,k]) / cpd
 
-                    self.prec_source_qt[i,k] = -fmax(0.0, UpdVar.QL.values[i,k] - self.max_supersaturation*qsat )
-                    self.prec_source_h[i,k] = -self.prec_source_qt[i,k] /exner_c(self.Ref.p0_half[k]) * lh/cpd
-
-
-        self.prec_source_h_tot = np.sum(np.multiply(self.prec_source_h,UpdVar.Area.values), axis=0)
-        self.prec_source_qt_tot = np.sum(np.multiply(self.prec_source_qt,UpdVar.Area.values), axis=0)
+        self.prec_source_h_tot  = np.sum(np.multiply(self.prec_source_h,  UpdVar.Area.values), axis=0)
+        self.prec_source_qt_tot = np.sum(np.multiply(self.prec_source_qt, UpdVar.Area.values), axis=0)
 
         return
 
@@ -391,22 +396,24 @@ cdef class UpdraftMicrophysics:
                     UpdVar.QT.values[i,k] += self.prec_source_qt[i,k]
                     UpdVar.QL.values[i,k] += self.prec_source_qt[i,k]
                     UpdVar.H.values[i,k] += self.prec_source_h[i,k]
-
         return
 
-    cdef void compute_update_combined_local_thetal(self, double p0, double t, double *qt, double *ql, double *h,
-                                                   Py_ssize_t i, Py_ssize_t k) nogil:
-        cdef:
-            double psat, qsat, lh
+    cdef void compute_update_combined_local_thetal(self, double p0, double T, double *qt, double *ql, double *h,
+                                               Py_ssize_t i, Py_ssize_t k) nogil :
+        #cdef:
+        #    double psat, qsat, lh
         # Language note: array indexing must be used to dereference pointers in Cython. * notation (C-style dereferencing)
         # is reserved for packing tuples
-        lh = latent_heat(t)
-        psat = pv_star(t)
-        qsat = qv_star_c(p0, qt[0], psat)
-        self.prec_source_qt[i,k] = -fmax(0.0, ql[0] - self.max_supersaturation*qsat )
-        self.prec_source_h[i,k] = -self.prec_source_qt[i,k] /exner_c(p0) * lh/cpd
+        #lh = latent_heat(T)
+        #psat = pv_star(t)
+        #qsat = qv_star_c(p0, qt[0], psat)
+        #dupa
+        #self.prec_source_qt[i,k] = -fmax(0.0, ql[0] - self.max_supersaturation*qsat )
+        self.prec_source_qt[i,k] = acnv_rate(ql[0], qt[0], self.max_supersaturation, T, p0)
+        self.prec_source_h[i,k]  = -self.prec_source_qt[i,k] / exner_c(p0) * latent_heat(T) / cpd
+
         qt[0] += self.prec_source_qt[i,k]
         ql[0] += self.prec_source_qt[i,k]
-        h[0] += self.prec_source_h[i,k]
+        h[0]  += self.prec_source_h[i,k]
 
         return
