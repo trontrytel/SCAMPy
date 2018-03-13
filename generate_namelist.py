@@ -326,12 +326,12 @@ def DYCOMS_RF01():
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
-    namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
+    #namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
-    namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
+    #namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
     # to switch off MF part TODO
-    #namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'dry'
-    #namelist['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = True
+    namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'dry'
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = True
     # some other flags that were there (TODO - check which works best)
     #namelist['turbulence']['EDMF_PrognosticTKE']['constant_area'] = False
     #namelist['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
