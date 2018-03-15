@@ -362,6 +362,9 @@ cdef class UpdraftMicrophysics:
         return
 
     cpdef compute_sources(self, UpdraftVariables UpdVar):
+        """
+        Compute precipitation source terms for QT and H
+        """
         cdef:
             Py_ssize_t k, i
             #double psat, qsat, lh
@@ -387,6 +390,9 @@ cdef class UpdraftMicrophysics:
         return
 
     cpdef update_updraftvars(self, UpdraftVariables UpdVar):
+        """
+        Apply precipitation source terms to QL and H
+        """
         cdef:
             Py_ssize_t k, i
 
@@ -402,11 +408,13 @@ cdef class UpdraftMicrophysics:
                                                Py_ssize_t i, Py_ssize_t k) nogil :
         #cdef:
         #    double psat, qsat, lh
+
         # Language note: array indexing must be used to dereference pointers in Cython. * notation (C-style dereferencing)
         # is reserved for packing tuples
         #lh = latent_heat(T)
         #psat = pv_star(t)
         #qsat = qv_star_c(p0, qt[0], psat)
+
         #dupa
         #self.prec_source_qt[i,k] = -fmax(0.0, ql[0] - self.max_supersaturation*qsat )
         self.prec_source_qt[i,k] = acnv_rate(ql[0], qt[0], self.max_supersaturation, T, p0)
