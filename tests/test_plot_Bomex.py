@@ -22,7 +22,7 @@ def sim_data(request):
     # generate namelists and paramlists
     setup = pls.simulation_setup('Bomex')
     # chenge the defaults  
-    setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
+    #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'inverse_w'  # dry, inverse_w, b_w2
 
@@ -52,9 +52,7 @@ def test_plot_Bomex(sim_data):
     """
     plot Bomex profiles
     """
-    ref_data = Dataset("tests/reference/Bomex/stats/Stats.Bomex.nc", 'r')
-
-    data_to_plot = pls.read_data(sim_data, ref_data)
+    data_to_plot = pls.read_data(sim_data, 100)
 
     pls.plot_mean(data_to_plot,   "Bomex_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "Bomex_quicklook_drafts.pdf")
@@ -67,26 +65,26 @@ def test_plot_Bomex_fig3(sim_data, folder="tests/output/"):
     import matplotlib as mpl
     title = "BOMEX_fig3.pdf"
     ref_data = Dataset("tests/reference/Bomex/stats/Stats.Bomex.nc", 'r')
-    plt_data = pls.read_data(sim_data, ref_data)
+    plt_data = pls.read_data(sim_data, 100)
 
-    mean_tke    = plt_data["tke_mean"][3]
-    mean_tke_ini= plt_data["tke_mean"][2]
-    udr_ar      = plt_data["updraft_area"][3]
-    udr_ar_ini  = plt_data["updraft_area"][2]
-    mean_u      = plt_data["u_mean"][3]
-    mean_u_ini  = plt_data["u_mean"][2]
-    mean_v      = plt_data["v_mean"][3]
-    mean_v_ini  = plt_data["v_mean"][2]
-    mean_qv     = plt_data["qt_mean"][3] - plt_data["ql_mean"][3]
-    mean_qv_ini = plt_data["qt_mean"][2] - plt_data["ql_mean"][2]
-    mean_ql     = plt_data["ql_mean"][3]
-    mean_ql_ini = plt_data["ql_mean"][2]
+    mean_tke    = plt_data["tke_mean"][1]
+    mean_tke_ini= plt_data["tke_mean"][0]
+    udr_ar      = plt_data["updraft_area"][1]
+    udr_ar_ini  = plt_data["updraft_area"][0]
+    mean_u      = plt_data["u_mean"][1]
+    mean_u_ini  = plt_data["u_mean"][0]
+    mean_v      = plt_data["v_mean"][1]
+    mean_v_ini  = plt_data["v_mean"][0]
+    mean_qv     = plt_data["qt_mean"][1] - plt_data["ql_mean"][1]
+    mean_qv_ini = plt_data["qt_mean"][0] - plt_data["ql_mean"][0]
+    mean_ql     = plt_data["ql_mean"][1]
+    mean_ql_ini = plt_data["ql_mean"][0]
     p0          = np.array(sim_data["reference/p0"][:])
     mean_th     = np.zeros(p0.size)
     mean_th_ini = np.zeros(p0.size)
     for it in range(p0.size):
-      mean_th[it]     = wrp.theta_c(p0[it], plt_data["temperature_mean"][3][it])
-      mean_th_ini[it] = wrp.theta_c(p0[it], plt_data["temperature_mean"][2][it])
+      mean_th[it]     = wrp.theta_c(p0[it], plt_data["temperature_mean"][1][it])
+      mean_th_ini[it] = wrp.theta_c(p0[it], plt_data["temperature_mean"][0][it])
  
     plt.figure(1, figsize=(18,14))
     mpl.rc('lines', linewidth=4, markersize=10)

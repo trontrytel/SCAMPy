@@ -19,7 +19,7 @@ import plot_scripts as pls
 def sim_data(request):
 
     # generate namelists and paramlists
-    setup = pls.simulation_setup('Rico')
+    setup = pls.simulation_setup('GATE_III')
     # chenge the defaults  
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
@@ -32,22 +32,22 @@ def sim_data(request):
     print pp.pprint(setup["paramlist"])
 
     # run scampy
-    #scampy.main1d(setup["namelist"], setup["paramlist"])
+    scampy.main1d(setup["namelist"], setup["paramlist"])
     
     # simulation results 
     sim_data = Dataset(setup["outfile"], 'r')
 
     # remove netcdf file after tests
-    #request.addfinalizer(pls.removing_files)
+    request.addfinalizer(pls.removing_files)
 
     return sim_data
 
-def test_plot_Rico(sim_data):
+def test_plot_GATE_III(sim_data):
     """
-    plot Rico profiles
+    plot GATE_III profiles
     """
     data_to_plot = pls.read_data(sim_data, 100)
 
-    pls.plot_mean(data_to_plot,   "Rico_quicklook.pdf")
-    pls.plot_drafts(data_to_plot, "Rico_quicklook_drafts.pdf")
+    pls.plot_mean(data_to_plot,   "GATE_III_quicklook.pdf")
+    pls.plot_drafts(data_to_plot, "GATE_III_quicklook_drafts.pdf")
 

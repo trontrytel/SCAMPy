@@ -22,7 +22,7 @@ def sim_data(request):
     # generate namelists and paramlists
     setup = pls.simulation_setup('DYCOMS_RF01')
     # chenge the defaults  
-    setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
+    #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
 
     print " "
@@ -48,9 +48,7 @@ def test_plot_DYCOMS_RF01(sim_data):
     """
     plot DYCOMS_RF01 quicklook profiles
     """
-    ref_data = Dataset("tests/reference/DYCOMS_RF01/stats/Stats.DYCOMS_RF01.nc", 'r')
-
-    data_to_plot = pls.read_data(sim_data, ref_data)
+    data_to_plot = pls.read_data(sim_data, 100)
 
     pls.plot_mean(data_to_plot,   "DYCOMS_RF01_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "DYCOMS_RF01_quicklook_drafts.pdf")
@@ -63,11 +61,8 @@ def test_DYCOMS_RF01_radiation(sim_data):
     import matplotlib.pyplot as plt
     import matplotlib as mpl
 
-    # reference simulation
-    ref_data = Dataset("tests/reference/DYCOMS_RF01/stats/Stats.DYCOMS_RF01.nc", 'r')
-
-    plt_data = pls.read_data(sim_data,     ref_data)
-    rad_data = pls.read_rad_data(sim_data, ref_data)
+    plt_data = pls.read_data(sim_data,     100)
+    rad_data = pls.read_rad_data(sim_data, 100)
 
     # plot
     mpl.rc('lines', linewidth=2, markersize=8)
@@ -80,14 +75,13 @@ def test_DYCOMS_RF01_radiation(sim_data):
     line   = ['--',                             '--',                 '-',                 '-']
     plot_y = [rad_data["rad_flux"],             rad_data["rad_dTdt"], plt_data["qt_mean"], plt_data["ql_mean"]]
     plot_x = [rad_data["z"],                    plt_data["z_half"],   plt_data["z_half"],  plt_data["z_half"]]
-    color  = ["palegreen",                      "forestgreen",        "gold",              "orangered"]
-    label  = ["ref ini",                        "ref end",            "sim ini",           "sim end"]
+    color  = ["palegreen",                      "forestgreen"]
+    label  = ["ini",                            "end"        ]
 
     for plot_it in xrange(4):
         plots.append(plt.subplot(2,2,plot_it+1))
                               #(rows, columns, number)
-        #for it in xrange(4):   #plot all
-        for it in xrange(2,4,1):
+        for it in xrange(2):
             plots[plot_it].plot(plot_y[plot_it][it], plot_x[plot_it], '.-', color=color[it], label=label[it])
         plots[plot_it].legend(loc=legend[plot_it])
         plots[plot_it].set_xlabel(x_lab[plot_it])
@@ -97,8 +91,3 @@ def test_DYCOMS_RF01_radiation(sim_data):
 
     plt.savefig("tests/output/DYCOMS_RF01_radiation.pdf")
     plt.clf()
-
-    # check
-    assert(np.allclose(rad_data["rad_flux"][0], rad_data["rad_flux"][2], rtol = 1e-6))
-    assert(np.allclose(rad_data["rad_dTdt"][0], rad_data["rad_dTdt"][2], rtol = 1e-6))
-

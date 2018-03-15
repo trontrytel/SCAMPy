@@ -64,53 +64,73 @@ def removing_files():
     subprocess.call(cmd , shell=True)
 
 
-def read_data(sim_data, ref_data):
+def read_data(sim_data, n_steps):
     """
-    Read in the data from netcdf files into a dictionary that can be used for quicklook plots
-    
-    dict[var] = [reference var[t=0], reference var[t=end], current var[t=0], current var[t=end]
+    Read in the data from netcdf file into a dictionary that can be used for quicklook plots
     """
     variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
                  "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "updraft_w", "env_w"]
-    time = [0,        -1,       0,        -1]
-    sim  = [ref_data, ref_data, sim_data, sim_data]
 
-    # read the data (both simulation and reference)
+    # read the data
     data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:])}
+
+    time = [0, -1]
     for var in variables:
         data_to_plot[var] = []
-        for it in xrange(4):
+        for it in xrange(2):
             if ("buoyancy" in var):
-                data_to_plot[var].append(np.array(sim[it]["profiles/" + var][time[it], :]) * 10000) #cm2/s3
+                data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 10000) #cm2/s3
             elif ("qt" in var or "ql" in var):
-                data_to_plot[var].append(np.array(sim[it]["profiles/" + var][time[it], :]) * 1000)  #g/kg
+                data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 1000)  #g/kg
             elif ("p0" in var):
-                data_to_plot[var].append(np.array(sim[it]["reference/" + var][time[it], :]) * 1000)  #g/kg
+                data_to_plot[var].append(np.array(sim_data["reference/" + var][time[it], :]) * 1000)  #g/kg
             else:
-                data_to_plot[var].append(np.array(sim[it]["profiles/" + var][time[it], :]))
+                data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
+
+    # add averaging over last n_steps timesteps
+    if(n_steps > 0):
+        for var in variables:
+            for time_it in xrange(-2, -1*n_steps-1, -1):
+                if ("buoyancy" in var):
+                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 10000  #cm2/s3
+                elif ("qt" in var or "ql" in var):
+                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 1000   #g/kg
+                elif ("p0" in var):
+                    data_to_plot[var][1] += np.array(sim_data["reference/" + var][time_it, :]) * 1000  #g/kg
+                else:
+                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
+
+            data_to_plot[var][1] /= n_steps
 
     return data_to_plot
 
 
-def read_rad_data(sim_data, ref_data):
+def read_rad_data(sim_data, n_steps):
     """
     Read in the radiation forcing data from netcdf files into a dictionary that can be used for quicklook plots
-    
-    dict[var] = [reference var[t=0], reference var[t=end], current var[t=0], current var[t=end]
     """
     variables = ["rad_flux", "rad_dTdt"]
-    time = [0,        -1,       0,        -1]
-    sim  = [ref_data, ref_data, sim_data, sim_data]
 
-    # read the data (both simulation and reference)
+    time = [0, -1]
     rad_data = {"z" : np.array(sim_data["profiles/z"][:])}
     for var in variables:
         rad_data[var] = []
-        for it in xrange(4):
+        for it in xrange(2):
             if ("rad_dTdt" in var):
-                rad_data[var].append(np.array(sim[it]["profiles/" + var][time[it], :]) * 60 * 60 * 24) # K/day
+                rad_data[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 60 * 60 * 24) # K/day
             else:
-                rad_data[var].append(np.array(sim[it]["profiles/" + var][time[it], :]))
+                rad_data[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
+
+    # add averaging over last n_steps timesteps
+    if(n_steps > 0):
+        for var in variables:
+            for time_it in xrange(-2, -1*n_steps-1, -1):
+                if ("rad_dTdt" in var):
+                    rad_data[var][1] += np.array(sim_data["profiles/" + var][time_it, :] * 60 * 60 * 24) # K/day
+                else:
+                    rad_data[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
+
+            rad_data[var][1] /= n_steps
 
     return rad_data
 
@@ -129,9 +149,8 @@ def plot_mean(data, title, folder="tests/output/"):
     # iteration over plots
     x_lab  = ['T [K]',                   'THL [K]',           'buoyancy [cm2/s3]',   'QT [g/kg]',     'QL [g/kg]',     'TKE']
     plot_x = [ data["temperature_mean"], data["thetal_mean"], data["buoyancy_mean"], data["qt_mean"], data["ql_mean"], data["tke_mean"]]
-    # iteration over currnt vs reference simulation, t=0, t=-1
-    color  = ["palegreen", "forestgreen", "gold",    "orangered"]
-    label  = ["ref ini",   "ref end",     "sim ini", "sim end"]
+    color  = ["palegreen", "forestgreen"]
+    label  = ["ini", "end"]
 
     for plot_it in range(6):
         plots.append(plt.subplot(2,3,plot_it+1))
@@ -140,8 +159,7 @@ def plot_mean(data, title, folder="tests/output/"):
         plots[plot_it].set_ylabel('z [m]')
         plots[plot_it].set_ylim([0, data["z_half"][-1] + (data["z_half"][1] - data["z_half"][0]) * 0.5])
         plots[plot_it].grid(True)
-        #for it in xrange(2,4,1):  # only current version
-        for it in xrange(4):
+        for it in xrange(2):
             plots[plot_it].plot(plot_x[plot_it][it], data["z_half"], '.-', color=color[it], label=label[it])
 
     plots[0].legend(loc='upper right')
@@ -169,13 +187,12 @@ def plot_drafts(data, title, folder="tests/output/"):
     plot_upd = [data["updraft_qt"], data["updraft_ql"],  data["updraft_w"], data["updraft_buoyancy"],    data["updraft_area"]]
     plot_env = [data["env_qt"],     data["env_ql"],      data["env_w"]]
     plot_mean= [data["qt_mean"],    data["ql_mean"]]
-    # iteration over current vs reference simulation
-    color_mean= ["plum",        "purple"]
-    color_env = ["lightsalmon", "red"]
-    color_upd = ["deepskyblue", "blue"]
-    label_mean= ["mean ref",    "mean sim"]
-    label_env = ["env ref",     "env sim"]
-    label_upd = ["upd ref",     "upd sim"]
+    color_mean= "purple"
+    color_env = "red"
+    color_upd = "blue"
+    label_mean= "mean"
+    label_env = "env"
+    label_upd = "upd"
 
     for plot_it in xrange(5):
         plots.append(plt.subplot(3,2,plot_it+1))
@@ -184,22 +201,20 @@ def plot_drafts(data, title, folder="tests/output/"):
         plots[plot_it].set_ylabel('z [m]')
         plots[plot_it].set_ylim([0, data["z_half"][-1] + (data["z_half"][1] - data["z_half"][0]) * 0.5])
         plots[plot_it].grid(True)
-        #for it in xrange(1,2,1): # only current version
-        for it in xrange(2):
-            #plot updrafts
-            if (plot_it < 4):
-                plots[plot_it].plot(plot_upd[plot_it][2 * it + 1], data["z_half"], ".-", color=color_upd[it], label=label_upd[it])
-            if (plot_it == 4):
-                plots[plot_it].plot(plot_upd[plot_it][2 * it + 1] * 100, data["z_half"], ".-", color=color_upd[it], label=label_upd[it])
-            if (plot_it in [0, 1, 2]):
-                # plot environment
-                plots[plot_it].plot(plot_env[plot_it ][2 * it + 1], data["z_half"], ".-", color=color_env[it], label=label_env[it])
-            if (plot_it in [0, 1]):
-                # plot mean
-                plots[plot_it].plot(plot_mean[plot_it][2 * it + 1], data["z_half"], ".-", color=color_mean[it], label=label_mean[it])
+        #plot updrafts
+        if (plot_it < 4):
+            plots[plot_it].plot(plot_upd[plot_it][1], data["z_half"], ".-", color=color_upd, label=label_upd)
+        if (plot_it == 4):
+            plots[plot_it].plot(plot_upd[plot_it][1] * 100, data["z_half"], ".-", color=color_upd, label=label_upd)
+        if (plot_it in [0, 1, 2]):
+            # plot environment
+            plots[plot_it].plot(plot_env[plot_it ][1], data["z_half"], ".-", color=color_env, label=label_env)
+        if (plot_it in [0, 1]):
+            # plot mean
+            plots[plot_it].plot(plot_mean[plot_it][1], data["z_half"], ".-", color=color_mean, label=label_mean)
 
 
-    plots[1].legend(loc='lower right')
+    plots[1].legend(loc='upper right')
     #plots[0].set_xlim([1, 10])
     #plots[5].set_xlim([-50, 350])
     #plots[5].set_xlim([-0.1, 0.5])
