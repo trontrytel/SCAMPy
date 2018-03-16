@@ -25,13 +25,13 @@ def sim_data(request):
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
 
-    print " "
-    print "namelist = " 
-    pp.pprint(setup["namelist"])
-    print " "
-    print "paramlist = " 
-    pp.pprint(setup["paramlist"])
-    print " "
+    #print " "
+    #print "namelist = " 
+    #pp.pprint(setup["namelist"])
+    #print " "
+    #print "paramlist = " 
+    #pp.pprint(setup["paramlist"])
+    #print " "
  
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
@@ -40,7 +40,7 @@ def sim_data(request):
     sim_data = Dataset(setup["outfile"], 'r')
 
     # remove netcdf files after tests
-    #request.addfinalizer(pls.removing_files)
+    request.addfinalizer(pls.removing_files)
 
     return sim_data
 
@@ -48,7 +48,7 @@ def test_plot_DYCOMS_RF01(sim_data):
     """
     plot DYCOMS_RF01 quicklook profiles
     """
-    data_to_plot = pls.read_data(sim_data, 100)
+    data_to_plot = pls.read_data_avg(sim_data, 100)
 
     pls.plot_mean(data_to_plot,   "DYCOMS_RF01_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "DYCOMS_RF01_quicklook_drafts.pdf")
@@ -61,8 +61,8 @@ def test_DYCOMS_RF01_radiation(sim_data):
     import matplotlib.pyplot as plt
     import matplotlib as mpl
 
-    plt_data = pls.read_data(sim_data,     100)
-    rad_data = pls.read_rad_data(sim_data, 100)
+    plt_data = pls.read_data_avg(sim_data,     100)
+    rad_data = pls.read_rad_data_avg(sim_data, 100)
 
     # plot
     mpl.rc('lines', linewidth=2, markersize=8)

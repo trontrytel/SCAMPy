@@ -24,30 +24,30 @@ def data(request):
     # dictionary where simulation results will be stored
     data = {}
 
-    # loop over all test cases (Soares, Bomex, DYCOMS_RF01)
+    # loop over all test cases
     for case in case_list:
+
         # generate namelist and paramlist
         setup = pls.simulation_setup(case)
         # change the default parameters
         setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
 
-        print " "
-        print "namelist"
-        print pp.pprint(setup["namelist"])
-        print " "
-        print "paramlist"
-        print pp.pprint(setup["paramlist"])
+        #print " "
+        #print "namelist"
+        #print pp.pprint(setup["namelist"])
+        #print " "
+        #print "paramlist"
+        #print pp.pprint(setup["paramlist"])
 
         # run scampy
         scampy.main1d(setup["namelist"], setup["paramlist"])
-    
+        
         # simulation results 
         data[case] = Dataset(setup["outfile"], 'r')
 
     request.addfinalizer(pls.removing_files)
 
     return data
-
 
 @pytest.mark.parametrize("case", case_list)
 def test_mean_qt(data, case, eps = 1e-2):

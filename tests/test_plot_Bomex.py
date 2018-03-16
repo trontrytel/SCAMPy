@@ -30,12 +30,12 @@ def sim_data(request):
     #     - entrainment = bw_2       - oscillations in w
     #     - entrainment = inwerse_v  - random ql and cloud fraction
 
-    print " "
-    print "namelist"
-    print pp.pprint(setup["namelist"])
-    print " "
-    print "paramlist"
-    print pp.pprint(setup["paramlist"])
+    #print " "
+    #print "namelist"
+    #print pp.pprint(setup["namelist"])
+    #print " "
+    #print "paramlist"
+    #print pp.pprint(setup["paramlist"])
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
@@ -52,7 +52,7 @@ def test_plot_Bomex(sim_data):
     """
     plot Bomex profiles
     """
-    data_to_plot = pls.read_data(sim_data, 100)
+    data_to_plot = pls.read_data_avg(sim_data, 100)
 
     pls.plot_mean(data_to_plot,   "Bomex_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "Bomex_quicklook_drafts.pdf")
@@ -64,8 +64,7 @@ def test_plot_Bomex_fig3(sim_data, folder="tests/output/"):
     import matplotlib.pyplot as plt
     import matplotlib as mpl
     title = "BOMEX_fig3.pdf"
-    ref_data = Dataset("tests/reference/Bomex/stats/Stats.Bomex.nc", 'r')
-    plt_data = pls.read_data(sim_data, 100)
+    plt_data = pls.read_data_avg(sim_data, 100)
 
     mean_tke    = plt_data["tke_mean"][1]
     mean_tke_ini= plt_data["tke_mean"][0]

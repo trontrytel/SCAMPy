@@ -64,7 +64,7 @@ def removing_files():
     subprocess.call(cmd , shell=True)
 
 
-def read_data(sim_data, n_steps):
+def read_data_avg(sim_data, n_steps):
     """
     Read in the data from netcdf file into a dictionary that can be used for quicklook plots
     """
@@ -105,7 +105,7 @@ def read_data(sim_data, n_steps):
     return data_to_plot
 
 
-def read_rad_data(sim_data, n_steps):
+def read_rad_data_avg(sim_data, n_steps):
     """
     Read in the radiation forcing data from netcdf files into a dictionary that can be used for quicklook plots
     """
@@ -133,6 +133,49 @@ def read_rad_data(sim_data, n_steps):
             rad_data[var][1] /= n_steps
 
     return rad_data
+
+def read_data_srs(sim_data):
+    """
+    Read in the data from netcdf file into a dictionary that can be used for quicklook timeseries plots
+    """
+    variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
+                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "updraft_w", "env_w"]
+
+    # read the data
+    data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:])}
+    data_to_plot = {"time"   : np.array(sim_data["profiles/z_half"][:])}
+
+
+    time = [0, -1]
+    for var in variables:
+        data_to_plot[var] = []
+        for it in xrange(2):
+            if ("buoyancy" in var):
+                data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 10000) #cm2/s3
+            elif ("qt" in var or "ql" in var):
+                data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 1000)  #g/kg
+            elif ("p0" in var):
+                data_to_plot[var].append(np.array(sim_data["reference/" + var][time[it], :]) * 1000)  #g/kg
+            else:
+                data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
+
+    # add averaging over last n_steps timesteps
+    if(n_steps > 0):
+        for var in variables:
+            for time_it in xrange(-2, -1*n_steps-1, -1):
+                if ("buoyancy" in var):
+                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 10000  #cm2/s3
+                elif ("qt" in var or "ql" in var):
+                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 1000   #g/kg
+                elif ("p0" in var):
+                    data_to_plot[var][1] += np.array(sim_data["reference/" + var][time_it, :]) * 1000  #g/kg
+                else:
+                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
+
+            data_to_plot[var][1] /= n_steps
+
+    return data_to_plot
+
 
 
 def plot_mean(data, title, folder="tests/output/"):
