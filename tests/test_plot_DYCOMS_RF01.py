@@ -53,6 +53,14 @@ def test_plot_DYCOMS_RF01(sim_data):
     pls.plot_mean(data_to_plot,   "DYCOMS_RF01_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "DYCOMS_RF01_quicklook_drafts.pdf")
 
+def test_plot_timeseries_DYCOMS(sim_data):
+    """
+    plot timeseries
+    """
+    data_to_plot = pls.read_data_srs(sim_data)
+
+    pls.plot_timeseries(data_to_plot, "DYCOMS")
+
 def test_DYCOMS_RF01_radiation(sim_data):
     """
     - check if the initial radiative flux is the same as in the reference simulation

@@ -9,10 +9,11 @@ import warnings
 
 from netCDF4 import Dataset
 import numpy as np
+import pprint as pp
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-
+ 
 def simulation_setup(case):
     """
     generate namelist and paramlist files for scampy
@@ -83,7 +84,7 @@ def read_data_avg(sim_data, n_steps):
             elif ("qt" in var or "ql" in var):
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 1000)  #g/kg
             elif ("p0" in var):
-                data_to_plot[var].append(np.array(sim_data["reference/" + var][time[it], :]) * 1000)  #g/kg
+                data_to_plot[var].append(np.array(sim_data["reference/" + var][time[it], :]) * 100)  #hPa
             else:
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
 
@@ -96,7 +97,7 @@ def read_data_avg(sim_data, n_steps):
                 elif ("qt" in var or "ql" in var):
                     data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 1000   #g/kg
                 elif ("p0" in var):
-                    data_to_plot[var][1] += np.array(sim_data["reference/" + var][time_it, :]) * 1000  #g/kg
+                    data_to_plot[var][1] += np.array(sim_data["reference/" + var][time_it, :]) * 100   #hPa
                 else:
                     data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
 
@@ -142,41 +143,20 @@ def read_data_srs(sim_data):
                  "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "updraft_w", "env_w"]
 
     # read the data
-    data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:])}
-    data_to_plot = {"time"   : np.array(sim_data["profiles/z_half"][:])}
+    data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:]), "t" : np.array(sim_data["profiles/t"][:])}
 
-
-    time = [0, -1]
     for var in variables:
         data_to_plot[var] = []
-        for it in xrange(2):
-            if ("buoyancy" in var):
-                data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 10000) #cm2/s3
-            elif ("qt" in var or "ql" in var):
-                data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 1000)  #g/kg
-            elif ("p0" in var):
-                data_to_plot[var].append(np.array(sim_data["reference/" + var][time[it], :]) * 1000)  #g/kg
-            else:
-                data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
-
-    # add averaging over last n_steps timesteps
-    if(n_steps > 0):
-        for var in variables:
-            for time_it in xrange(-2, -1*n_steps-1, -1):
-                if ("buoyancy" in var):
-                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 10000  #cm2/s3
-                elif ("qt" in var or "ql" in var):
-                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 1000   #g/kg
-                elif ("p0" in var):
-                    data_to_plot[var][1] += np.array(sim_data["reference/" + var][time_it, :]) * 1000  #g/kg
-                else:
-                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
-
-            data_to_plot[var][1] /= n_steps
+        if ("buoyancy" in var):
+            data_to_plot[var] = np.array(sim_data["profiles/"  + var][:, :]) * 10000 #cm2/s3
+        elif ("qt" in var or "ql" in var):
+            data_to_plot[var] = np.array(sim_data["profiles/"  + var][:, :]) * 1000  #g/kg
+        elif ("p0" in var):
+            data_to_plot[var] = np.array(sim_data["reference/" + var][:, :]) * 100   #hPa
+        else:
+            data_to_plot[var] = np.array(sim_data["profiles/"  + var][:, :])
 
     return data_to_plot
-
-
 
 def plot_mean(data, title, folder="tests/output/"):
     """
@@ -263,3 +243,90 @@ def plot_drafts(data, title, folder="tests/output/"):
     #plots[5].set_xlim([-0.1, 0.5])
     plt.savefig(folder + title)
     plt.clf()
+
+def plot_timeseries(plt_data, case):
+
+    output_folder="tests/output/"
+    plt.figure(1, figsize=(20,14))
+    mpl.rcParams.update({'font.size': 18})
+
+    z_half  = plt_data["z_half"]
+    time    = plt_data["t"] / 60. / 60.
+
+    mean_ql  = np.transpose(plt_data["ql_mean"])
+    mean_qt  = np.transpose(plt_data["qt_mean"])
+    mean_qv  = mean_qt - mean_ql
+    mean_tke = np.transpose(plt_data["tke_mean"])
+
+    updr_buo  = np.transpose(plt_data["updraft_buoyancy"])
+    updr_qt   = np.transpose(plt_data["updraft_qt"])
+    updr_ql   = np.transpose(plt_data["updraft_ql"])
+    updr_qv   = updr_qt - updr_ql
+    updr_w    = np.transpose(plt_data["updraft_w"])
+    updr_area = np.transpose(plt_data["updraft_area"])
+
+    env_qt = np.transpose(plt_data["env_qt"])
+    env_ql = np.transpose(plt_data["env_ql"])
+    env_qv = env_qt - env_ql
+    env_w  = np.transpose(plt_data["env_w"])
+
+    x_lab = ["mean tke", "mean qt", "mean_qv", "mean_ql"]
+    fig = plt.figure(1)
+    ax = []
+    for plot_it in range(4):
+        ax.append(fig.add_subplot(2,2,plot_it+1))
+                               #(rows, columns, number)
+        ax[plot_it].set_xlabel('t [hrs]')
+        ax[plot_it].set_ylabel('z [m]')
+
+    plot0 = ax[0].pcolormesh(time, z_half, mean_tke)
+    fig.colorbar(plot0, ax=ax[0], label='mean tke [m2/s2]')
+    plot1 = ax[1].pcolormesh(time, z_half, mean_qt)
+    fig.colorbar(plot1, ax=ax[1], label='mean qt [g/kg]')
+    plot2 = ax[2].pcolormesh(time, z_half, mean_qv)
+    fig.colorbar(plot2, ax=ax[2], label='mean qv [g/kg]')
+    plot3 = ax[3].pcolormesh(time, z_half, mean_ql)
+    fig.colorbar(plot3, ax=ax[3], label='mean ql [g/kg]')
+    plt.savefig(output_folder + case + "_timeseries_mean.png")
+    plt.clf()
+
+    x_lab = ["env w", "env qt", "env qv", "env ql"]
+    fig = plt.figure(1)
+    ax = []
+    for plot_it in range(4):
+        ax.append(fig.add_subplot(2,2,plot_it+1))
+                               #(rows, columns, number)
+        ax[plot_it].set_xlabel('t [hrs]')
+        ax[plot_it].set_ylabel('z [m]')
+
+    plot0 = ax[0].pcolormesh(time, z_half, env_w)
+    fig.colorbar(plot0, ax=ax[0], label='env w [m/2]')
+    plot1 = ax[1].pcolormesh(time, z_half, env_qt)
+    fig.colorbar(plot1, ax=ax[1], label='env qt [g/kg]')
+    plot2 = ax[2].pcolormesh(time, z_half, env_qv)
+    fig.colorbar(plot2, ax=ax[2], label='env qv [g/kg]')
+    plot3 = ax[3].pcolormesh(time, z_half, env_ql)
+    fig.colorbar(plot3, ax=ax[3], label='env ql [g/kg]')
+    plt.savefig(output_folder + case + "_timeseries_env.png")
+    plt.clf()
+
+    x_lab = ["updr buo", "updr area", "updr w", "updr ql"]
+    fig = plt.figure(1)
+    ax = []
+    for plot_it in range(4):
+        ax.append(fig.add_subplot(2,2,plot_it+1))
+                               #(rows, columns, number)
+        ax[plot_it].set_xlabel('t [hrs]')
+        ax[plot_it].set_ylabel('z [m]')
+
+    plot0 = ax[0].pcolormesh(time, z_half, updr_buo)
+    fig.colorbar(plot0, ax=ax[0], label='updr buo [cm2/s3]')
+    plot1 = ax[1].pcolormesh(time, z_half, updr_area)
+    fig.colorbar(plot1, ax=ax[1], label='updr area ')
+    plot2 = ax[2].pcolormesh(time, z_half, updr_w)
+    fig.colorbar(plot2, ax=ax[2], label='updr w [m/s]')
+    plot3 = ax[3].pcolormesh(time, z_half, updr_ql)
+    fig.colorbar(plot3, ax=ax[3], label='updr ql [g/kg]')
+    plt.savefig(output_folder + case + "_timeseries_updr.png")
+    plt.clf()
+

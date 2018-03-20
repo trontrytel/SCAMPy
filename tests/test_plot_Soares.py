@@ -49,3 +49,12 @@ def test_plot_Soares(sim_data):
 
     pls.plot_mean(data_to_plot,   "Soares_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "Soares_quicklook_drafts.pdf")
+
+def test_plot_timeseries_Soares(sim_data):
+    """
+    plot Soares timeseries
+    """
+    data_to_plot = pls.read_data_srs(sim_data)
+
+    pls.plot_timeseries(data_to_plot, "Soares")
+

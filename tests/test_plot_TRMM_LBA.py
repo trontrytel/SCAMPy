@@ -51,3 +51,11 @@ def test_plot_TRMM_LBA(sim_data):
     pls.plot_mean(data_to_plot,   "TRMM_LBA_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "TRMM_LBA_quicklook_drafts.pdf")
 
+def test_plot_timeseries_TRMM_LBA(sim_data):
+    """
+    plot timeseries
+    """
+    data_to_plot = pls.read_data_srs(sim_data)
+
+    pls.plot_timeseries(data_to_plot, "TRMM_LBA")
+
