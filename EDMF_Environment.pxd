@@ -47,6 +47,7 @@ cdef class EnvironmentThermodynamics:
         double [:] qv_cloudy
         double [:] qt_cloudy
         double [:] th_cloudy
+        double max_supersaturation
 
     cpdef satadjust(self, EnvironmentVariables EnvVar, GridMeanVariables GMV)
 
