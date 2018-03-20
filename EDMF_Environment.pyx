@@ -52,7 +52,7 @@ cdef class EnvironmentVariables:
         # Determine whether we need 2nd moment variables
         if  namelist['turbulence']['scheme'] == 'EDMF_PrognosticTKE':
             self.use_tke = True
-            self.use_scalar_var = True
+            self.use_scalar_var = True #TODO TMP!!!
         else:
             self.use_tke = False
             self.use_scalar_var = True
@@ -149,9 +149,13 @@ cdef class EnvironmentThermodynamics:
         if EnvVar.H.name == 'thetal':
             with nogil:
                 for k in xrange(gw, self.Gr.nzg-gw):
-                    sd_q = sqrt(EnvVar.QTvar.values[k])
-                    sd_h = sqrt(EnvVar.Hvar.values[k])
-                    corr = fmax(fmin(EnvVar.HQTcov.values[k]/fmax(sd_h*sd_q, 1e-13),1.0),-1.0)
+                    #sd_q = sqrt(EnvVar.QTvar.values[k])
+                    #sd_h = sqrt(EnvVar.Hvar.values[k])
+                    #corr = fmax(fmin(EnvVar.HQTcov.values[k]/fmax(sd_h*sd_q, 1e-13),1.0),-1.0)
+                    sd_q = sqrt(0.5*1e-7)
+                    sd_h = sqrt(0.01)
+                    corr = fmax(fmin(-1e-3 / fmax(sd_h*sd_q, 1e-13),1.0),-1.0)
+
                     # limit sd_q to prevent negative qt_hat
                     sd_q_lim = (1e-10 - EnvVar.QT.values[k])/(sqrt2 * abscissas[0])
                     sd_q = fmin(sd_q, sd_q_lim)
@@ -193,7 +197,7 @@ cdef class EnvironmentThermodynamics:
                                 inner_int_cf        +=          weights[m_h] * sqpi_inv
                                 inner_int_qt_cloudy += qt_hat * weights[m_h] * sqpi_inv
                                 inner_int_T_cloudy  += temp_m * weights[m_h] * sqpi_inv
-                                inner_int_qr        += acnv_rate(ql_m, inner_int_qt_cloudy,
+                                inner_int_qr        -= acnv_rate(ql_m, inner_int_qt_cloudy,
                                                                  self.max_supersaturation,
                                                                  inner_int_T_cloudy, 
                                                                  self.Ref.p0_half[k])
@@ -211,8 +215,11 @@ cdef class EnvironmentThermodynamics:
                         outer_int_T_cloudy  += outer_int_T_cloudy  * weights[m_q] * sqpi_inv
                         outer_int_qt_dry    += inner_int_qt_dry    * weights[m_q] * sqpi_inv
                         outer_int_T_dry     += outer_int_T_dry     * weights[m_q] * sqpi_inv
+
                     with gil:
                         print outer_int_qr
+                        print outer_int_T
+
                     EnvVar.QL.values[k] = outer_int_ql - outer_int_qr
                     #EnvVar.QT.values[k] = TODO
                     #EnvVar.H.values[k] = TODO
@@ -308,6 +315,9 @@ cdef class EnvironmentThermodynamics:
             eos_struct sa
             double qv, alpha
 
+        print "use_scalar_var = ", GMV.use_scalar_var
+        print "Env Var H = ", EnvVar.H.name
+ 
         if GMV.use_scalar_var:
             self.eos_update_SA_sgs(EnvVar, GMV.B)
         else:
