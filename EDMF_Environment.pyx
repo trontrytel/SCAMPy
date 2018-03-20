@@ -12,6 +12,7 @@ from ReferenceState cimport ReferenceState
 from Variables cimport VariableDiagnostic, GridMeanVariables
 from libc.math cimport fmax, fmin, sqrt, exp
 from thermodynamic_functions cimport  *
+from microphysics_functions cimport  *
 
 cdef class EnvironmentVariable:
     def __init__(self, nz, loc, kind, name, units):
@@ -98,7 +99,7 @@ cdef class EnvironmentVariables:
         return
 
 cdef class EnvironmentThermodynamics:
-    def __init__(self, namelist, Grid Gr, ReferenceState Ref, EnvironmentVariables EnvVar):
+    def __init__(self, namelist, paramlist, Grid Gr, ReferenceState Ref, EnvironmentVariables EnvVar):
         self.Gr = Gr
         self.Ref = Ref
         try:
@@ -118,6 +119,8 @@ cdef class EnvironmentThermodynamics:
         self.qv_cloudy = np.zeros(self.Gr.nzg, dtype=np.double, order ='c')
         self.qt_cloudy = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
         self.th_cloudy = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
+
+        self.max_supersaturation = paramlist['turbulence']['updraft_microphysics']['max_supersaturation']
 
         return
 
@@ -160,8 +163,8 @@ cdef class EnvironmentThermodynamics:
                     outer_int_qr = 0.0
                     outer_int_cf = 0.0
                     outer_int_qt_cloudy = 0.0
-
                     outer_int_T_cloudy = 0.0
+
                     for m_q in xrange(self.quadrature_order):
                         qt_hat    = EnvVar.QT.values[k] + sqrt2 * sd_q * abscissas[m_q]
                         mu_h_star = EnvVar.H.values[k]  + sqrt2 * corr * sd_h * abscissas[m_q]
@@ -174,6 +177,7 @@ cdef class EnvironmentThermodynamics:
                         inner_int_T_cloudy = 0.0
                         inner_int_qt_dry = 0.0
                         inner_int_T_dry = 0.0
+
                         for m_h in xrange(self.quadrature_order):
                             h_hat = sqrt2 * sigma_h_star * abscissas[m_h] + mu_h_star
                             sa = eos(self.t_to_prog_fp,self.prog_to_t_fp, self.Ref.p0_half[k], qt_hat, h_hat)
@@ -184,6 +188,7 @@ cdef class EnvironmentThermodynamics:
                             inner_int_ql    += ql_m    * weights[m_h] * sqpi_inv
                             inner_int_T     += temp_m  * weights[m_h] * sqpi_inv
                             inner_int_alpha += alpha_m * weights[m_h] * sqpi_inv
+
                             if ql_m  > 0.0:
                                 inner_int_cf        +=          weights[m_h] * sqpi_inv
                                 inner_int_qt_cloudy += qt_hat * weights[m_h] * sqpi_inv
@@ -195,6 +200,7 @@ cdef class EnvironmentThermodynamics:
                             else:
                                 inner_int_qt_dry += qt_hat * weights[m_h] * sqpi_inv
                                 inner_int_T_dry  += temp_m * weights[m_h] * sqpi_inv
+                                inner_int_qr     += 0.
 
                         outer_int_ql        += inner_int_ql        * weights[m_q] * sqpi_inv
                         outer_int_qr        += inner_int_qr        * weights[m_q] * sqpi_inv
@@ -205,10 +211,11 @@ cdef class EnvironmentThermodynamics:
                         outer_int_T_cloudy  += outer_int_T_cloudy  * weights[m_q] * sqpi_inv
                         outer_int_qt_dry    += inner_int_qt_dry    * weights[m_q] * sqpi_inv
                         outer_int_T_dry     += outer_int_T_dry     * weights[m_q] * sqpi_inv
-
-                    print outer_int_qr
+                    with gil:
+                        print outer_int_qr
                     EnvVar.QL.values[k] = outer_int_ql - outer_int_qr
-                    EnvVar.QT.values[k] = outer_int_qt - outer_int_qr
+                    #EnvVar.QT.values[k] = TODO
+                    #EnvVar.H.values[k] = TODO
                     #TODO any h sources due to precipitation (as in updrafts)
                     #TODO look in updrafts - why do we multiply by area fraction only in one case?
                     EnvVar.B.values[k]  = g * (outer_int_alpha - self.Ref.alpha0_half[k])/self.Ref.alpha0_half[k] #- GMV_B.values[k]
