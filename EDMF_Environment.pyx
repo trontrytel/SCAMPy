@@ -12,6 +12,7 @@ from ReferenceState cimport ReferenceState
 from Variables cimport VariableDiagnostic, GridMeanVariables
 from libc.math cimport fmax, fmin, sqrt, exp
 from thermodynamic_functions cimport  *
+from microphysics_functions cimport *
 
 cdef class EnvironmentVariable:
     def __init__(self, nz, loc, kind, name, units):
