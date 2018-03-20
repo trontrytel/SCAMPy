@@ -24,12 +24,12 @@ def sim_data(request):
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
 
-    print " "
-    print "namelist"
-    print pp.pprint(setup["namelist"])
-    print " "
-    print "paramlist"
-    print pp.pprint(setup["paramlist"])
+    #print " "
+    #print "namelist"
+    #print pp.pprint(setup["namelist"])
+    #print " "
+    #print "paramlist"
+    #print pp.pprint(setup["paramlist"])
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
@@ -46,8 +46,16 @@ def test_plot_TRMM_LBA(sim_data):
     """
     plot TRMM_LBA profiles
     """
-    data_to_plot = pls.read_data(sim_data, 100)
+    data_to_plot = pls.read_data_avg(sim_data, 100)
 
     pls.plot_mean(data_to_plot,   "TRMM_LBA_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "TRMM_LBA_quicklook_drafts.pdf")
+
+def test_plot_timeseries_TRMM_LBA(sim_data):
+    """
+    plot timeseries
+    """
+    data_to_plot = pls.read_data_srs(sim_data)
+
+    pls.plot_timeseries(data_to_plot, "TRMM_LBA")
 
