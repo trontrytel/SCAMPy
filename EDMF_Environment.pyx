@@ -197,14 +197,14 @@ cdef class EnvironmentThermodynamics:
                                 inner_int_cf        +=          weights[m_h] * sqpi_inv
                                 inner_int_qt_cloudy += qt_hat * weights[m_h] * sqpi_inv
                                 inner_int_T_cloudy  += temp_m * weights[m_h] * sqpi_inv
-                                inner_int_qr        -= acnv_rate(ql_m, inner_int_qt_cloudy,
-                                                                 self.max_supersaturation,
-                                                                 inner_int_T_cloudy, 
-                                                                 self.Ref.p0_half[k])
+                                #inner_int_qr        -= acnv_rate(ql_m, inner_int_qt_cloudy, #TODO - no greater than inner_int_ql?
+                                #                                 self.max_supersaturation,
+                                #                                 inner_int_T_cloudy, 
+                                #                                 self.Ref.p0_half[k])
                             else:
                                 inner_int_qt_dry += qt_hat * weights[m_h] * sqpi_inv
                                 inner_int_T_dry  += temp_m * weights[m_h] * sqpi_inv
-                                inner_int_qr     += 0.
+                                #inner_int_qr     += 0.
 
                         outer_int_ql        += inner_int_ql        * weights[m_q] * sqpi_inv
                         outer_int_qr        += inner_int_qr        * weights[m_q] * sqpi_inv
@@ -220,7 +220,7 @@ cdef class EnvironmentThermodynamics:
                         print outer_int_qr
                         print outer_int_T
 
-                    EnvVar.QL.values[k] = outer_int_ql - outer_int_qr
+                    EnvVar.QL.values[k] = outer_int_ql #- outer_int_qr
                     #EnvVar.QT.values[k] = TODO
                     #EnvVar.H.values[k] = TODO
                     #TODO any h sources due to precipitation (as in updrafts)
@@ -231,8 +231,8 @@ cdef class EnvironmentThermodynamics:
                     self.qt_dry[k]      = outer_int_qt_dry
                     self.th_dry[k]      = outer_int_T_dry/exner_c(self.Ref.p0_half[k])
                     self.t_cloudy[k]    = outer_int_T_cloudy
-                    self.qv_cloudy[k]   = outer_int_qt_cloudy - outer_int_ql - outer_int_qr
-                    self.qt_cloudy[k]   = outer_int_qt_cloudy - outer_int_qr
+                    self.qv_cloudy[k]   = outer_int_qt_cloudy - outer_int_ql #- outer_int_qr
+                    self.qt_cloudy[k]   = outer_int_qt_cloudy #- outer_int_qr
                     self.th_cloudy[k]   = outer_int_T_cloudy/exner_c(self.Ref.p0_half[k])
 
         #TODO - one loop for both model vars

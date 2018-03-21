@@ -1025,7 +1025,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 with gil:
                     print "t_cloudy", t_cloudy, " vs ", "EnvVar.CF[k]", self.EnvVar.CF.values[k] 
                 #dupa
-                if self.EnvVar.CF.values[k] > 0.0:
+                #if self.EnvVar.CF.values[k] > 0.0:
+                if t_cloudy > 0.0:
                     d_alpha_thetal_cloudy = (prefactor * (1.0 + eps_vi * (1.0 + lh / Rv / t_cloudy) * qv_cloudy - qt_cloudy )
                                              / (1.0 + lh * lh / cpm / Rv / t_cloudy / t_cloudy * qv_cloudy))
                     d_alpha_qt_cloudy = (lh / cpm / t_cloudy * d_alpha_thetal_cloudy - prefactor) * th_cloudy
