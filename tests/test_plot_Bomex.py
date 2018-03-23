@@ -25,6 +25,12 @@ def sim_data(request):
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'  # dry, inverse_w, b_w2
+    setup['namelist']['turbulence']['use_scalar_var'] = True
+    setup['namelist']['turbulence']['sgs'] = {}
+    setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = True
+    setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 0.5 * 1e-7
+    setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 0.01
+    setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-3
 
     #TODO - use_local_micro=False    - no clouds
     #     - entrainment = bw_2       - oscillations in w
@@ -43,7 +49,7 @@ def sim_data(request):
     sim_data = Dataset(setup["outfile"], 'r')
 
     # remove netcdf file after tests
-    #request.addfinalizer(pls.removing_files)
+    request.addfinalizer(pls.removing_files)
 
     return sim_data
 

@@ -22,6 +22,12 @@ def sim_data(request):
     setup = pls.simulation_setup('Soares')
     # chenge the defaults  
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
+    setup['namelist']['turbulence']['use_scalar_var'] = True
+    setup['namelist']['turbulence']['sgs'] = {}
+    setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = True
+    setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 0.5 * 1e-7
+    setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 0.01
+    setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-3
 
     #print " "
     #print "namelist"

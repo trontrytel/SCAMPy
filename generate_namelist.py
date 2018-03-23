@@ -49,14 +49,13 @@ def Soares():
     namelist['thermodynamics'] = {}
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
 
-
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 60.0
     namelist['time_stepping']['t_max'] = 8 * 3600.0
 
     namelist['turbulence'] = {}
+    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
-
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'dry'
@@ -73,7 +72,6 @@ def Soares():
     namelist['meta']['simname'] = 'Soares'
     namelist['meta']['casename'] = 'Soares'
 
-
     return namelist
 
 def Bomex():
@@ -86,7 +84,6 @@ def Bomex():
     namelist['grid']['gw'] = 2
     namelist['grid']['dz'] = 100 / 2.5
 
-
     namelist['thermodynamics'] = {}
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
 
@@ -94,9 +91,9 @@ def Bomex():
     namelist['time_stepping']['dt'] = 20.0
     namelist['time_stepping']['t_max'] = 21600.0
 
-
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
+    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
@@ -117,7 +114,6 @@ def Bomex():
     namelist['meta']['simname'] = 'Bomex'
     namelist['meta']['casename'] = 'Bomex'
 
-
     return namelist
 
 def life_cycle_Tan2018():
@@ -137,6 +133,7 @@ def life_cycle_Tan2018():
 
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
+    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
@@ -164,7 +161,6 @@ def Rico():
     namelist['grid']['gw'] = 2
     namelist['grid']['dz'] = 40.0
 
-
     namelist['thermodynamics'] = {}
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
 
@@ -172,9 +168,9 @@ def Rico():
     namelist['time_stepping']['dt'] = 20.0
     namelist['time_stepping']['t_max'] = 86400.0
 
-
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
+    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
@@ -213,11 +209,11 @@ def TRMM_LBA(): # yair
 
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
+    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
     namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
-
 
     namelist['output'] = {}
     namelist['output']['output_root'] = './'
@@ -242,7 +238,6 @@ def ARM_SGP():
     namelist['grid']['gw'] = 2
     namelist['grid']['dz'] = 20
 
-
     namelist['thermodynamics'] = {}
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
 
@@ -252,11 +247,11 @@ def ARM_SGP():
 
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
+    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
     namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
-
 
     namelist['output'] = {}
     namelist['output']['output_root'] = './'
@@ -268,7 +263,6 @@ def ARM_SGP():
     namelist['meta'] = {}
     namelist['meta']['simname'] = 'ARM_SGP'
     namelist['meta']['casename'] = 'ARM_SGP'
-
 
     return namelist
 
@@ -292,6 +286,7 @@ def GATE_III(): # yair
 
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
+    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
@@ -329,6 +324,7 @@ def DYCOMS_RF01():
 
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
+    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     #namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
     #namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1

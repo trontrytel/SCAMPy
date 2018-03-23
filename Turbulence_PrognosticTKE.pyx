@@ -1014,19 +1014,14 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 grad_thl_minus = grad_thl_plus
                 grad_qt_minus = grad_qt_plus
                 grad_thl_plus = (self.EnvVar.THL.values[k+1] - self.EnvVar.THL.values[k]) * self.Gr.dzi
-                grad_qt_plus = (self.EnvVar.QT.values[k+1] - self.EnvVar.QT.values[k]) * self.Gr.dzi
+                grad_qt_plus  = (self.EnvVar.QT.values[k+1]  - self.EnvVar.QT.values[k])  * self.Gr.dzi
 
                 prefactor = Rd * exner_c(self.Ref.p0_half[k])/self.Ref.p0_half[k]
 
                 d_alpha_thetal_dry = prefactor * (1.0 + (eps_vi-1.0) * qt_dry)
                 d_alpha_qt_dry = prefactor * th_dry * (eps_vi-1.0)
 
-
-                with gil:
-                    print "t_cloudy", t_cloudy, " vs ", "EnvVar.CF[k]", self.EnvVar.CF.values[k] 
-                #dupa
-                #if self.EnvVar.CF.values[k] > 0.0:
-                if t_cloudy > 0.0:
+                if self.EnvVar.CF.values[k] > 0.0:
                     d_alpha_thetal_cloudy = (prefactor * (1.0 + eps_vi * (1.0 + lh / Rv / t_cloudy) * qv_cloudy - qt_cloudy )
                                              / (1.0 + lh * lh / cpm / Rv / t_cloudy / t_cloudy * qv_cloudy))
                     d_alpha_qt_cloudy = (lh / cpm / t_cloudy * d_alpha_thetal_cloudy - prefactor) * th_cloudy
@@ -1039,10 +1034,12 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 d_alpha_qt_total = (self.EnvVar.CF.values[k] * d_alpha_qt_cloudy
                                     + (1.0-self.EnvVar.CF.values[k]) * d_alpha_qt_dry)
 
-
+                # TODO - check
                 self.tke_buoy[k] = g / self.Ref.alpha0_half[k] * ae[k] * self.Ref.rho0_half[k] \
-                                   * ( -self.KH.values[k] *interp2pt(grad_thl_plus, grad_thl_minus) * d_alpha_thetal_total
-                                     - self.KH.values[k] * interp2pt(grad_qt_plus, grad_qt_minus) * d_alpha_qt_total)
+                                   * ( \
+                                       - self.KH.values[k] * interp2pt(grad_thl_plus, grad_thl_minus) * d_alpha_thetal_total \
+                                       - self.KH.values[k] * interp2pt(grad_qt_plus,  grad_qt_minus)  * d_alpha_qt_total\
+                                     )
 
         return
 

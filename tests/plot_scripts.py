@@ -279,7 +279,7 @@ def plot_timeseries(plt_data, case):
         ax[plot_it].set_xlabel('t [hrs]')
         ax[plot_it].set_ylabel('z [m]')
 
-    plot0 = ax[0].pcolormesh(time, z_half, mean_tke)
+    plot0 = ax[0].pcolormesh(time, z_half, mean_tke)#, vmin=0, vmax=5)
     fig.colorbar(plot0, ax=ax[0], label='mean tke [m2/s2]')
     plot1 = ax[1].pcolormesh(time, z_half, mean_qt)
     fig.colorbar(plot1, ax=ax[1], label='mean qt [g/kg]')

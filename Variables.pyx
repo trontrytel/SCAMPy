@@ -149,8 +149,6 @@ cdef class GridMeanVariables:
         else:
             sys.exit('Did not recognize thermal variable ' + namelist['thermodynamics']['thermal_variable'])
 
-
-
         # Diagnostic Variables--same class as the prognostic variables, but we append to diagnostics list
         # self.diagnostics_list  = []
         self.QL = VariableDiagnostic(Gr.nzg,'half', 'scalar','sym', 'ql', 'kg/kg')
@@ -158,17 +156,16 @@ cdef class GridMeanVariables:
         self.B = VariableDiagnostic(Gr.nzg, 'half', 'scalar','sym', 'buoyancy', 'm^2/s^3')
         self.THL = VariableDiagnostic(Gr.nzg, 'half', 'scalar', 'sym', 'thetal','K')
 
-        # Determine whether we need 2nd moment variables
+        # TKE
         if  namelist['turbulence']['scheme'] == 'EDMF_PrognosticTKE':
             self.use_tke = True
-            self.use_scalar_var = True
+            self.TKE = VariableDiagnostic(Gr.nzg, 'half', 'scalar','sym', 'tke','m^2/s^2' )
         else:
             self.use_tke = False
+
+        # If needed add the 2nd moment variables
+        if namelist['turbulence']['use_scalar_var'] == True:
             self.use_scalar_var = True
-        #Now add the 2nd moment variables
-        if self.use_tke:
-            self.TKE = VariableDiagnostic(Gr.nzg, 'half', 'scalar','sym', 'tke','m^2/s^2' )
-        if self.use_scalar_var:
             self.QTvar = VariableDiagnostic(Gr.nzg, 'half', 'scalar','sym', 'qt_var','kg^2/kg^2' )
             if namelist['thermodynamics']['thermal_variable'] == 'entropy':
                 self.Hvar = VariableDiagnostic(Gr.nzg, 'half', 'scalar', 'sym', 's_var', '(J/kg/K)^2')
@@ -176,11 +173,12 @@ cdef class GridMeanVariables:
             elif namelist['thermodynamics']['thermal_variable'] == 'thetal':
                 self.Hvar = VariableDiagnostic(Gr.nzg, 'half', 'scalar', 'sym' ,'thetal_var', 'K^2')
                 self.HQTcov = VariableDiagnostic(Gr.nzg, 'half', 'scalar','sym' ,'thetal_qt_covar', 'K(kg/kg)' )
-
-
-
+        else:
+            self.use_scalar_var = False
 
         return
+
+
     cpdef zero_tendencies(self):
         self.U.zero_tendencies(self.Gr)
         self.V.zero_tendencies(self.Gr)

@@ -29,6 +29,10 @@ cdef class EnvironmentVariables:
         Grid Gr
         bint use_tke
         bint use_scalar_var
+        bint use_prescribed_scalar_var
+        double prescribed_QTvar
+        double prescribed_Hvar
+        double prescribed_HQTcov
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats )
     cpdef io(self, NetCDFIO_Stats Stats)
@@ -50,10 +54,3 @@ cdef class EnvironmentThermodynamics:
         double max_supersaturation
 
     cpdef satadjust(self, EnvironmentVariables EnvVar, GridMeanVariables GMV)
-
-
-
-
-
-
-
