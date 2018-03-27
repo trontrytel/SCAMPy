@@ -367,18 +367,13 @@ cdef class UpdraftMicrophysics:
         """
         cdef:
             Py_ssize_t k, i
-            #double psat, qsat, lh
 
         with nogil:
             for i in xrange(self.n_updraft):
                 for k in xrange(self.Gr.nzg):
-                    #lh = latent_heat(UpdVar.T.values[i,k])
-                    #psat = pv_star(UpdVar.T.values[i,k])
-                    #qsat = qv_star_c(self.Ref.p0_half[k], UpdVar.QT.values[i,k], psat)
-                    #self.prec_source_qt[i,k] = -fmax(0.0, UpdVar.QL.values[i,k] - self.max_supersaturation*qsat )
-                    self.prec_source_qt[i,k] = acnv_rate(UpdVar.QL.values[i,k], UpdVar.QT.values[i,k], 
-                                                         self.max_supersaturation, 
-                                                         UpdVar.T.values[i,k], self.Ref.p0_half[k])
+                    self.prec_source_qt[i,k] = -acnv_rate(UpdVar.QL.values[i,k], UpdVar.QT.values[i,k], 
+                                                          self.max_supersaturation, 
+                                                          UpdVar.T.values[i,k], self.Ref.p0_half[k])
                     self.prec_source_h[i,k]  = -self.prec_source_qt[i,k] \
                                                / exner_c(self.Ref.p0_half[k]) \
                                                * latent_heat(UpdVar.T.values[i,k]) / cpd
@@ -409,14 +404,7 @@ cdef class UpdraftMicrophysics:
         # Language note: array indexing must be used to dereference pointers in Cython. * notation (C-style dereferencing)
         # is reserved for packing tuples
  
-        #cdef:
-        #    double psat, qsat, lh
-        #lh = latent_heat(T)
-        #psat = pv_star(t)
-        #qsat = qv_star_c(p0, qt[0], psat)
-
-        #self.prec_source_qt[i,k] = -fmax(0.0, ql[0] - self.max_supersaturation*qsat )
-        self.prec_source_qt[i,k] = acnv_rate(ql[0], qt[0], self.max_supersaturation, T, p0)
+        self.prec_source_qt[i,k] = -acnv_rate(ql[0], qt[0], self.max_supersaturation, T, p0)
         self.prec_source_h[i,k]  = -self.prec_source_qt[i,k] / exner_c(p0) * latent_heat(T) / cpd
 
         qt[0] += self.prec_source_qt[i,k]

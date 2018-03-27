@@ -219,19 +219,17 @@ cdef class EnvironmentThermodynamics:
                         ql_m = sa.ql
                         qv_m = EnvVar.QT.values[k] - ql_m
                         alpha_m = alpha_c(self.Ref.p0_half[k], temp_m, qt_hat, qv_m)
-
                         inner_int_ql    += ql_m    * weights[m_h] * sqpi_inv
                         inner_int_T     += temp_m  * weights[m_h] * sqpi_inv
                         inner_int_alpha += alpha_m * weights[m_h] * sqpi_inv
-                        #inner_int_qr        -= acnv_rate(ql_m, inner_int_qt_cloudy, #TODO - no greater than inner_int_ql?
-                        #                                 self.max_supersaturation,
-                        #                                 inner_int_T_cloudy, 
-                        #                                 self.Ref.p0_half[k])
-
                         if ql_m  > 0.0:
                             inner_int_cf        +=          weights[m_h] * sqpi_inv
                             inner_int_qt_cloudy += qt_hat * weights[m_h] * sqpi_inv
                             inner_int_T_cloudy  += temp_m * weights[m_h] * sqpi_inv
+                            # TODO - move somewhere else
+                            inner_int_qr        += acnv_rate(ql_m, ql_m + qv_m, self.max_supersaturation,\
+                                                             temp_m, elf.Ref.p0_half[k])\
+                                                   * weights[m_h] * sqpi_inv
                         else:
                             inner_int_qt_dry += qt_hat * weights[m_h] * sqpi_inv
                             inner_int_T_dry  += temp_m * weights[m_h] * sqpi_inv
@@ -246,26 +244,19 @@ cdef class EnvironmentThermodynamics:
                     outer_int_qt_dry    += inner_int_qt_dry    * weights[m_q] * sqpi_inv
                     outer_int_T_dry     += inner_int_T_dry     * weights[m_q] * sqpi_inv
 
-                #with gil:
-                #    print outer_int_qr
-                #    print outer_int_T
-
-                EnvVar.QL.values[k]  = outer_int_ql #- outer_int_qr
-                #EnvVar.QT.values[k] = TODO
-                #EnvVar.H.values[k] = TODO
-                #TODO any h sources due to precipitation (as in updrafts)
-                #TODO look in updrafts - why do we multiply by area fraction only in one case?
+                EnvVar.QL.values[k]  = outer_int_ql - outer_int_qr
+                EnvVar.QT.values[k] -= outer_int_qr
+                EnvVar.H.values[k]  += outer_int_qr / exner_c(self.Ref.p0_half[k]) * latent_heat(outer_int_T) / cpd
                 EnvVar.B.values[k]   = g * (outer_int_alpha - self.Ref.alpha0_half[k])/self.Ref.alpha0_half[k] #- GMV_B.values[k]
                 EnvVar.T.values[k]   = outer_int_T
                 EnvVar.CF.values[k]  = outer_int_cf
-
                 EnvVar.THL.values[k] = t_to_thetali_c(self.Ref.p0_half[k], EnvVar.T.values[k], EnvVar.QT.values[k], EnvVar.QL.values[k], 0.0)
 
                 self.qt_dry[k]      = outer_int_qt_dry
                 self.th_dry[k]      = outer_int_T_dry/exner_c(self.Ref.p0_half[k])
                 self.t_cloudy[k]    = outer_int_T_cloudy
-                self.qv_cloudy[k]   = outer_int_qt_cloudy - outer_int_ql #- outer_int_qr
-                self.qt_cloudy[k]   = outer_int_qt_cloudy #- outer_int_qr
+                self.qv_cloudy[k]   = outer_int_qt_cloudy - outer_int_ql - outer_int_qr
+                self.qt_cloudy[k]   = outer_int_qt_cloudy - outer_int_qr
                 self.th_cloudy[k]   = outer_int_T_cloudy/exner_c(self.Ref.p0_half[k])
 
         return

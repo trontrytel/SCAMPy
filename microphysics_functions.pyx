@@ -12,4 +12,4 @@ cdef double acnv_rate(double ql, double qt, double sat_treshold, double T, doubl
     cdef double psat = pv_star(T)
     cdef double qsat = qv_star_c(p0, qt, psat)
 
-    return -fmax(0.0, ql - sat_treshold * qsat)
+    return fmax(0.0, ql - sat_treshold * qsat)

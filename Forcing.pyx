@@ -153,6 +153,9 @@ cdef class ForcingDYCOMS_RF01(ForcingBase):
         cdef:
             Py_ssize_t k
 
+            #double zi
+            #double rhoi
+
         # find zi (level of 8.0 g/kg isoline of qt)
         for k in xrange(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
             if (GMV.QT.values[k] < 8.0 / 1000):
@@ -178,6 +181,7 @@ cdef class ForcingDYCOMS_RF01(ForcingBase):
 
         # cooling in free troposphere
         for k in xrange(0, self.Gr.nzg):
+            print zi
             if self.Gr.z[k] > zi:
                 cbrt_z         = cbrt(self.Gr.z[k] - zi)
                 self.f_rad[k] += rhoi * dycoms_cp * self.divergence * self.alpha_z * (np.power(cbrt_z, 4) / 4.0 + zi * cbrt_z)
