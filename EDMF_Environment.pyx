@@ -228,7 +228,7 @@ cdef class EnvironmentThermodynamics:
                             inner_int_T_cloudy  += temp_m * weights[m_h] * sqpi_inv
                             # TODO - move somewhere else
                             inner_int_qr        += acnv_rate(ql_m, ql_m + qv_m, self.max_supersaturation,\
-                                                             temp_m, elf.Ref.p0_half[k])\
+                                                             temp_m, self.Ref.p0_half[k])\
                                                    * weights[m_h] * sqpi_inv
                         else:
                             inner_int_qt_dry += qt_hat * weights[m_h] * sqpi_inv
@@ -336,17 +336,19 @@ cdef class EnvironmentThermodynamics:
             Py_ssize_t gw = self.Gr.gw
 
             eos_struct sa
-            double qv, alpha
+            double qv, alpha, tmp_qr
 
         if GMV.use_scalar_var:
             self.eos_update_SA_sgs(EnvVar, GMV.B)
         else:
             with nogil:
                 for k in xrange(gw,self.Gr.nzg-gw):
+
                     sa = eos(self.t_to_prog_fp,self.prog_to_t_fp, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.H.values[k])
                     EnvVar.QL.values[k] = sa.ql
                     EnvVar.T.values[k] = sa.T
                     qv = EnvVar.QT.values[k] - EnvVar.QL.values[k]
+
                     alpha = alpha_c(self.Ref.p0_half[k], EnvVar.T.values[k], EnvVar.QT.values[k], qv)
                     EnvVar.B.values[k] = buoyancy_c(self.Ref.alpha0_half[k], alpha) #- GMV.B.values[k]
                     EnvVar.THL.values[k] = t_to_thetali_c(self.Ref.p0_half[k], EnvVar.T.values[k], EnvVar.QT.values[k],
@@ -354,27 +356,19 @@ cdef class EnvironmentThermodynamics:
                     if EnvVar.QL.values[k] > 0.0:
                         EnvVar.CF.values[k] = 1.0
                         self.t_cloudy[k] = EnvVar.T.values[k]
-                        self.qv_cloudy[k] = EnvVar.QT.values[k] - EnvVar.QL.values[k]
-                        self.qt_cloudy[k] = EnvVar.QT.values[k]
+                       
+                        tmp_qr = acnv_rate(EnvVar.QL.values[k], EnvVar.QT.values[k], self.max_supersaturation,\
+                                           EnvVar.T.values[k], self.Ref.p0_half[k])
+  
+                        self.qv_cloudy[k] = EnvVar.QT.values[k] - EnvVar.QL.values[k] - tmp_qr
+                        self.qt_cloudy[k] = EnvVar.QT.values[k] - tmp_qr
                         self.th_cloudy[k] = EnvVar.T.values[k]/exner_c(self.Ref.p0_half[k])
                     else:
                         EnvVar.CF.values[k] = 0.0
                         self.qt_dry[k] = EnvVar.QT.values[k]
                         self.th_dry[k] = EnvVar.T.values[k]/exner_c(self.Ref.p0_half[k])
- 
-                    #self.qt_dry[k]    = EnvVar.QT.values[k]
-                    #self.qt_cloudy[k] = EnvVar.QT.values[k]
-                    #self.th_dry[k]    = EnvVar.T.values[k]/exner_c(self.Ref.p0_half[k])
-                    #self.th_cloudy[k] = EnvVar.T.values[k]/exner_c(self.Ref.p0_half[k])
-                    #self.t_cloudy[k]  = EnvVar.T.values[k]
-                    #self.qv_cloudy[k] = EnvVar.QT.values[k] - EnvVar.QL.values[k]
- 
-                    #EnvVar.B.values[k] = buoyancy_c(self.Ref.alpha0_half[k], alpha) #- GMV.B.values[k]
-                    #EnvVar.B.values[k]  = g * (outer_int_alpha - self.Ref.alpha0_half[k])/self.Ref.alpha0_half[k] #- GMV_B.values[k]
-    
-                    #EnvVar.T.values[k]  = outer_int_T
-                    #EnvVar.THL.values[k] = t_to_thetali_c(self.Ref.p0_half[k], EnvVar.T.values[k], EnvVar.QT.values[k],
-                    #                                      EnvVar.QL.values[k], 0.0)
 
-
+                EnvVar.QT.values[k] -= tmp_qr
+                EnvVar.H.values[k]  += tmp_qr / exner_c(self.Ref.p0_half[k]) * latent_heat(EnvVar.T.values[k]) / cpd
+ 
         return
