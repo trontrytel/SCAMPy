@@ -181,7 +181,6 @@ cdef class ForcingDYCOMS_RF01(ForcingBase):
 
         # cooling in free troposphere
         for k in xrange(0, self.Gr.nzg):
-            print zi
             if self.Gr.z[k] > zi:
                 cbrt_z         = cbrt(self.Gr.z[k] - zi)
                 self.f_rad[k] += rhoi * dycoms_cp * self.divergence * self.alpha_z * (np.power(cbrt_z, 4) / 4.0 + zi * cbrt_z)
