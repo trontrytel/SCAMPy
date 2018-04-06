@@ -25,12 +25,14 @@ def sim_data(request):
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
-    setup["namelist"]['turbulence']['use_scalar_var'] = True
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
     setup['namelist']['turbulence']['sgs'] = {}
     setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = True
     setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 0.5 * 1e-7
     setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 0.01
     setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-3
+
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature' 
                                                                                                #best     # default
     #setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['surface_area'] = 0.25                       # 0.1 
     #setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 0.1     #0.1      # 0.1
@@ -39,13 +41,13 @@ def sim_data(request):
     setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['pressure_drag_coeff'] = 0.375      #0.375    # 0.375
     setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['pressure_plume_spacing'] = 500.    #5        # 500.0
 
-    #print " "
-    #print "namelist = " 
-    #pp.pprint(setup["namelist"])
-    #print " "
-    #print "paramlist = " 
-    #pp.pprint(setup["paramlist"])
-    #print " "
+    print " "
+    print "namelist = " 
+    pp.pprint(setup["namelist"])
+    print " "
+    print "paramlist = " 
+    pp.pprint(setup["paramlist"])
+    print " "
  
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])

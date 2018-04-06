@@ -14,6 +14,7 @@ cdef class EnvironmentVariable:
 
 cdef class EnvironmentVariables:
     cdef:
+
         EnvironmentVariable W
         EnvironmentVariable QT
         EnvironmentVariable QL
@@ -27,6 +28,7 @@ cdef class EnvironmentVariables:
         EnvironmentVariable QTvar
         EnvironmentVariable HQTcov
         EnvironmentVariable CF
+        EnvironmentVariable THVvar
         Grid Gr
         bint use_tke
         bint use_scalar_var
@@ -34,6 +36,9 @@ cdef class EnvironmentVariables:
         double prescribed_QTvar
         double prescribed_Hvar
         double prescribed_HQTcov
+        bint use_sommeria_deardorff
+        bint use_quadrature
+        str EnvThermo_scheme
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats )
     cpdef io(self, NetCDFIO_Stats Stats)
@@ -53,5 +58,7 @@ cdef class EnvironmentThermodynamics:
         double [:] qt_cloudy
         double [:] th_cloudy
         double max_supersaturation
+
+        void sommeria_deardorff(self, EnvironmentVariables EnvVar)
 
     cpdef satadjust(self, EnvironmentVariables EnvVar, GridMeanVariables GMV)

@@ -5,6 +5,8 @@ from sys import exit
 import uuid
 import ast
 
+#Adapated from PyCLES: https://github.com/pressel/pycles
+
 def main():
     parser = argparse.ArgumentParser(prog='Namelist Generator')
     parser.add_argument('case_name')
@@ -48,18 +50,24 @@ def Soares():
 
     namelist['thermodynamics'] = {}
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
+    namelist['thermodynamics']['saturation'] = 'sa_mean'
 
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 60.0
     namelist['time_stepping']['t_max'] = 8 * 3600.0
 
     namelist['turbulence'] = {}
-    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
-    namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'dry'
+    namelist['turbulence']['EDMF_PrognosticTKE']['constant_area'] = False
+    namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = False
+    namelist['turbulence']['EDMF_PrognosticTKE']['updraft_surface_height'] = 0.0
+    namelist['turbulence']['EDMF_PrognosticTKE']['extrapolate_buoyancy'] = True
     namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_sommeria_deardorff'] = False
 
     namelist['output'] = {}
     namelist['output']['output_root'] = './'
@@ -86,6 +94,7 @@ def Bomex():
 
     namelist['thermodynamics'] = {}
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
+    namelist['thermodynamics']['saturation'] = 'sa_mean'
 
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 20.0
@@ -93,15 +102,15 @@ def Bomex():
 
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
-    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
-    namelist['turbulence']['EDMF_PrognosticTKE']['constant_area'] = False
     namelist['turbulence']['EDMF_PrognosticTKE']['extrapolate_buoyancy'] = True
     namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
     namelist['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
     namelist['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = False
+    namelist['turbulence']['EDMF_PrognosticTKE']['constant_area'] = False
+    #namelist['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
 
     namelist['output'] = {}
     namelist['output']['output_root'] = './'
@@ -125,19 +134,22 @@ def life_cycle_Tan2018():
     namelist['grid']['nz'] = 75
     namelist['grid']['gw'] = 2
     namelist['grid']['dz'] = 100 / 2.5
+
     namelist['thermodynamics'] = {}
+    namelist['thermodynamics']['saturation'] = 'sa_mean'
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
+
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 30.0
     namelist['time_stepping']['t_max'] = 6*3600.0
 
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
-    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
     namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
+    #namelist['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = False
 
     namelist['output'] = {}
     namelist['output']['output_root'] = './'
@@ -162,6 +174,7 @@ def Rico():
     namelist['grid']['dz'] = 40.0
 
     namelist['thermodynamics'] = {}
+    namelist['thermodynamics']['saturation'] = 'sa_mean'
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
 
     namelist['time_stepping'] = {}
@@ -170,11 +183,14 @@ def Rico():
 
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
-    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = False
+    namelist['turbulence']['EDMF_PrognosticTKE']['extrapolate_buoyancy'] = True
     namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
+    #namelist['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = False
 
     namelist['output'] = {}
     namelist['output']['output_root'] = './'
@@ -186,7 +202,6 @@ def Rico():
     namelist['meta'] = {}
     namelist['meta']['simname'] = 'Rico'
     namelist['meta']['casename'] = 'Rico'
-
 
     return namelist
 
@@ -201,6 +216,7 @@ def TRMM_LBA(): # yair
     namelist['grid']['dz'] = 10
 
     namelist['thermodynamics'] = {}
+    namelist['thermodynamics']['saturation'] = 'sa_mean'
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
 
     namelist['time_stepping'] = {}
@@ -209,11 +225,15 @@ def TRMM_LBA(): # yair
 
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
-    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = True #False
+    namelist['turbulence']['EDMF_PrognosticTKE']['updraft_surface_height'] = 0.0
+    namelist['turbulence']['EDMF_PrognosticTKE']['extrapolate_buoyancy'] = True
     namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
+    #namelist['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = False
 
     namelist['output'] = {}
     namelist['output']['output_root'] = './'
@@ -239,6 +259,7 @@ def ARM_SGP():
     namelist['grid']['dz'] = 20
 
     namelist['thermodynamics'] = {}
+    namelist['thermodynamics']['saturation'] = 'sa_mean'
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
 
     namelist['time_stepping'] = {}
@@ -247,11 +268,15 @@ def ARM_SGP():
 
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
-    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = False
+    namelist['turbulence']['EDMF_PrognosticTKE']['updraft_surface_height'] = 0.0
+    namelist['turbulence']['EDMF_PrognosticTKE']['extrapolate_buoyancy'] = True
     namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
+    #namelist['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = False
 
     namelist['output'] = {}
     namelist['output']['output_root'] = './'
@@ -278,6 +303,7 @@ def GATE_III(): # yair
     namelist['grid']['dz'] = 10
 
     namelist['thermodynamics'] = {}
+    namelist['thermodynamics']['saturation'] = 'sa_mean'
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
 
     namelist['time_stepping'] = {}
@@ -286,11 +312,15 @@ def GATE_III(): # yair
 
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
-    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
     namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
     namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = True  # False
+    namelist['turbulence']['EDMF_PrognosticTKE']['updraft_surface_height'] = 0.0
+    namelist['turbulence']['EDMF_PrognosticTKE']['extrapolate_buoyancy'] = True
     namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
+    #namelist['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = False
 
     namelist['output'] = {}
     namelist['output']['output_root'] = './'
@@ -317,6 +347,7 @@ def DYCOMS_RF01():
 
     namelist['thermodynamics'] = {}
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
+    namelist['thermodynamics']['saturation'] = 'sa_mean'  # sa_mean, sa_quadrature, sommeria_deardorff
 
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 10.0
@@ -324,20 +355,15 @@ def DYCOMS_RF01():
 
     namelist['turbulence'] = {}
     namelist['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
-    namelist['turbulence']['use_scalar_var'] = False
     namelist['turbulence']['EDMF_PrognosticTKE'] = {}
-    #namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
-    #namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
-    #namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
-    #namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
-    # to switch off MF part TODO
-    #namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'dry'
-    namelist['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = True
-    # some other flags that were there (TODO - check which works best)
+    namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'
+    namelist['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_steady_updrafts'] = False
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
+    namelist['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = False
+    namelist['turbulence']['EDMF_PrognosticTKE']['extrapolate_buoyancy'] = True
     #namelist['turbulence']['EDMF_PrognosticTKE']['constant_area'] = False
-    #namelist['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
-    #namelist['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = False
-    #namelist['turbulence']['EDMF_PrognosticTKE']['extrapolate_buoyancy'] = True
+    #namelist['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
 
     namelist['output'] = {}
     namelist['output']['output_root'] = './'
