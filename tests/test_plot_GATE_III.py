@@ -23,7 +23,7 @@ def sim_data(request):
     # chenge the defaults  
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
-
+    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'inverse_w'
     #print " "
     #print "namelist"
     #print pp.pprint(setup["namelist"])

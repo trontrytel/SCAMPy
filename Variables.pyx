@@ -137,6 +137,7 @@ cdef class GridMeanVariables:
 
         # Create thermodynamic variables
         self.QT = VariablePrognostic(Gr.nzg, 'half', 'scalar','sym', 'qt', 'kg/kg')
+        self.QR = VariablePrognostic(Gr.nzg, 'half', 'scalar','sym', 'qr', 'kg/kg')
 
         if namelist['thermodynamics']['thermal_variable'] == 'entropy':
             self.H = VariablePrognostic(Gr.nzg, 'half', 'scalar', 'sym','s', 'J/kg/K' )
@@ -183,6 +184,7 @@ cdef class GridMeanVariables:
         self.U.zero_tendencies(self.Gr)
         self.V.zero_tendencies(self.Gr)
         self.QT.zero_tendencies(self.Gr)
+        self.QR.zero_tendencies(self.Gr)
         self.H.zero_tendencies(self.Gr)
 
         return
@@ -195,11 +197,14 @@ cdef class GridMeanVariables:
                 self.U.values[k]  +=  self.U.tendencies[k] * TS.dt
                 self.V.values[k]  +=  self.V.tendencies[k] * TS.dt
                 self.H.values[k]  +=  self.H.tendencies[k] * TS.dt
-                self.QT.values[k]  +=  self.QT.tendencies[k] * TS.dt
+                self.QT.values[k] +=  self.QT.tendencies[k] * TS.dt
+                self.QR.values[k] +=  self.QR.tendencies[k] * TS.dt
+
         self.U.set_bcs(self.Gr)
         self.V.set_bcs(self.Gr)
         self.H.set_bcs(self.Gr)
         self.QT.set_bcs(self.Gr)
+        self.QR.set_bcs(self.Gr)
 
         if self.use_tke:
             self.TKE.set_bcs(self.Gr)
@@ -216,6 +221,7 @@ cdef class GridMeanVariables:
         Stats.add_profile('u_mean')
         Stats.add_profile('v_mean')
         Stats.add_profile('qt_mean')
+        Stats.add_profile('qr_mean')
         if self.H.name == 's':
             Stats.add_profile('s_mean')
             Stats.add_profile('thetal_mean')
@@ -240,6 +246,7 @@ cdef class GridMeanVariables:
         Stats.write_profile('v_mean',self.V.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('qt_mean',self.QT.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('ql_mean',self.QL.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        Stats.write_profile('qr_mean',self.QR.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('temperature_mean',self.T.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('buoyancy_mean',self.B.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         if self.H.name == 's':
@@ -252,8 +259,6 @@ cdef class GridMeanVariables:
         for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
             lwp += self.Ref.rho0_half[k]*self.QL.values[k]*self.Gr.dz
         Stats.write_ts('lwp', lwp)
-
-
 
         return
 
@@ -277,13 +282,3 @@ cdef class GridMeanVariables:
                 self.B.values[k] = buoyancy_c(self.Ref.alpha0_half[k], alpha)
 
         return
-
-
-
-
-
-
-
-
-
-

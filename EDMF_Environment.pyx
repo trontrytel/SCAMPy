@@ -28,18 +28,15 @@ cdef class EnvironmentVariable:
         self.units = units
 
 
-
-
-
 cdef class EnvironmentVariables:
     def __init__(self,  namelist, Grid Gr  ):
         cdef Py_ssize_t nz = Gr.nzg
         self.Gr = Gr
 
         self.W = EnvironmentVariable(nz, 'full', 'velocity', 'w','m/s' )
-
         self.QT = EnvironmentVariable( nz, 'half', 'scalar', 'qt','kg/kg' )
-        self.QL = EnvironmentVariable( nz, 'half', 'scalar', 'w','kg/kg' )
+        self.QL = EnvironmentVariable( nz, 'half', 'scalar', 'ql','kg/kg' )
+        self.QR = EnvironmentVariable( nz, 'half', 'scalar', 'qr','kg/kg' )
         if namelist['thermodynamics']['thermal_variable'] == 'entropy':
             self.H = EnvironmentVariable( nz, 'half', 'scalar', 's','J/kg/K' )
         elif namelist['thermodynamics']['thermal_variable'] == 'thetal':
@@ -86,6 +83,7 @@ cdef class EnvironmentVariables:
         Stats.add_profile('env_w')
         Stats.add_profile('env_qt')
         Stats.add_profile('env_ql')
+        Stats.add_profile('env_qr')
         if self.H.name == 's':
             Stats.add_profile('env_s')
         else:
@@ -99,6 +97,7 @@ cdef class EnvironmentVariables:
         Stats.write_profile('env_w', self.W.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_qt', self.QT.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_ql', self.QL.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        Stats.write_profile('env_qr', self.QR.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         if self.H.name == 's':
             Stats.write_profile('env_s', self.H.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         else:
@@ -139,6 +138,7 @@ cdef class EnvironmentThermodynamics:
     cdef void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, VariableDiagnostic GMV_B):
 
         a, w = np.polynomial.hermite.hermgauss(self.quadrature_order)
+
         cdef:
             Py_ssize_t gw = self.Gr.gw
             Py_ssize_t k, m_q, m_h
@@ -227,7 +227,7 @@ cdef class EnvironmentThermodynamics:
                             inner_int_qt_cloudy += qt_hat * weights[m_h] * sqpi_inv
                             inner_int_T_cloudy  += temp_m * weights[m_h] * sqpi_inv
                             # TODO - move somewhere else
-                            inner_int_qr        += acnv_rate(ql_m, ql_m + qv_m, self.max_supersaturation,\
+                            inner_int_qr        += acnv_instant(ql_m, ql_m + qv_m, self.max_supersaturation,\
                                                              temp_m, self.Ref.p0_half[k])\
                                                    * weights[m_h] * sqpi_inv
                         else:
@@ -245,6 +245,7 @@ cdef class EnvironmentThermodynamics:
                     outer_int_T_dry     += inner_int_T_dry     * weights[m_q] * sqpi_inv
 
                 EnvVar.QL.values[k]  = outer_int_ql - outer_int_qr
+                EnvVar.QR.values[k]  = outer_int_qr
                 EnvVar.QT.values[k] -= outer_int_qr
                 EnvVar.H.values[k]  += outer_int_qr / exner_c(self.Ref.p0_half[k]) * latent_heat(outer_int_T) / cpd
                 EnvVar.B.values[k]   = g * (outer_int_alpha - self.Ref.alpha0_half[k])/self.Ref.alpha0_half[k] #- GMV_B.values[k]
@@ -336,7 +337,7 @@ cdef class EnvironmentThermodynamics:
             Py_ssize_t gw = self.Gr.gw
 
             eos_struct sa
-            double qv, alpha, tmp_qr
+            double qv, alpha
 
         if GMV.use_scalar_var:
             self.eos_update_SA_sgs(EnvVar, GMV.B)
@@ -357,18 +358,20 @@ cdef class EnvironmentThermodynamics:
                         EnvVar.CF.values[k] = 1.0
                         self.t_cloudy[k] = EnvVar.T.values[k]
                        
-                        tmp_qr = acnv_rate(EnvVar.QL.values[k], EnvVar.QT.values[k], self.max_supersaturation,\
-                                           EnvVar.T.values[k], self.Ref.p0_half[k])
+                        EnvVar.QR.values[k] = acnv_instant(EnvVar.QL.values[k], EnvVar.QT.values[k],\
+                                                            self.max_supersaturation,\
+                                                           EnvVar.T.values[k], self.Ref.p0_half[k])
   
-                        self.qv_cloudy[k] = EnvVar.QT.values[k] - EnvVar.QL.values[k] - tmp_qr
-                        self.qt_cloudy[k] = EnvVar.QT.values[k] - tmp_qr
+                        self.qv_cloudy[k] = EnvVar.QT.values[k] - EnvVar.QL.values[k] - EnvVar.QR.values[k]
+                        self.qt_cloudy[k] = EnvVar.QT.values[k] - EnvVar.QR.values[k]
                         self.th_cloudy[k] = EnvVar.T.values[k]/exner_c(self.Ref.p0_half[k])
                     else:
                         EnvVar.CF.values[k] = 0.0
+                        EnvVar.QR.values[k] = 0.0
                         self.qt_dry[k] = EnvVar.QT.values[k]
                         self.th_dry[k] = EnvVar.T.values[k]/exner_c(self.Ref.p0_half[k])
 
-                EnvVar.QT.values[k] -= tmp_qr
-                EnvVar.H.values[k]  += tmp_qr / exner_c(self.Ref.p0_half[k]) * latent_heat(EnvVar.T.values[k]) / cpd
+                EnvVar.QT.values[k] -= EnvVar.QR.values[k]
+                EnvVar.H.values[k]  += EnvVar.QR.values[k] / exner_c(self.Ref.p0_half[k]) * latent_heat(EnvVar.T.values[k]) / cpd
  
         return

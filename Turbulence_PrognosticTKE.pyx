@@ -334,8 +334,9 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 self.UpdVar.QL.values[i,gw] = sa.ql
                 self.UpdVar.T.values[i,gw] = sa.T
                 self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[gw], self.UpdVar.T.values[i,gw],
-                                                                       &self.UpdVar.QT.values[i,gw], &self.UpdVar.QL.values[i,gw],
-                                                                       &self.UpdVar.H.values[i,gw], i, gw)
+                                                                   &self.UpdVar.QT.values[i,gw], &self.UpdVar.QL.values[i,gw],
+                                                                   &self.UpdVar.QR.values[i,gw], &self.UpdVar.H.values[i,gw],
+                                                                   i, gw)
                 for k in xrange(gw+1, self.Gr.nzg-gw):
                     denom = 1.0 + self.entr_sc[i,k] * dz
                     self.UpdVar.H.values[i,k] = (self.UpdVar.H.values[i,k-1] + self.entr_sc[i,k] * dz * GMV.H.values[k])/denom
@@ -348,9 +349,10 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     self.UpdVar.T.values[i,k] = sa.T
                     self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[k], self.UpdVar.T.values[i,k],
                                                                        &self.UpdVar.QT.values[i,k], &self.UpdVar.QL.values[i,k],
-                                                                       &self.UpdVar.H.values[i,k], i, k)
-
+                                                                       &self.UpdVar.QR.values[i,k], &self.UpdVar.H.values[i,k],
+                                                                       i, k)
         self.UpdVar.QT.set_bcs(self.Gr)
+        self.UpdVar.QR.set_bcs(self.Gr)
         self.UpdVar.H.set_bcs(self.Gr)
         self.decompose_environment(GMV, 'values')
         self.EnvThermo.satadjust(self.EnvVar, GMV)
@@ -743,7 +745,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     # remove precipitation (update QT, QL and H)
                     self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[gw], self.UpdVar.T.new[i,gw],
                                                                        &self.UpdVar.QT.new[i,gw], &self.UpdVar.QL.new[i,gw],
-                                                                       &self.UpdVar.H.new[i,gw], i, gw)
+                                                                       &self.UpdVar.QR.new[i,gw], &self.UpdVar.H.new[i,gw],
+                                                                       i, gw)
                     # starting from the bottom do entrainment at each level
                     for k in xrange(gw+1, self.Gr.nzg-gw):
                         H_entr = self.EnvVar.H.values[k]
@@ -776,7 +779,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                         # remove precipitation (pdate QT, QL and H)
                         self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[k], self.UpdVar.T.new[i,k],
                                                                        &self.UpdVar.QT.new[i,k], &self.UpdVar.QL.new[i,k],
-                                                                       &self.UpdVar.H.new[i,k], i, k)
+                                                                       &self.UpdVar.QR.new[i,gw], &self.UpdVar.H.new[i,k],
+                                                                       i, k)
             # save the total source terms for H and QT due to precipitation
             self.UpdMicro.prec_source_h_tot = np.sum(np.multiply(self.UpdMicro.prec_source_h,
                                                                  self.UpdVar.Area.values), axis=0)
@@ -823,6 +827,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         self.UpdVar.H.set_bcs(self.Gr)
         self.UpdVar.QT.set_bcs(self.Gr)
+        self.UpdVar.QR.set_bcs(self.Gr)
         return
 
     # After updating the updraft variables themselves:

@@ -17,6 +17,7 @@ cdef class EnvironmentVariables:
         EnvironmentVariable W
         EnvironmentVariable QT
         EnvironmentVariable QL
+        EnvironmentVariable QR
         EnvironmentVariable H
         EnvironmentVariable THL
         EnvironmentVariable T

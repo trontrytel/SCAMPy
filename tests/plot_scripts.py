@@ -65,12 +65,27 @@ def removing_files():
     subprocess.call(cmd , shell=True)
 
 
+def discrete_cmap(N, base_cmap=None):
+    """Create an N-bin discrete colormap from the specified input map"""
+ 
+    # https://gist.github.com/jakevdp/91077b0cae40f8f8244a
+
+    # Note that if base_cmap is a string or None, you can simply do
+    #    return plt.cm.get_cmap(base_cmap, N)
+    # The following works for string, None, or a colormap instance:
+
+    base = plt.cm.get_cmap(base_cmap)
+    color_list = base(np.linspace(0, 1, N))
+    cmap_name = base.name + str(N)
+    return base.from_list(cmap_name, color_list, N)
+
+
 def read_data_avg(sim_data, n_steps):
     """
     Read in the data from netcdf file into a dictionary that can be used for quicklook plots
     """
-    variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
-                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "updraft_w", "env_w"]
+    variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean", "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
+                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "env_qr", "updraft_qr", "updraft_w", "env_w"]
 
     # read the data
     data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:])}
@@ -81,7 +96,7 @@ def read_data_avg(sim_data, n_steps):
         for it in xrange(2):
             if ("buoyancy" in var):
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 10000) #cm2/s3
-            elif ("qt" in var or "ql" in var):
+            elif ("qt" in var or "ql" in var or "qr" in var):
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]) * 1000)  #g/kg
             elif ("p0" in var):
                 data_to_plot[var].append(np.array(sim_data["reference/" + var][time[it], :]) * 100)  #hPa
@@ -94,7 +109,7 @@ def read_data_avg(sim_data, n_steps):
             for time_it in xrange(-2, -1*n_steps-1, -1):
                 if ("buoyancy" in var):
                     data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 10000  #cm2/s3
-                elif ("qt" in var or "ql" in var):
+                elif ("qt" in var or "ql" in var or "qr" in var):
                     data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 1000   #g/kg
                 elif ("p0" in var):
                     data_to_plot[var][1] += np.array(sim_data["reference/" + var][time_it, :]) * 100   #hPa
@@ -139,8 +154,8 @@ def read_data_srs(sim_data):
     """
     Read in the data from netcdf file into a dictionary that can be used for quicklook timeseries plots
     """
-    variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
-                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "updraft_w", "env_w"]
+    variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean", "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
+                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "env_qr", "updraft_qr", "updraft_w", "env_w"]
 
     # read the data
     data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:]), "t" : np.array(sim_data["profiles/t"][:])}
@@ -149,7 +164,7 @@ def read_data_srs(sim_data):
         data_to_plot[var] = []
         if ("buoyancy" in var):
             data_to_plot[var] = np.array(sim_data["profiles/"  + var][:, :]) * 10000 #cm2/s3
-        elif ("qt" in var or "ql" in var):
+        elif ("qt" in var or "ql" in var or "qr" in var):
             data_to_plot[var] = np.array(sim_data["profiles/"  + var][:, :]) * 1000  #g/kg
         elif ("p0" in var):
             data_to_plot[var] = np.array(sim_data["reference/" + var][:, :]) * 100   #hPa
@@ -169,9 +184,10 @@ def plot_mean(data, title, folder="tests/output/"):
     mpl.rc('lines', linewidth=4, markersize=10)
     mpl.rcParams.update({'font.size': 18})
     plots = []
+    qv_mean = np.array(data["qt_mean"]) - np.array(data["ql_mean"]) - np.array(data["qr_mean"])
     # iteration over plots
-    x_lab  = ['T [K]',                   'THL [K]',           'buoyancy [cm2/s3]',   'QT [g/kg]',     'QL [g/kg]',     'TKE']
-    plot_x = [ data["temperature_mean"], data["thetal_mean"], data["buoyancy_mean"], data["qt_mean"], data["ql_mean"], data["tke_mean"]]
+    x_lab  = ['QV [g/kg]', 'QL [g/kg]',      'QR [g/kg]',      'THL [K]',           'buoyancy [cm2/s3]',   'TKE [m2/s2]']
+    plot_x = [qv_mean,      data["ql_mean"],  data["qr_mean"], data["thetal_mean"],  data["buoyancy_mean"], data["tke_mean"]]
     color  = ["palegreen", "forestgreen"]
     label  = ["ini", "end"]
 
@@ -205,11 +221,14 @@ def plot_drafts(data, title, folder="tests/output/"):
     mpl.rc('lines', linewidth=4, markersize=10)
     mpl.rcParams.update({'font.size': 18})
     plots = []
+    qv_mean    = np.array(data["qt_mean"])    - np.array(data["ql_mean"])    - np.array(data["qr_mean"])
+    env_qv     = np.array(data["env_qt"])     - np.array(data["env_ql"])     - np.array(data["env_qr"])
+    updraft_qv = np.array(data["updraft_qt"]) - np.array(data["updraft_ql"]) - np.array(data["updraft_qr"])
     # iteration over plots
-    x_lab    = ["QT [g/kg]",        "QL [g/kg]",         "w [m/s]",         "updraft buoyancy [cm2/s3]", "updraft area [%]"]
-    plot_upd = [data["updraft_qt"], data["updraft_ql"],  data["updraft_w"], data["updraft_buoyancy"],    data["updraft_area"]]
-    plot_env = [data["env_qt"],     data["env_ql"],      data["env_w"]]
-    plot_mean= [data["qt_mean"],    data["ql_mean"]]
+    x_lab    = ["QV [g/kg]", "QL [g/kg]",        "QR [g/kg]",        "w [m/s]",         "updraft buoyancy [cm2/s3]",  "updraft area [%]"]
+    plot_upd = [qv_mean,     data["updraft_ql"], data["updraft_qr"], data["updraft_w"], data["updraft_buoyancy"],     data["updraft_area"]]
+    plot_env = [env_qv,      data["env_ql"],     data["env_qr"],     data["env_w"]]
+    plot_mean= [updraft_qv,  data["ql_mean"],    data["qr_mean"]]
     color_mean= "purple"
     color_env = "red"
     color_upd = "blue"
@@ -217,27 +236,27 @@ def plot_drafts(data, title, folder="tests/output/"):
     label_env = "env"
     label_upd = "upd"
 
-    for plot_it in xrange(5):
-        plots.append(plt.subplot(3,2,plot_it+1))
+    for plot_it in xrange(6):
+        plots.append(plt.subplot(2,3,plot_it+1))
                                #(rows, columns, number)
         plots[plot_it].set_xlabel(x_lab[plot_it])
         plots[plot_it].set_ylabel('z [m]')
         plots[plot_it].set_ylim([0, data["z_half"][-1] + (data["z_half"][1] - data["z_half"][0]) * 0.5])
         plots[plot_it].grid(True)
         #plot updrafts
-        if (plot_it < 4):
+        if (plot_it != 5):
             plots[plot_it].plot(plot_upd[plot_it][1], data["z_half"], ".-", color=color_upd, label=label_upd)
-        if (plot_it == 4):
+        if (plot_it == 5):
             plots[plot_it].plot(plot_upd[plot_it][1] * 100, data["z_half"], ".-", color=color_upd, label=label_upd)
-        if (plot_it in [0, 1, 2]):
+        if (plot_it < 4):
             # plot environment
-            plots[plot_it].plot(plot_env[plot_it ][1], data["z_half"], ".-", color=color_env, label=label_env)
-        if (plot_it in [0, 1]):
+            plots[plot_it].plot(plot_env[plot_it][1], data["z_half"], ".-", color=color_env, label=label_env)
+        if (plot_it < 3):
             # plot mean
             plots[plot_it].plot(plot_mean[plot_it][1], data["z_half"], ".-", color=color_mean, label=label_mean)
 
 
-    plots[1].legend(loc='upper right')
+    plots[0].legend(loc='upper right')
     #plots[0].set_xlim([1, 10])
     #plots[5].set_xlim([-50, 350])
     #plots[5].set_xlim([-0.1, 0.5])
@@ -247,86 +266,104 @@ def plot_drafts(data, title, folder="tests/output/"):
 def plot_timeseries(plt_data, case):
 
     output_folder="tests/output/"
-    plt.figure(1, figsize=(20,14))
     mpl.rcParams.update({'font.size': 18})
 
     z_half  = plt_data["z_half"]
     time    = plt_data["t"] / 60. / 60.
 
     mean_ql  = np.transpose(plt_data["ql_mean"])
+    mean_qr  = np.transpose(plt_data["qr_mean"])
     mean_qt  = np.transpose(plt_data["qt_mean"])
-    mean_qv  = mean_qt - mean_ql
+    mean_qv  = mean_qt - mean_ql - mean_qr
     mean_tke = np.transpose(plt_data["tke_mean"])
+    mean_buo = np.transpose(plt_data["buoyancy_mean"])
 
     updr_buo  = np.transpose(plt_data["updraft_buoyancy"])
     updr_qt   = np.transpose(plt_data["updraft_qt"])
     updr_ql   = np.transpose(plt_data["updraft_ql"])
-    updr_qv   = updr_qt - updr_ql
+    updr_qr   = np.transpose(plt_data["updraft_qr"])
+    updr_qv   = updr_qt - updr_ql - updr_qr
     updr_w    = np.transpose(plt_data["updraft_w"])
     updr_area = np.transpose(plt_data["updraft_area"])
 
+    #print " "
+    #print "updraft_w range: ", np.min(plt_data["updraft_w"]), " -- ", np.max(plt_data["updraft_w"])
+    #print "after transpose: ", np.min(updr_w), " -- ", np.max(updr_w)
+
     env_qt = np.transpose(plt_data["env_qt"])
     env_ql = np.transpose(plt_data["env_ql"])
-    env_qv = env_qt - env_ql
+    env_qr = np.transpose(plt_data["env_qr"])
+    env_qv = env_qt - env_ql - env_qr
     env_w  = np.transpose(plt_data["env_w"])
 
     x_lab = ["mean tke", "mean qt", "mean_qv", "mean_ql"]
     fig = plt.figure(1)
+    fig.set_figheight(16)
+    fig.set_figwidth(28)
     ax = []
-    for plot_it in range(4):
-        ax.append(fig.add_subplot(2,2,plot_it+1))
+    for plot_it in range(6):
+        ax.append(fig.add_subplot(2,3,plot_it+1))
                                #(rows, columns, number)
         ax[plot_it].set_xlabel('t [hrs]')
         ax[plot_it].set_ylabel('z [m]')
 
-    plot0 = ax[0].pcolormesh(time, z_half, mean_tke)#, vmin=0, vmax=5)
+    plot0 = ax[0].pcolormesh(time, z_half, mean_tke, cmap=discrete_cmap(8,mpl.cm.bone_r), rasterized=True, vmin=0, vmax=2) #, vmin=0, vmax=5)
     fig.colorbar(plot0, ax=ax[0], label='mean tke [m2/s2]')
-    plot1 = ax[1].pcolormesh(time, z_half, mean_qt)
-    fig.colorbar(plot1, ax=ax[1], label='mean qt [g/kg]')
-    plot2 = ax[2].pcolormesh(time, z_half, mean_qv)
-    fig.colorbar(plot2, ax=ax[2], label='mean qv [g/kg]')
-    plot3 = ax[3].pcolormesh(time, z_half, mean_ql)
-    fig.colorbar(plot3, ax=ax[3], label='mean ql [g/kg]')
-    plt.savefig(output_folder + case + "_timeseries_mean.png")
+    plot1 = ax[1].pcolormesh(time, z_half, mean_buo, rasterized=True)
+    fig.colorbar(plot1, ax=ax[1], label='mean buo [cm2/s3]')
+    plot2 = ax[2].pcolormesh(time, z_half, mean_qt, rasterized=True)
+    fig.colorbar(plot2, ax=ax[2], label='mean qt [g/kg]')
+    plot3 = ax[3].pcolormesh(time, z_half, mean_qv, rasterized=True)
+    fig.colorbar(plot3, ax=ax[3], label='mean qv [g/kg]')
+    plot4 = ax[4].pcolormesh(time, z_half, mean_ql, cmap=discrete_cmap(8,mpl.cm.bone_r), rasterized=True, vmin=0, vmax=0.4)
+    fig.colorbar(plot4, ax=ax[4], label='mean ql [g/kg]')
+    plot5 = ax[5].pcolormesh(time, z_half, mean_qr, rasterized=True)
+    fig.colorbar(plot5, ax=ax[5], label='mean qr [g/kg]')
+    plt.savefig(output_folder + case + "_timeseries_01mean.pdf")
     plt.clf()
 
-    x_lab = ["env w", "env qt", "env qv", "env ql"]
+    x_lab = ["env w", " ", " ", "env qv", "env ql", "env_qr"]
     fig = plt.figure(1)
     ax = []
-    for plot_it in range(4):
-        ax.append(fig.add_subplot(2,2,plot_it+1))
+    for plot_it in range(6):
+        ax.append(fig.add_subplot(2,3,plot_it+1))
                                #(rows, columns, number)
         ax[plot_it].set_xlabel('t [hrs]')
         ax[plot_it].set_ylabel('z [m]')
 
-    plot0 = ax[0].pcolormesh(time, z_half, env_w)
+    plot0 = ax[0].pcolormesh(time, z_half, env_w, rasterized=True)
     fig.colorbar(plot0, ax=ax[0], label='env w [m/2]')
-    plot1 = ax[1].pcolormesh(time, z_half, env_qt)
-    fig.colorbar(plot1, ax=ax[1], label='env qt [g/kg]')
-    plot2 = ax[2].pcolormesh(time, z_half, env_qv)
-    fig.colorbar(plot2, ax=ax[2], label='env qv [g/kg]')
-    plot3 = ax[3].pcolormesh(time, z_half, env_ql)
-    fig.colorbar(plot3, ax=ax[3], label='env ql [g/kg]')
-    plt.savefig(output_folder + case + "_timeseries_env.png")
+    plot3 = ax[3].pcolormesh(time, z_half, env_qv, rasterized=True)
+    fig.colorbar(plot3, ax=ax[3], label='env qv [g/kg]')
+    plot4 = ax[4].pcolormesh(time, z_half, env_ql, rasterized=True)
+    fig.colorbar(plot4, ax=ax[4], label='env ql [g/kg]')
+    plot5 = ax[5].pcolormesh(time, z_half, env_qr, rasterized=True)
+    fig.colorbar(plot5, ax=ax[5], label='env qr [g/kg]')
+    plt.savefig(output_folder + case + "_timeseries_02env.pdf")
     plt.clf()
 
-    x_lab = ["updr buo", "updr area", "updr w", "updr ql"]
+    x_lab = ["updr buo", "updr area", "updr w", "updr qv", "updr ql", "updr qr"]
     fig = plt.figure(1)
     ax = []
-    for plot_it in range(4):
-        ax.append(fig.add_subplot(2,2,plot_it+1))
+    for plot_it in range(6):
+        ax.append(fig.add_subplot(2,3,plot_it+1))
                                #(rows, columns, number)
         ax[plot_it].set_xlabel('t [hrs]')
         ax[plot_it].set_ylabel('z [m]')
 
-    plot0 = ax[0].pcolormesh(time, z_half, updr_buo)
+    plot0 = ax[0].pcolormesh(time, z_half, updr_buo, rasterized=True)
     fig.colorbar(plot0, ax=ax[0], label='updr buo [cm2/s3]')
-    plot1 = ax[1].pcolormesh(time, z_half, updr_area)
+    plot1 = ax[1].pcolormesh(time, z_half, updr_area, rasterized=True)
     fig.colorbar(plot1, ax=ax[1], label='updr area ')
-    plot2 = ax[2].pcolormesh(time, z_half, updr_w)
+    plot2 = ax[2].pcolormesh(time, z_half, updr_w, rasterized=True)
     fig.colorbar(plot2, ax=ax[2], label='updr w [m/s]')
-    plot3 = ax[3].pcolormesh(time, z_half, updr_ql)
-    fig.colorbar(plot3, ax=ax[3], label='updr ql [g/kg]')
-    plt.savefig(output_folder + case + "_timeseries_updr.png")
+    plot3 = ax[3].pcolormesh(time, z_half, updr_qv, rasterized=True)
+    fig.colorbar(plot3, ax=ax[3], label='updr qv [g/kg]')
+    plot4 = ax[4].pcolormesh(time, z_half, updr_ql, rasterized=True)
+    fig.colorbar(plot4, ax=ax[4], label='updr ql [g/kg]')
+    plot5 = ax[5].pcolormesh(time, z_half, updr_qr, rasterized=True)
+    fig.colorbar(plot5, ax=ax[5], label='updr qr [g/kg]')
+
+    plt.savefig(output_folder + case + "_timeseries_03updr.pdf")
     plt.clf()
 

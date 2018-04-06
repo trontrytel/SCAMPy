@@ -23,7 +23,7 @@ def sim_data(request):
     setup = pls.simulation_setup('DYCOMS_RF01')
     # chenge the defaults  
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
-    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = False
+    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
     setup["namelist"]['turbulence']['use_scalar_var'] = True
     setup['namelist']['turbulence']['sgs'] = {}
@@ -31,6 +31,13 @@ def sim_data(request):
     setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 0.5 * 1e-7
     setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 0.01
     setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-3
+                                                                                               #best     # default
+    #setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['surface_area'] = 0.25                       # 0.1 
+    #setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 0.1     #0.1      # 0.1
+    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['tke_ed_coeff'] = 0.5               #0.075    # 0.5
+    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['tke_diss_coeff'] = 0.1             #20       # 0.01
+    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['pressure_drag_coeff'] = 0.375      #0.375    # 0.375
+    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['pressure_plume_spacing'] = 500.    #5        # 500.0
 
     #print " "
     #print "namelist = " 
