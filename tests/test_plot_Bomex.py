@@ -24,7 +24,7 @@ def sim_data(request):
     # chenge the defaults  
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
-    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'  # dry, inverse_w, b_w2
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'inverse_w'  # dry, inverse_w, b_w2
     setup['namelist']['turbulence']['use_scalar_var'] = True
     setup['namelist']['turbulence']['sgs'] = {}
     setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = True

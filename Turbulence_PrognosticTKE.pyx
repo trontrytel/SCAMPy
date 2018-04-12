@@ -313,6 +313,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     self.EnvVar.Hvar.values[k] = GMV.Hvar.values[k]
                     self.EnvVar.QTvar.values[k] = GMV.QTvar.values[k]
                     self.EnvVar.HQTcov.values[k] = GMV.HQTcov.values[k]
+        #TODO - should be inside TS.nstep == 0 ?
         self.decompose_environment(GMV, 'values')
 
         if self.use_steady_updrafts:
@@ -320,12 +321,17 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         else:
             self.compute_prognostic_updrafts(GMV, Case, TS)
 
-
-        self.decompose_environment(GMV, 'values')
+        self.decompose_environment(GMV, 'values') # ok here without thermodynamics because MF doesnt depend directly on buoyancy
         self.update_GMV_MF(GMV, TS)
+        # (###) 
+        # decompose_environment +  EnvThermo.satadjust + UpdThermo.buoyancy should always be used together
+        # This ensures that: 
+        #   - the buoyancy of updrafts and environment is up to date with the most recent decomposition,
+        #   - the buoyancy of updrafts and environment is updated such that 
+        #     the mean buoyancy with repect to reference state alpha_0 is zero.
         self.decompose_environment(GMV, 'mf_update')
-        self.EnvThermo.satadjust(self.EnvVar, GMV)
-        self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar,GMV, self.extrapolate_buoyancy)
+        self.EnvThermo.satadjust(self.EnvVar, True)
+        self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
 
         self.compute_eddy_diffusivities_tke(GMV, Case)
 
@@ -355,8 +361,13 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             self.UpdVar.set_values_with_new()
             time_elapsed += self.dt_upd
             self.dt_upd = np.minimum(TS.dt-time_elapsed,  0.5 * self.Gr.dz/fmax(np.max(self.UpdVar.W.values),1e-10))
+            # (####)
+            # TODO - see comment (###)
+            # It would be better to have a simple linear rule for updating environment here 
+            # instead of calling EnvThermo saturation adjustment scheme for every updraft.
+            # If we are using quadratures this is expensive and probably unnecessary. 
             self.decompose_environment(GMV, 'values')
-            self.EnvThermo.satadjust(self.EnvVar, GMV)
+            self.EnvThermo.satadjust(self.EnvVar, False)
             self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
         return
 
@@ -406,8 +417,9 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         self.UpdVar.QT.set_bcs(self.Gr)
         self.UpdVar.QR.set_bcs(self.Gr)
         self.UpdVar.H.set_bcs(self.Gr)
+        # TODO - see comment (####)
         self.decompose_environment(GMV, 'values')
-        self.EnvThermo.satadjust(self.EnvVar, GMV)
+        self.EnvThermo.satadjust(self.EnvVar, False)
         self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
 
         # Solve updraft velocity equation
@@ -468,8 +480,9 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                         self.UpdVar.QL.values[i,k] = sa.ql
                         self.UpdVar.T.values[i,k] = sa.T
 
+        # TODO - see comment (####)
         self.decompose_environment(GMV, 'values')
-        self.EnvThermo.satadjust(self.EnvVar, GMV)
+        self.EnvThermo.satadjust(self.EnvVar, False)
         self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
 
         self.UpdVar.Area.set_bcs(self.Gr)
@@ -1068,8 +1081,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         GMV.QT.set_bcs(self.Gr)
         GMV.U.set_bcs(self.Gr)
         GMV.V.set_bcs(self.Gr)
-
-        # GMV.satadjust()
 
         return
 

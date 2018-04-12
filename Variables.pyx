@@ -221,6 +221,7 @@ cdef class GridMeanVariables:
                 self.QT.values[k] +=  self.QT.tendencies[k] * TS.dt
                 self.QR.values[k] +=  self.QR.tendencies[k] * TS.dt
 
+
         self.U.set_bcs(self.Gr)
         self.V.set_bcs(self.Gr)
         self.H.set_bcs(self.Gr)

@@ -25,7 +25,7 @@ cdef  double theta_c(double p0, double T) nogil :
                                                                              # TODO - L is not used here
 cdef  double thetali_c(double p0, double T, double qt, double ql, double qi, double L) nogil  :
     # Liquid ice potential temperature consistent with Triopoli and Cotton (1981)
-    return theta_c(p0, T) * exp(-latent_heat(T)*(ql/(1.0 - qt) + qi/(1.0 -qt))/(T*cpd))
+    return theta_c(p0, T) * exp(-latent_heat(T) * (ql / (1.0 - qt) + qi / (1.0 - qt)) / (T*cpd))
 
 
 cdef  double pd_c(double p0, double qt, double qv)  nogil :

@@ -4,6 +4,7 @@ cimport numpy as np
 from libc.math cimport fmax
 
 from thermodynamic_functions cimport *
+include "parameters.pxi"
 
 cdef double r2q(double r_, double qt) nogil :
     """ 
@@ -21,6 +22,12 @@ cdef double q2r(double q_, double qt) nogil :
     """
     return q_ / (1. - qt)
 
+
+cdef double rain_source_to_thetal(double qr, double p0, double T) nogil :
+    """
+    Source term for thetal because of ql turning to qr and disappearing from the working fluid
+    """
+    return qr / exner_c(p0) * latent_heat(T) / cpd
 
 # instantly convert all cloud water exceeding a threshold to rain water 
 # the threshold is specified as axcess saturation

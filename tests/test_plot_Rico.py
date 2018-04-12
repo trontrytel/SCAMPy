@@ -23,7 +23,7 @@ def sim_data(request):
     # chenge the defaults  
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
-    setup['namelist']['turbulence']['use_scalar_var'] = False
+    setup['namelist']['turbulence']['use_scalar_var'] = True
     setup['namelist']['turbulence']['sgs'] = {}
     setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = True
     setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 0.5 * 1e-7

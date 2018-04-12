@@ -377,16 +377,15 @@ cdef class UpdraftMicrophysics:
         """
         cdef:
             Py_ssize_t k, i
+            double tmp_qr
 
         with nogil:
             for i in xrange(self.n_updraft):
                 for k in xrange(self.Gr.nzg):
-                    self.prec_source_qt[i,k] = -acnv_instant(UpdVar.QL.values[i,k], UpdVar.QT.values[i,k], 
-                                                          self.max_supersaturation, 
-                                                          UpdVar.T.values[i,k], self.Ref.p0_half[k])
-                    self.prec_source_h[i,k]  = -self.prec_source_qt[i,k] \
-                                               / exner_c(self.Ref.p0_half[k]) \
-                                               * latent_heat(UpdVar.T.values[i,k]) / cpd
+                    tmp_qr = acnv_instant(UpdVar.QL.values[i,k], UpdVar.QT.values[i,k], self.max_supersaturation,\
+                                          UpdVar.T.values[i,k], self.Ref.p0_half[k])
+                    self.prec_source_qt[i,k] = -tmp_qr
+                    self.prec_source_h[i,k]  = rain_source_to_thetal(tmp_qr, self.Ref.p0_half[k], UpdVar.T.values[i,k]) 
 
         self.prec_source_h_tot  = np.sum(np.multiply(self.prec_source_h,  UpdVar.Area.values), axis=0)
         self.prec_source_qt_tot = np.sum(np.multiply(self.prec_source_qt, UpdVar.Area.values), axis=0)
@@ -414,9 +413,10 @@ cdef class UpdraftMicrophysics:
 
         # Language note: array indexing must be used to dereference pointers in Cython. * notation (C-style dereferencing)
         # is reserved for packing tuples
- 
-        self.prec_source_qt[i,k] = -acnv_instant(ql[0], qt[0], self.max_supersaturation, T, p0)
-        self.prec_source_h[i,k]  = -self.prec_source_qt[i,k] / exner_c(p0) * latent_heat(T) / cpd
+
+        tmp_qr =  acnv_instant(ql[0], qt[0], self.max_supersaturation, T, p0)
+        self.prec_source_qt[i,k] = -tmp_qr
+        self.prec_source_h[i,k]  = rain_source_to_thetal(tmp_qr, p0, T) 
 
         qt[0] += self.prec_source_qt[i,k]
         ql[0] += self.prec_source_qt[i,k]
