@@ -44,15 +44,15 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             print('Turbulence--EDMF_PrognosticTKE: defaulting to local (level-by-level) microphysics')
 
         try:
-            if namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] == 'inverse_z':
+            if str(namelist['turbulence']['EDMF_PrognosticTKE']['entrainment']) == 'inverse_z':
                 self.entr_detr_fp = entr_detr_inverse_z
-            elif namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] == 'dry':
+            elif str(namelist['turbulence']['EDMF_PrognosticTKE']['entrainment']) == 'dry':
                 self.entr_detr_fp = entr_detr_dry
-            elif namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] == 'inverse_w':
+            elif str(namelist['turbulence']['EDMF_PrognosticTKE']['entrainment']) == 'inverse_w':
                 self.entr_detr_fp = entr_detr_inverse_w
-            elif namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] == 'b_w2':
+            elif str(namelist['turbulence']['EDMF_PrognosticTKE']['entrainment']) == 'b_w2':
                 self.entr_detr_fp = entr_detr_b_w2
-            elif namelist['turbulence']['EDMF_PrognosticTKE']['entrainment'] == 'buoyancy_sorting':
+            elif str(namelist['turbulence']['EDMF_PrognosticTKE']['entrainment']) == 'buoyancy_sorting':
                 self.entr_detr_fp = entr_detr_buoyancy_sorting
             else:
                 print('Turbulence--EDMF_PrognosticTKE: Entrainment rate namelist option is not recognized')
@@ -921,12 +921,13 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             eos_struct sa
             double qt_var, h_var
 
-        if self.use_local_micro:
-            with nogil:
-                for i in xrange(self.n_updrafts):
-                    self.UpdVar.H.new[i,gw] = self.h_surface_bc[i]
-                    self.UpdVar.QT.new[i,gw]  = self.qt_surface_bc[i]
-                     
+        with nogil:
+            for i in xrange(self.n_updrafts):
+                self.UpdVar.H.new[i,gw] = self.h_surface_bc[i]
+                self.UpdVar.QT.new[i,gw] = self.qt_surface_bc[i]
+                self.UpdVar.QR.new[i,gw] = 0.0 #TODO
+
+                if self.use_local_micro:
                     # do saturation adjustment
                     sa = eos(self.UpdThermo.t_to_prog_fp,self.UpdThermo.prog_to_t_fp,
                              self.Ref.p0_half[gw], self.UpdVar.QT.new[i,gw], self.UpdVar.H.new[i,gw])
@@ -937,87 +938,60 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                                                                        &self.UpdVar.QT.new[i,gw], &self.UpdVar.QL.new[i,gw],
                                                                        &self.UpdVar.QR.new[i,gw], &self.UpdVar.H.new[i,gw],
                                                                        i, gw)
-                    # starting from the bottom do entrainment at each level
-                    for k in xrange(gw+1, self.Gr.nzg-gw):
-                        H_entr = self.EnvVar.H.values[k]
-                        QT_entr = self.EnvVar.QT.values[k]
-                        # write the discrete equations in form:
-                        # c1 * phi_new[k] = c2 * phi[k] + c3 * phi[k-1] + c4 * phi_entr
-                        if self.UpdVar.Area.new[i,k] >= self.minimum_area:
-                            m_k = (self.Ref.rho0_half[k] * self.UpdVar.Area.values[i,k]
-                                   * interp2pt(self.UpdVar.W.values[i,k-1], self.UpdVar.W.values[i,k]))
-                            m_km = (self.Ref.rho0_half[k-1] * self.UpdVar.Area.values[i,k-1]
-                                   * interp2pt(self.UpdVar.W.values[i,k-2], self.UpdVar.W.values[i,k-1]))
-                            c1 = self.Ref.rho0_half[k] * self.UpdVar.Area.new[i,k] * dti_
-                            c2 = (self.Ref.rho0_half[k] * self.UpdVar.Area.values[i,k] * dti_
-                                  - m_k * (dzi + self.detr_sc[i,k]))
-                            c3 = m_km * dzi
-                            c4 = m_k * self.entr_sc[i,k]
 
-                            self.UpdVar.H.new[i,k] =  (c2 * self.UpdVar.H.values[i,k]  + c3 * self.UpdVar.H.values[i,k-1]
-                                                       + c4 * H_entr)/c1
-                            self.UpdVar.QT.new[i,k] = (c2 * self.UpdVar.QT.values[i,k] + c3 * self.UpdVar.QT.values[i,k-1]
-                                                       + c4* QT_entr)/c1
-                        else:
-                            self.UpdVar.H.new[i,k] = GMV.H.values[k]
-                            self.UpdVar.QT.new[i,k] = GMV.QT.values[k]
-                        # find new temperature
-                        sa = eos(self.UpdThermo.t_to_prog_fp,self.UpdThermo.prog_to_t_fp, self.Ref.p0_half[k],
-                                 self.UpdVar.QT.new[i,k], self.UpdVar.H.new[i,k])
-                        self.UpdVar.QL.new[i,k] = sa.ql
-                        self.UpdVar.T.new[i,k] = sa.T
+                # starting from the bottom do entrainment at each level
+                for k in xrange(gw+1, self.Gr.nzg-gw):
+                    H_entr = self.EnvVar.H.values[k]
+                    QT_entr = self.EnvVar.QT.values[k]
+
+                    # write the discrete equations in form:
+                    # c1 * phi_new[k] = c2 * phi[k] + c3 * phi[k-1] + c4 * phi_entr
+                    if self.UpdVar.Area.new[i,k] >= self.minimum_area:
+                        m_k = (self.Ref.rho0_half[k] * self.UpdVar.Area.values[i,k]
+                               * interp2pt(self.UpdVar.W.values[i,k-1], self.UpdVar.W.values[i,k]))
+                        m_km = (self.Ref.rho0_half[k-1] * self.UpdVar.Area.values[i,k-1]
+                               * interp2pt(self.UpdVar.W.values[i,k-2], self.UpdVar.W.values[i,k-1]))
+                        c1 = self.Ref.rho0_half[k] * self.UpdVar.Area.new[i,k] * dti_
+                        c2 = (self.Ref.rho0_half[k] * self.UpdVar.Area.values[i,k] * dti_
+                              - m_k * (dzi + self.detr_sc[i,k]))
+                        c3 = m_km * dzi
+                        c4 = m_k * self.entr_sc[i,k]
+
+                        self.UpdVar.H.new[i,k] =  (c2 * self.UpdVar.H.values[i,k]  + c3 * self.UpdVar.H.values[i,k-1]
+                                                   + c4 * H_entr)/c1
+                        self.UpdVar.QT.new[i,k] = (c2 * self.UpdVar.QT.values[i,k] + c3 * self.UpdVar.QT.values[i,k-1]
+                                                   + c4* QT_entr)/c1
+                    else:
+                        self.UpdVar.H.new[i,k] = GMV.H.values[k]
+                        self.UpdVar.QT.new[i,k] = GMV.QT.values[k]
+
+                    # find new temperature
+                    sa = eos(self.UpdThermo.t_to_prog_fp,self.UpdThermo.prog_to_t_fp, self.Ref.p0_half[k],
+                             self.UpdVar.QT.new[i,k], self.UpdVar.H.new[i,k])
+                    self.UpdVar.QL.new[i,k] = sa.ql
+                    self.UpdVar.T.new[i,k] = sa.T
+
+                    if self.use_local_micro:
                         # remove precipitation (pdate QT, QL and H)
                         self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[k], self.UpdVar.T.new[i,k],
                                                                        &self.UpdVar.QT.new[i,k], &self.UpdVar.QL.new[i,k],
-                                                                       &self.UpdVar.QR.new[i,gw], &self.UpdVar.H.new[i,k],
+                                                                       &self.UpdVar.QR.new[i,k], &self.UpdVar.H.new[i,k],
                                                                        i, k)
+
+        if self.use_local_micro:
             # save the total source terms for H and QT due to precipitation
+            # TODO - add QR source
             self.UpdMicro.prec_source_h_tot = np.sum(np.multiply(self.UpdMicro.prec_source_h,
                                                                  self.UpdVar.Area.values), axis=0)
             self.UpdMicro.prec_source_qt_tot = np.sum(np.multiply(self.UpdMicro.prec_source_qt,
                                                                   self.UpdVar.Area.values), axis=0)
-
-        else:
-            with nogil:
-                for i in xrange(self.n_updrafts):
-                    self.UpdVar.H.new[i,gw] = self.h_surface_bc[i]
-                    self.UpdVar.QT.new[i,gw]  = self.qt_surface_bc[i]
-                    for k in xrange(gw+1, self.Gr.nzg-gw):
-                        H_entr = self.EnvVar.H.values[k]
-                        QT_entr = self.EnvVar.QT.values[k]
-
-                        # write the discrete equations in form:
-                        # c1 * phi_new[k] = c2 * phi[k] + c3 * phi[k-1] + c4 * phi_entr
-                        if self.UpdVar.Area.new[i,k] >= self.minimum_area:
-                            m_k = (self.Ref.rho0_half[k] * self.UpdVar.Area.values[i,k]
-                                   * interp2pt(self.UpdVar.W.values[i,k-1], self.UpdVar.W.values[i,k]))
-                            m_km = (self.Ref.rho0_half[k-1] * self.UpdVar.Area.values[i,k-1]
-                                   * interp2pt(self.UpdVar.W.values[i,k-2], self.UpdVar.W.values[i,k-1]))
-                            c1 = self.Ref.rho0_half[k] * self.UpdVar.Area.new[i,k] * dti_
-                            c2 = (self.Ref.rho0_half[k] * self.UpdVar.Area.values[i,k] * dti_
-                                  - m_k * (dzi + self.detr_sc[i,k]))
-                            c3 = m_km * dzi
-                            c4 = m_k * self.entr_sc[i,k]
-
-                            self.UpdVar.H.new[i,k] =  (c2 * self.UpdVar.H.values[i,k]  + c3 * self.UpdVar.H.values[i,k-1]
-                                                       + c4 * H_entr)/c1
-                            self.UpdVar.QT.new[i,k] = (c2 * self.UpdVar.QT.values[i,k] + c3 * self.UpdVar.QT.values[i,k-1]
-                                                       + c4* QT_entr)/c1
-                        else:
-                            self.UpdVar.H.new[i,k] = GMV.H.values[k]
-                            self.UpdVar.QT.new[i,k] = GMV.QT.values[k]
-                        sa = eos(self.UpdThermo.t_to_prog_fp,self.UpdThermo.prog_to_t_fp, self.Ref.p0_half[k],
-                                 self.UpdVar.QT.new[i,k], self.UpdVar.H.new[i,k])
-                        self.UpdVar.QL.new[i,k] = sa.ql
-                        self.UpdVar.T.new[i,k] = sa.T
-            # Compute the updraft microphysical sources (precipitation) after the entrainment loop is finished
+        else: 
+            # Compute the updraft microphysical sources (precipitation) 
+            #after the entrainment loop is finished
             self.UpdMicro.compute_sources(self.UpdVar)
             # Update updraft variables with microphysical source tendencies
             self.UpdMicro.update_updraftvars(self.UpdVar)
 
-        self.UpdVar.H.set_bcs(self.Gr)
-        self.UpdVar.QT.set_bcs(self.Gr)
-        self.UpdVar.QR.set_bcs(self.Gr)
         return
 
     # After updating the updraft variables themselves:

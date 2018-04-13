@@ -321,11 +321,11 @@ cdef class EnvironmentThermodynamics:
                         temp_m = sa.T
                         ql_m = sa.ql
                         # TODO before was: 
-                        #thl_m = temp_m / exner_c(self.Ref.p0_half[k])
-                        thl_m  = t_to_thetali_c(self.Ref.p0_half[k], temp_m, qt_hat, ql_m, 0.0)
+                        thl_m = temp_m / exner_c(self.Ref.p0_half[k])
+                        #thl_m  = t_to_thetali_c(self.Ref.p0_half[k], temp_m, qt_hat, ql_m, 0.0)
                         # TODO before was: 
-                        #qv_m  = EnvVar.QT.values[k] - ql_m
-                        qv_m   = qt_hat - ql_m 
+                        qv_m  = EnvVar.QT.values[k] - ql_m
+                        #qv_m   = qt_hat - ql_m 
                         alpha_m = alpha_c(self.Ref.p0_half[k], temp_m, qt_hat, qv_m)
 
                         # autoconversion
@@ -336,7 +336,7 @@ cdef class EnvironmentThermodynamics:
                             ql_m -= qr_m
                             thl_m += rain_source_to_thetal(qr_m, self.Ref.p0_half[k], temp_m) 
                         else:
-                            qr_m = 0
+                            qr_m = 0.0
 
                         # environmental variables
                         inner_int_ql    += ql_m    * weights[m_h] * sqpi_inv
@@ -380,8 +380,8 @@ cdef class EnvironmentThermodynamics:
                 EnvVar.T.values[k]   = outer_int_T
                 EnvVar.QL.values[k]  = outer_int_ql
                 #TODO before was
-                #EnvVar.THL.values[k] = t_to_thetali_c(self.Ref.p0_half[k], EnvVar.T.values[k], EnvVar.QT.values[k], EnvVar.QL.values[k], 0.0)
-                EnvVar.THL.values[k] = outer_int_thl
+                EnvVar.THL.values[k] = t_to_thetali_c(self.Ref.p0_half[k], EnvVar.T.values[k], EnvVar.QT.values[k], EnvVar.QL.values[k], 0.0)
+                #EnvVar.THL.values[k] = outer_int_thl
                 EnvVar.B.values[k]   = g * (outer_int_alpha - self.Ref.alpha0_half[k]) / self.Ref.alpha0_half[k]
                 EnvVar.CF.values[k]  = outer_int_cf
                 EnvVar.QR.values[k]  = outer_int_qr

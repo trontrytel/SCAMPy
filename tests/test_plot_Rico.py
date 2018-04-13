@@ -22,6 +22,7 @@ def sim_data(request):
     setup = pls.simulation_setup('Rico')
     # chenge the defaults  
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
+    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = False
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
     setup['namelist']['turbulence']['use_scalar_var'] = True
     setup['namelist']['turbulence']['sgs'] = {}
@@ -29,6 +30,10 @@ def sim_data(request):
     setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 0.5 * 1e-7
     setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 0.01
     setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-3
+    #setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 0.1 #0.1
+
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'        
+
     #print " "
     #print "namelist"
     #print pp.pprint(setup["namelist"])

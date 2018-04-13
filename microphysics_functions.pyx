@@ -40,7 +40,6 @@ cdef double acnv_instant(double ql, double qt, double sat_treshold, double T, do
 
     return fmax(0.0, ql - sat_treshold * qsat)
 
-
 # time-rate expressions for 1-moment microphysics
 # autoconversion:   Kessler 1969, see Table 1 in Wood 2005: https://doi.org/10.1175/JAS3530.1
 # accretion, rain evaporation rain terminal velocity: 
