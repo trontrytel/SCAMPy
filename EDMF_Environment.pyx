@@ -86,8 +86,7 @@ cdef class EnvironmentVariables:
             self.use_prescribed_scalar_var = namelist['turbulence']['sgs']['use_prescribed_scalar_var']
         except:
             self.use_prescribed_scalar_var = False
-
-        if self.use_prescribed_scalar_var:
+        if self.use_prescribed_scalar_var == True:
             self.prescribed_QTvar  = namelist['turbulence']['sgs']['prescribed_QTvar']
             self.prescribed_Hvar   = namelist['turbulence']['sgs']['prescribed_Hvar']
             self.prescribed_HQTcov = namelist['turbulence']['sgs']['prescribed_HQTcov']
@@ -249,6 +248,7 @@ cdef class EnvironmentThermodynamics:
             sys.exit('EDMF_Environment: rain source terms are only defined for thetal as model variable')
 
         if EnvVar.use_prescribed_scalar_var:
+
             for k in xrange(gw, self.Gr.nzg-gw):
                 if k * self.Gr.dz <= 1500:
                     EnvVar.QTvar.values[k]  = EnvVar.prescribed_QTvar
@@ -262,7 +262,7 @@ cdef class EnvironmentThermodynamics:
                     EnvVar.HQTcov.values[k] = EnvVar.prescribed_HQTcov
                 else:
                     EnvVar.HQTcov.values[k] = 0.
-      
+
         with nogil:
             for k in xrange(gw, self.Gr.nzg-gw):
                 sd_q = sqrt(EnvVar.QTvar.values[k])
@@ -329,6 +329,7 @@ cdef class EnvironmentThermodynamics:
                         # autoconversion
                         if in_Env:
                             qr_m = acnv_instant(ql_m, ql_m + qv_m, self.max_supersaturation, temp_m, self.Ref.p0_half[k])
+                            #TODO - add rain in the environment
                             qt_hat -= qr_m
                             ql_m -= qr_m
                             thl_m += rain_source_to_thetal(qr_m, self.Ref.p0_half[k], temp_m) 
@@ -381,7 +382,7 @@ cdef class EnvironmentThermodynamics:
                 EnvVar.THL.values[k] = outer_int_thl
                 EnvVar.B.values[k]   = g * (outer_int_alpha - self.Ref.alpha0_half[k]) / self.Ref.alpha0_half[k]
                 EnvVar.CF.values[k]  = outer_int_cf
-                EnvVar.QR.values[k]  += outer_int_qr
+                EnvVar.QR.values[k] += outer_int_qr
                 EnvVar.QT.values[k]  = outer_int_qt_cloudy + outer_int_qt_dry
                 EnvVar.H.values[k]   = outer_int_thl 
 
