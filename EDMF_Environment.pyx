@@ -197,26 +197,24 @@ cdef class EnvironmentThermodynamics:
                 if EnvVar.QL.values[k] > 0.0:
                     EnvVar.CF.values[k] = 1.0
                     self.t_cloudy[k] = EnvVar.T.values[k]
-                   
-                    # TODO add rain in the environment
-                    #EnvVar.QR.values[k] = acnv_instant(EnvVar.QL.values[k], EnvVar.QT.values[k],\
-                    #                                    self.max_supersaturation,\
-                    #                                    EnvVar.T.values[k], self.Ref.p0_half[k])
-  
-                    self.qv_cloudy[k] = EnvVar.QT.values[k] - EnvVar.QL.values[k] #- EnvVar.QR.values[k]
-                    self.qt_cloudy[k] = EnvVar.QT.values[k] #- EnvVar.QR.values[k]
+                  
+                    if in_Env:
+                        tmp_qr = acnv_instant(EnvVar.QL.values[k], EnvVar.QT.values[k],\
+                                              self.max_supersaturation,\
+                                              EnvVar.T.values[k], self.Ref.p0_half[k])
+ 
+                        EnvVar.QR.values[k] += tmp_qr
+                        EnvVar.QT.values[k] -= tmp_qr
+                        EnvVar.H.values[k]  += rain_source_to_thetal(tmp_qr, self.Ref.p0_half[k], EnvVar.T.values[k])
+ 
+                    self.qt_cloudy[k] = EnvVar.QT.values[k]
+                    self.qv_cloudy[k] = EnvVar.QT.values[k] - EnvVar.QL.values[k]
                     self.th_cloudy[k] = EnvVar.T.values[k]/exner_c(self.Ref.p0_half[k])
                 else:
-                    EnvVar.CF.values[k] = 0.0
-                    #EnvVar.QR.values[k] = 0.0
                     self.qt_dry[k] = EnvVar.QT.values[k]
                     self.th_dry[k] = EnvVar.T.values[k]/exner_c(self.Ref.p0_half[k])
 
-                #TODO - add rain in the environment
-                #TODO - add tendencies from Env to GMV
-                #EnvVar.QT.values[k] -= EnvVar.QR.values[k]
-                #EnvVar.H.values[k]  += rain_source_to_thetal(EnvVar.QR.values[k], self.Ref.p0_half[k], EnvVar.T.values[k])
- 
+
         return
  
     cdef void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, bint in_Env):
@@ -331,7 +329,6 @@ cdef class EnvironmentThermodynamics:
                         # autoconversion
                         if in_Env:
                             qr_m = acnv_instant(ql_m, ql_m + qv_m, self.max_supersaturation, temp_m, self.Ref.p0_half[k])
-                            #TODO - add rain in the environment
                             qt_hat -= qr_m
                             ql_m -= qr_m
                             thl_m += rain_source_to_thetal(qr_m, self.Ref.p0_half[k], temp_m) 
@@ -384,7 +381,7 @@ cdef class EnvironmentThermodynamics:
                 EnvVar.THL.values[k] = outer_int_thl
                 EnvVar.B.values[k]   = g * (outer_int_alpha - self.Ref.alpha0_half[k]) / self.Ref.alpha0_half[k]
                 EnvVar.CF.values[k]  = outer_int_cf
-                EnvVar.QR.values[k]  = outer_int_qr
+                EnvVar.QR.values[k]  += outer_int_qr
                 EnvVar.QT.values[k]  = outer_int_qt_cloudy + outer_int_qt_dry
                 EnvVar.H.values[k]   = outer_int_thl 
 

@@ -321,7 +321,9 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         else:
             self.compute_prognostic_updrafts(GMV, Case, TS)
 
-        self.decompose_environment(GMV, 'values') # ok here without thermodynamics because MF doesnt depend directly on buoyancy
+        # TODO -maybe not needed? - both diagnostic and prognostic updrafts end with decompose_environment
+        # But in general ok here without thermodynamics because MF doesnt depend directly on buoyancy
+        self.decompose_environment(GMV, 'values')
         self.update_GMV_MF(GMV, TS)
         # (###) 
         # decompose_environment +  EnvThermo.satadjust + UpdThermo.buoyancy should always be used together
@@ -475,6 +477,10 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                         self.UpdVar.Area.values[i,k] = 0.0
                         self.UpdVar.H.values[i,k] = GMV.H.values[k]
                         self.UpdVar.QT.values[i,k] = GMV.QT.values[k]
+                        self.UpdVar.QR.values[i,k] = GMV.QR.values[k]
+                        #TODO wouldnt it be more consistent to have
+                        #self.UpdVar.QL.values[i,k] = GMV.QL.values[k]
+                        #self.UpdVar.T.values[i,k] = GMV.T.values[k]
                         sa = eos(self.UpdThermo.t_to_prog_fp,self.UpdThermo.prog_to_t_fp, self.Ref.p0_half[k],
                                  self.UpdVar.QT.values[i,k], self.UpdVar.H.values[i,k])
                         self.UpdVar.QL.values[i,k] = sa.ql
@@ -1032,6 +1038,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     self.massflux_qt[k] += self.m[i,k] * (interp2pt(self.UpdVar.QT.values[i,k],
                                                                     self.UpdVar.QT.values[i,k+1]) - env_qt_interp )
 
+        print "---------------------------------------"
         # Compute the  mass flux tendencies
         # Adjust the values of the grid mean variables
         with nogil:
@@ -1042,7 +1049,12 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
                 GMV.H.mf_update[k] = GMV.H.values[k] +  TS.dt * mf_tend_h + self.UpdMicro.prec_source_h_tot[k]
                 GMV.QT.mf_update[k] = GMV.QT.values[k] + TS.dt * mf_tend_qt + self.UpdMicro.prec_source_qt_tot[k]
+                      
+                with gil:
+                    if k >=16 and k<= 26:
+                        print "[",k,"] UpdMIcro prec_source_qt update_GMV_MF = ", self.UpdMicro.prec_source_qt_tot[k]
 
+      
                 #No mass flux tendency for U, V
                 GMV.U.mf_update[k] = GMV.U.values[k]
                 GMV.V.mf_update[k] = GMV.V.values[k]
@@ -1053,6 +1065,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         GMV.H.set_bcs(self.Gr)
         GMV.QT.set_bcs(self.Gr)
+        GMV.QR.set_bcs(self.Gr)
         GMV.U.set_bcs(self.Gr)
         GMV.V.set_bcs(self.Gr)
 
@@ -1094,7 +1107,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         with nogil:
             for k in xrange(nz):
                 GMV.QT.new[k+gw] = GMV.QT.mf_update[k+gw] + ae[k+gw] *(x[k] - self.EnvVar.QT.values[k+gw])
-                self.diffusive_tendency_qt[k+gw] = (GMV.QT.new[k+gw] - GMV.QT.mf_update[k+gw]) * TS.dti
             # get the diffusive flux
             self.diffusive_flux_qt[gw] = interp2pt(Case.Sur.rho_qtflux, -rho_ae_K_m[gw] * dzi *(self.EnvVar.QT.values[gw+1]-self.EnvVar.QT.values[gw]) )
             for k in xrange(self.Gr.gw+1, self.Gr.nzg-self.Gr.gw):
@@ -1146,6 +1158,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 GMV.V.new[k+gw] = x[k]
 
         GMV.QT.set_bcs(self.Gr)
+        GMV.QR.set_bcs(self.Gr)
         GMV.H.set_bcs(self.Gr)
         GMV.U.set_bcs(self.Gr)
         GMV.V.set_bcs(self.Gr)
@@ -1383,6 +1396,10 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
                 GMV.QL.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.QL.bulkvalues[k]
                                     + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.QL.values[k])
+
+                # TODO - change to prognostic?
+                GMV.QR.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.QR.bulkvalues[k]
+                                    + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.QR.values[k])
 
                 GMV.T.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.T.bulkvalues[k]
                                     + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.T.values[k])

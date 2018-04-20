@@ -418,9 +418,14 @@ cdef class UpdraftMicrophysics:
         self.prec_source_qt[i,k] = -tmp_qr
         self.prec_source_h[i,k]  = rain_source_to_thetal(tmp_qr, p0, T) 
 
+        old_qr = qr[0]
+
         qt[0] += self.prec_source_qt[i,k]
         ql[0] += self.prec_source_qt[i,k]
         qr[0] -= self.prec_source_qt[i,k]
         h[0]  += self.prec_source_h[i,k]
 
+        with gil:
+            if k>= 16 and k<= 26:
+                print "[",k,"] cucult dr = ", qr[0] - old_qr
         return

@@ -184,7 +184,7 @@ def plot_mean(data, title, folder="tests/output/"):
     mpl.rc('lines', linewidth=4, markersize=10)
     mpl.rcParams.update({'font.size': 18})
     plots = []
-    qv_mean = np.array(data["qt_mean"]) - np.array(data["ql_mean"]) - np.array(data["qr_mean"])
+    qv_mean = np.array(data["qt_mean"]) - np.array(data["ql_mean"])
     # iteration over plots
     x_lab  = ['QV [g/kg]', 'QL [g/kg]',      'QR [g/kg]',      'THL [K]',           'buoyancy [cm2/s3]',   'TKE [m2/s2]']
     plot_x = [qv_mean,      data["ql_mean"],  data["qr_mean"], data["thetal_mean"],  data["buoyancy_mean"], data["tke_mean"]]
@@ -221,9 +221,9 @@ def plot_drafts(data, title, folder="tests/output/"):
     mpl.rc('lines', linewidth=4, markersize=10)
     mpl.rcParams.update({'font.size': 18})
     plots = []
-    qv_mean    = np.array(data["qt_mean"])    - np.array(data["ql_mean"])    - np.array(data["qr_mean"])
-    env_qv     = np.array(data["env_qt"])     - np.array(data["env_ql"])     - np.array(data["env_qr"])
-    updraft_qv = np.array(data["updraft_qt"]) - np.array(data["updraft_ql"]) - np.array(data["updraft_qr"])
+    qv_mean    = np.array(data["qt_mean"])    - np.array(data["ql_mean"])
+    env_qv     = np.array(data["env_qt"])     - np.array(data["env_ql"])
+    updraft_qv = np.array(data["updraft_qt"]) - np.array(data["updraft_ql"])
     # iteration over plots
     x_lab    = ["QV [g/kg]", "QL [g/kg]",        "QR [g/kg]",        "w [m/s]",         "updraft buoyancy [cm2/s3]",  "updraft area [%]"]
     plot_upd = [qv_mean,     data["updraft_ql"], data["updraft_qr"], data["updraft_w"], data["updraft_buoyancy"],     data["updraft_area"]]
@@ -274,7 +274,7 @@ def plot_timeseries(plt_data, case):
     mean_ql  = np.transpose(plt_data["ql_mean"])
     mean_qr  = np.transpose(plt_data["qr_mean"])
     mean_qt  = np.transpose(plt_data["qt_mean"])
-    mean_qv  = mean_qt - mean_ql - mean_qr
+    mean_qv  = mean_qt - mean_ql
     mean_tke = np.transpose(plt_data["tke_mean"])
     mean_buo = np.transpose(plt_data["buoyancy_mean"])
 
@@ -282,7 +282,7 @@ def plot_timeseries(plt_data, case):
     updr_qt   = np.transpose(plt_data["updraft_qt"])
     updr_ql   = np.transpose(plt_data["updraft_ql"])
     updr_qr   = np.transpose(plt_data["updraft_qr"])
-    updr_qv   = updr_qt - updr_ql - updr_qr
+    updr_qv   = updr_qt - updr_ql
     updr_w    = np.transpose(plt_data["updraft_w"])
     updr_area = np.transpose(plt_data["updraft_area"])
 
@@ -293,10 +293,9 @@ def plot_timeseries(plt_data, case):
     env_qt = np.transpose(plt_data["env_qt"])
     env_ql = np.transpose(plt_data["env_ql"])
     env_qr = np.transpose(plt_data["env_qr"])
-    env_qv = env_qt - env_ql - env_qr
+    env_qv = env_qt - env_ql
     env_w  = np.transpose(plt_data["env_w"])
 
-    x_lab = ["mean tke", "mean qt", "mean_qv", "mean_ql"]
     fig = plt.figure(1)
     fig.set_figheight(16)
     fig.set_figwidth(28)
@@ -307,15 +306,15 @@ def plot_timeseries(plt_data, case):
         ax[plot_it].set_xlabel('t [hrs]')
         ax[plot_it].set_ylabel('z [m]')
 
-    #plot0 = ax[0].pcolormesh(time, z_half, mean_tke, cmap=discrete_cmap(8,mpl.cm.bone_r), rasterized=True) #, vmin=0, vmax=5)
-    plot0 = ax[0].pcolormesh(time, z_half, mean_tke, rasterized=True) #, vmin=0, vmax=5)
-    fig.colorbar(plot0, ax=ax[0], label='mean tke [m2/s2]')
+    #plot0 = ax[0].pcolormesh(time, z_half, mean_qt,cmap=discrete_cmap(8,mpl.cm.bone_r), rasterized=True)
+    plot0 = ax[0].pcolormesh(time, z_half, mean_qt, rasterized=True)
+    fig.colorbar(plot0, ax=ax[0], label='mean qt [g/kg]')
     #plot1 = ax[1].pcolormesh(time, z_half, mean_buo, cmap=discrete_cmap(8,mpl.cm.bone_r),rasterized=True)
     plot1 = ax[1].pcolormesh(time, z_half, mean_buo,rasterized=True)
     fig.colorbar(plot1, ax=ax[1], label='mean buo [cm2/s3]')
-    #plot2 = ax[2].pcolormesh(time, z_half, mean_qt,cmap=discrete_cmap(8,mpl.cm.bone_r), rasterized=True)
-    plot2 = ax[2].pcolormesh(time, z_half, mean_qt, rasterized=True)
-    fig.colorbar(plot2, ax=ax[2], label='mean qt [g/kg]')
+    #plot2 = ax[2].pcolormesh(time, z_half, mean_tke, cmap=discrete_cmap(8,mpl.cm.bone_r), rasterized=True) #, vmin=0, vmax=5)
+    plot2 = ax[2].pcolormesh(time, z_half, mean_tke, rasterized=True) #, vmin=0, vmax=5)
+    fig.colorbar(plot2, ax=ax[2], label='mean tke [m2/s2]')
     #plot3 = ax[3].pcolormesh(time, z_half, mean_qv,cmap=discrete_cmap(8,mpl.cm.bone_r), rasterized=True)
     plot3 = ax[3].pcolormesh(time, z_half, mean_qv, rasterized=True)
     fig.colorbar(plot3, ax=ax[3], label='mean qv [g/kg]')
@@ -328,7 +327,6 @@ def plot_timeseries(plt_data, case):
     plt.savefig(output_folder + case + "_timeseries_01mean.pdf")
     plt.clf()
 
-    x_lab = ["env w", " ", " ", "env qv", "env ql", "env_qr"]
     fig = plt.figure(1)
     ax = []
     for plot_it in range(6):
@@ -337,9 +335,13 @@ def plot_timeseries(plt_data, case):
         ax[plot_it].set_xlabel('t [hrs]')
         ax[plot_it].set_ylabel('z [m]')
 
+    plot0 = ax[0].pcolormesh(time, z_half, env_qt, rasterized=True)
+    fig.colorbar(plot0, ax=ax[0], label='env qt [g/kg]')
+    plot1 = ax[1].pcolormesh(time, z_half, (1.-updr_area)*100, rasterized=True)
+    fig.colorbar(plot1, ax=ax[1], label='env area [%]')
     #plot0 = ax[0].pcolormesh(time, z_half, env_w,cmap=discrete_cmap(8,mpl.cm.bone_r), rasterized=True)
-    plot0 = ax[0].pcolormesh(time, z_half, env_w, rasterized=True)
-    fig.colorbar(plot0, ax=ax[0], label='env w [m/2]')
+    plot2 = ax[2].pcolormesh(time, z_half, env_w, rasterized=True)
+    fig.colorbar(plot2, ax=ax[2], label='env w [m/2]')
     #plot3 = ax[3].pcolormesh(time, z_half, env_qv,cmap=discrete_cmap(8,mpl.cm.bone_r), rasterized=True)
     plot3 = ax[3].pcolormesh(time, z_half, env_qv, rasterized=True)
     fig.colorbar(plot3, ax=ax[3], label='env qv [g/kg]')
@@ -352,7 +354,6 @@ def plot_timeseries(plt_data, case):
     plt.savefig(output_folder + case + "_timeseries_02env.pdf")
     plt.clf()
 
-    x_lab = ["updr buo", "updr area", "updr w", "updr qv", "updr ql", "updr qr"]
     fig = plt.figure(1)
     ax = []
     for plot_it in range(6):
@@ -362,8 +363,8 @@ def plot_timeseries(plt_data, case):
         ax[plot_it].set_ylabel('z [m]')
 
     #plot0 = ax[0].pcolormesh(time, z_half, updr_buo,cmap=discrete_cmap(8,mpl.cm.bone_r), rasterized=True)
-    plot0 = ax[0].pcolormesh(time, z_half, updr_buo, rasterized=True)
-    fig.colorbar(plot0, ax=ax[0], label='updr buo [cm2/s3]')
+    plot0 = ax[0].pcolormesh(time, z_half, updr_qt, rasterized=True)
+    fig.colorbar(plot0, ax=ax[0], label='updr qt [g/kg]')
     #plot1 = ax[1].pcolormesh(time, z_half, updr_area * 100, cmap=discrete_cmap(8,mpl.cm.bone_r), rasterized=True)
     plot1 = ax[1].pcolormesh(time, z_half, updr_area * 100, rasterized=True)
     fig.colorbar(plot1, ax=ax[1], label='updr area [%]')
