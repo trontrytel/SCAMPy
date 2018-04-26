@@ -64,6 +64,8 @@ cdef class EnvironmentThermodynamics:
         double [:] Sqt_qt_dt
         double [:] SH_H_dt
         double [:] SH_qt_dt
+        double [:] SH_dt
+        double [:] Sqt_dt
 
         double max_supersaturation
 

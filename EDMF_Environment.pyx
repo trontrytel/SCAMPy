@@ -236,6 +236,8 @@ cdef class EnvironmentThermodynamics:
             double outer_int_Sqt_H_dt,  inner_int_Sqt_H_dt
             double outer_int_SH_H_dt,   inner_int_SH_H_dt
             double outer_int_Sqt_qt_dt, inner_int_Sqt_qt_dt
+            double outer_int_Sqt_dt,    inner_int_Sqt_dt
+            double outer_int_SH_dt,     inner_int_SH_dt
 
             double h_hat, qt_hat, sd_h, sd_q, corr, mu_h_star, sigma_h_star, qt_var, qr_m
             double sqpi_inv = 1.0/sqrt(pi)
@@ -291,6 +293,8 @@ cdef class EnvironmentThermodynamics:
                 outer_int_Sqt_H_dt  = 0.0 
                 outer_int_SH_H_dt   = 0.0 
                 outer_int_Sqt_qt_dt = 0.0 
+                outer_int_SH_dt     = 0.0 
+                outer_int_Sqt_dt    = 0.0 
 
                 for m_q in xrange(self.quadrature_order):
                     qt_hat    = EnvVar.QT.values[k] + sqrt2 * sd_q * abscissas[m_q]
@@ -310,6 +314,8 @@ cdef class EnvironmentThermodynamics:
                     inner_int_Sqt_H_dt  = 0.0 
                     inner_int_SH_H_dt   = 0.0 
                     inner_int_Sqt_qt_dt = 0.0 
+                    inner_int_SH_dt     = 0.0 
+                    inner_int_Sqt_dt    = 0.0 
 
                     for m_h in xrange(self.quadrature_order):
                         h_hat = sqrt2 * sigma_h_star * abscissas[m_h] + mu_h_star
@@ -346,10 +352,12 @@ cdef class EnvironmentThermodynamics:
                         # products for variance and covariance source terms
                         # TODO - should be divided by dt. To be changed later
                         if in_Env:
-                            inner_int_Sqt_H_dt  += -qr_m  * thl_m  * weights[m_h] * sqpi_inv
-                            inner_int_Sqt_qt_dt += -qr_m  * qt_hat * weights[m_h] * sqpi_inv
-                            inner_int_SH_H_dt   += rain_source_to_thetal(qr_m, self.Ref.p0_half[k], temp_m) * thl_m  * weights[m_h] * sqpi_inv 
-                            inner_int_SH_qt_dt  += rain_source_to_thetal(qr_m, self.Ref.p0_half[k], temp_m) * qt_hat * weights[m_h] * sqpi_inv 
+                            inner_int_Sqt_dt    += -qr_m  * weights[m_h] * sqpi_inv
+                            inner_int_SH_dt     += rain_source_to_thetal(qr_m, self.Ref.p0_half[k], temp_m) * weights[m_h] * sqpi_inv 
+                            inner_int_Sqt_H_dt  += inner_int_Sqt_dt * thl_m
+                            inner_int_Sqt_qt_dt += inner_int_Sqt_dt * qt_hat
+                            inner_int_SH_H_dt   += inner_int_SH_dt  * thl_m
+                            inner_int_SH_qt_dt  += inner_int_SH_dt  * qt_hat
  
                         # cloudy/dry categories for buoyancy in TKE
                         if ql_m  > 0.0:
@@ -374,6 +382,8 @@ cdef class EnvironmentThermodynamics:
                     outer_int_Sqt_qt_dt += inner_int_Sqt_qt_dt * weights[m_q] * sqpi_inv
                     outer_int_SH_H_dt   += inner_int_SH_H_dt   * weights[m_q] * sqpi_inv
                     outer_int_SH_qt_dt  += inner_int_SH_qt_dt  * weights[m_q] * sqpi_inv
+                    outer_int_SH_dt     += inner_int_SH_dt     * weights[m_q] * sqpi_inv
+                    outer_int_Sqt_dt    += inner_int_Sqt_dt    * weights[m_q] * sqpi_inv
 
                 EnvVar.T.values[k]   = outer_int_T
                 EnvVar.QL.values[k]  = outer_int_ql
@@ -399,6 +409,8 @@ cdef class EnvironmentThermodynamics:
                 self.Sqt_qt_dt[k] = outer_int_Sqt_qt_dt
                 self.SH_H_dt[k]   = outer_int_SH_H_dt
                 self.SH_qt_dt[k]  = outer_int_SH_qt_dt
+                self.SH_dt[k]     = outer_int_SH_dt
+                self.Sqt_dt[k]    = outer_int_Sqt_dt
 
         return
 
