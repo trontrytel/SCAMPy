@@ -22,15 +22,20 @@ def sim_data(request):
     # generate namelists and paramlists
     setup = pls.simulation_setup('Bomex')
     # chenge the defaults  
-    #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
+    #setup["namelist"]['time_stepping']['t_max'] = 15000
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
-    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'inverse_w'  # dry, inverse_w, b_w2
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'  # dry, inverse_w, b_w2
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
     setup['namelist']['turbulence']['sgs'] = {}
-    setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = True
+    setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = False
     setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 0.5 * 1e-7
     setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 0.01
     setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-3
+
+    setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 100. #0.1
+
+    #setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'        
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'        
 
     #TODO - use_local_micro=False    - no clouds
     #     - entrainment = bw_2       - oscillations in w
@@ -69,6 +74,15 @@ def test_plot_timeseries_Bomex(sim_data):
     data_to_plot = pls.read_data_srs(sim_data)
 
     pls.plot_timeseries(data_to_plot, "Bomex")
+
+def test_plot_var_covar_Bomex(sim_data):
+    """                                                                        
+    plot Bomaex var covar                                   
+    """                                                                        
+    data_to_plot = pls.read_data_avg(sim_data, 100)                            
+                                                                               
+    pls.plot_var_covar_mean(data_to_plot,   "Bomex_var_covar_mean.pdf")        
+    pls.plot_var_covar_components(data_to_plot,   "Bomex_var_covar_components.pdf")        
 
 def test_plot_Bomex_fig3(sim_data, folder="tests/output/"):
     """

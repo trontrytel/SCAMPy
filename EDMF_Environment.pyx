@@ -164,8 +164,12 @@ cdef class EnvironmentThermodynamics:
         self.Sqt_qt_dt = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
         self.SH_H_dt   = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
         self.SH_qt_dt  = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
+        self.SH_dt     = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
+        self.Sqt_dt    = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
 
         self.max_supersaturation = paramlist['turbulence']['updraft_microphysics']['max_supersaturation']
+
+        self.tmp_stp = 0.0
 
         return
 
@@ -219,6 +223,9 @@ cdef class EnvironmentThermodynamics:
     cdef void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, bint in_Env):
         a, w = np.polynomial.hermite.hermgauss(self.quadrature_order)
 
+        #TODO - do quadratures only when var, and covar >0 Otherwise just calculate based on the mean values
+
+
         cdef:
             Py_ssize_t gw = self.Gr.gw
             Py_ssize_t k, m_q, m_h
@@ -264,12 +271,39 @@ cdef class EnvironmentThermodynamics:
                     EnvVar.HQTcov.values[k] = EnvVar.prescribed_HQTcov
                 else:
                     EnvVar.HQTcov.values[k] = 0.
+        
+        #EnvVar.QTvar.values[gw  - 2 : gw + 10] = 0.
+        #EnvVar.Hvar.values[gw   - 2 : gw + 10] = 0.
+        #EnvVar.HQTcov.values[gw - 2 : gw + 10] = 0.
+ 
+        #print "Env variances in quadratures"
+        #import matplotlib.pyplot as plt                                        
+        #fig = plt.figure()                                                     
+        #plt.subplot(1,3,1) #dupa
+        ##plt.plot(GMV.Hvar.values, self.Gr.z_half)
+        #plt.plot(EnvVar.Hvar.values, self.Gr.z_half)
+        #plt.subplot(1,3,2)                                                     
+        ##plt.plot(GMV.QTvar.values, self.Gr.z_half)                             
+        #plt.plot(EnvVar.QTvar.values, self.Gr.z_half)                             
+        #plt.subplot(1,3,3)                                                     
+        ##plt.plot(GMV.HQTcov.values, self.Gr.z_half)                            
+        #plt.plot(EnvVar.HQTcov.values, self.Gr.z_half)                            
+        #plt.show()                                                             
 
+        self.tmp_stp += 1.0
+        #if self.tmp_stp >= 1*60*60 + 50*60:
+        #    print "============================================================"
         with nogil:
             for k in xrange(gw, self.Gr.nzg-gw):
-                sd_q = sqrt(EnvVar.QTvar.values[k])
-                sd_h = sqrt(EnvVar.Hvar.values[k])
+                #tmp_eps = 1e-18
+                sd_q = sqrt(EnvVar.QTvar.values[k]) #if EnvVar.QTvar.values[k] > tmp_eps else 0.0 
+                sd_h = sqrt(EnvVar.Hvar.values[k])  #if EnvVar.Hvar.values[k] > tmp_eps else 0.0 
                 corr = fmax(fmin(EnvVar.HQTcov.values[k]/fmax(sd_h*sd_q, 1e-13),1.0),-1.0)
+                #with gil:
+                #    print "------------------------------------"
+                #    print "                   sd_q vs EnvVar.QTvar  ", sd_q, " vs ", EnvVar.QTvar.values[k]
+                #    print "                   sd_h vs EnvVar.Hvar   ", sd_h, " vs ", EnvVar.Hvar.values[k]
+                #    print "                   corr vs EnvVarHqtcov  ", corr, " vs ", EnvVar.HQTcov.values[k]
 
                 # limit sd_q to prevent negative qt_hat
                 sd_q_lim = (1e-10 - EnvVar.QT.values[k])/(sqrt2 * abscissas[0])
@@ -316,10 +350,19 @@ cdef class EnvironmentThermodynamics:
                     inner_int_Sqt_qt_dt = 0.0 
                     inner_int_SH_dt     = 0.0 
                     inner_int_Sqt_dt    = 0.0 
-
+ 
                     for m_h in xrange(self.quadrature_order):
                         h_hat = sqrt2 * sigma_h_star * abscissas[m_h] + mu_h_star
 
+                        #with gil:
+                           #if self.tmp_stp == 1*60*60 + 59*60:
+                               #print "(qt_hat, h_hat, m_q, m_h ) = (", qt_hat, " , ", h_hat, " , ", m_q, " , ", m_h, ")"
+                        #   print "h_hat",           h_hat 
+                        #   print "sqrt2",           sqrt2 
+                        #   print "sigma_h_star",    sigma_h_star 
+                        #   print "absicissa[m_h]",  abscissas[m_h] 
+                        #   print "mu_h_star",       mu_h_star
+ 
                         # condensation
                         sa = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], qt_hat, h_hat)
                         temp_m = sa.T
@@ -397,14 +440,14 @@ cdef class EnvironmentThermodynamics:
                 EnvVar.H.values[k]   = outer_int_thl 
 
                 #TODO add tendencies for GMV H, QT and QR due to rain
-
+ 
                 self.qt_dry[k]      = outer_int_qt_dry
                 self.th_dry[k]      = outer_int_T_dry / exner_c(self.Ref.p0_half[k])
                 self.t_cloudy[k]    = outer_int_T_cloudy
                 self.qv_cloudy[k]   = outer_int_qt_cloudy - outer_int_ql
                 self.qt_cloudy[k]   = outer_int_qt_cloudy
                 self.th_cloudy[k]   = outer_int_T_cloudy / exner_c(self.Ref.p0_half[k])
-
+                
                 self.Sqt_H_dt[k]  = outer_int_Sqt_H_dt
                 self.Sqt_qt_dt[k] = outer_int_Sqt_qt_dt
                 self.SH_H_dt[k]   = outer_int_SH_H_dt
@@ -489,5 +532,5 @@ cdef class EnvironmentThermodynamics:
             self.sommeria_deardorff(EnvVar)
         else:
             sys.exit('EDMF_Environment: Unrecognized EnvThermo_scheme. Possible options: sa_mean, sa_quadrature, sommeria_deardorff')
-
+ 
         return

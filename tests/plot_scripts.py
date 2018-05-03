@@ -13,7 +13,8 @@ import pprint as pp
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
- 
+from matplotlib import ticker
+
 def simulation_setup(case):
     """
     generate namelist and paramlist files for scampy
@@ -84,8 +85,16 @@ def read_data_avg(sim_data, n_steps):
     """
     Read in the data from netcdf file into a dictionary that can be used for quicklook plots
     """
-    variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean", "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
-                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "env_qr", "updraft_qr", "updraft_w", "env_w"]
+    variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean",\
+                 "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
+                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql",\
+                 "env_qr", "updraft_qr", "updraft_w", "env_w",\
+                 "Hvar_mean", "QTvar_mean", "HQTcov_mean", "env_Hvar", "env_QTvar", "env_HQTcov",\
+                 "Hvar_dissipation", "QTvar_dissipation", "HQTcov_dissipation",\
+                 "Hvar_entr_gain", "QTvar_entr_gain", "HQTcov_entr_gain",\
+                 "Hvar_detr_loss", "QTvar_detr_loss", "HQTcov_detr_loss",\
+                 "Hvar_shear", "QTvar_shear", "HQTcov_shear",\
+                 "Hvar_rain", "QTvar_rain", "HQTcov_rain"]
 
     # read the data
     data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:])}
@@ -104,19 +113,19 @@ def read_data_avg(sim_data, n_steps):
                 data_to_plot[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
 
     # add averaging over last n_steps timesteps
-    if(n_steps > 0):
-        for var in variables:
-            for time_it in xrange(-2, -1*n_steps-1, -1):
-                if ("buoyancy" in var):
-                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 10000  #cm2/s3
-                elif ("qt" in var or "ql" in var or "qr" in var):
-                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 1000   #g/kg
-                elif ("p0" in var):
-                    data_to_plot[var][1] += np.array(sim_data["reference/" + var][time_it, :]) * 100   #hPa
-                else:
-                    data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
+    #if(n_steps > 0):
+    #    for var in variables:
+    #        for time_it in xrange(-2, -1*n_steps-1, -1):
+    #            if ("buoyancy" in var):
+    #                data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 10000  #cm2/s3
+    #            elif ("qt" in var or "ql" in var or "qr" in var):
+    #                data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :]) * 1000   #g/kg
+    #            elif ("p0" in var):
+    #                data_to_plot[var][1] += np.array(sim_data["reference/" + var][time_it, :]) * 100   #hPa
+    #            else:
+    #                data_to_plot[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
 
-            data_to_plot[var][1] /= n_steps
+    #        data_to_plot[var][1] /= n_steps
 
     return data_to_plot
 
@@ -138,15 +147,15 @@ def read_rad_data_avg(sim_data, n_steps):
                 rad_data[var].append(np.array(sim_data["profiles/" + var][time[it], :]))
 
     # add averaging over last n_steps timesteps
-    if(n_steps > 0):
-        for var in variables:
-            for time_it in xrange(-2, -1*n_steps-1, -1):
-                if ("rad_dTdt" in var):
-                    rad_data[var][1] += np.array(sim_data["profiles/" + var][time_it, :] * 60 * 60 * 24) # K/day
-                else:
-                    rad_data[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
+    #if(n_steps > 0):
+    #    for var in variables:
+    #        for time_it in xrange(-2, -1*n_steps-1, -1):
+    #            if ("rad_dTdt" in var):
+    #                rad_data[var][1] += np.array(sim_data["profiles/" + var][time_it, :] * 60 * 60 * 24) # K/day
+    #            else:
+    #                rad_data[var][1] += np.array(sim_data["profiles/" + var][time_it, :])
 
-            rad_data[var][1] /= n_steps
+    #        rad_data[var][1] /= n_steps
 
     return rad_data
 
@@ -154,8 +163,16 @@ def read_data_srs(sim_data):
     """
     Read in the data from netcdf file into a dictionary that can be used for quicklook timeseries plots
     """
-    variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean", "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
-                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "env_qr", "updraft_qr", "updraft_w", "env_w"]
+    variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean",\
+                 "buoyancy_mean", "u_mean", "v_mean", "tke_mean",\
+                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql",\
+                 "env_qr", "updraft_qr", "updraft_w", "env_w",\
+                 "Hvar_mean", "QTvar_mean", "HQTcov_mean", "env_Hvar", "env_QTvar", "env_HQTcov",\
+                 "Hvar_dissipation", "QTvar_dissipation", "HQTcov_dissipation",\
+                 "Hvar_entr_gain", "QTvar_entr_gain", "HQTcov_entr_gain",\
+                 "Hvar_detr_loss", "QTvar_detr_loss", "HQTcov_detr_loss",\
+                 "Hvar_shear", "QTvar_shear", "HQTcov_shear",\
+                 "Hvar_rain", "QTvar_rain", "HQTcov_rain"]
 
     # read the data
     data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:]), "t" : np.array(sim_data["profiles/t"][:])}
@@ -260,6 +277,103 @@ def plot_drafts(data, title, folder="tests/output/"):
     #plots[0].set_xlim([1, 10])
     #plots[5].set_xlim([-50, 350])
     #plots[5].set_xlim([-0.1, 0.5])
+    plt.savefig(folder + title)
+    plt.clf()
+
+def plot_var_covar_mean(data, title, folder="tests/output/"):
+    """
+    Plots variance and covariance profiles from Scampy
+    """
+    # customize defaults
+    mpl.rc('lines', linewidth=3, markersize=8)
+    plt.figure(1, figsize=(18,14))
+    mpl.rc('lines', linewidth=4, markersize=10)
+    mpl.rcParams.update({'font.size': 18})
+    plots = []
+
+    plot_Hvar_m   = ["Hvar_mean", "env_Hvar"]
+    plot_QTvar_m  = ["QTvar_mean",  "env_QTvar"]
+    plot_HQTcov_m = ["HQTcov_mean", "env_HQTcov"]
+    color_m  = ['black', 'red']
+    color_m0 = ['gray', 'orange']
+    x_lab = ["Hvar", "QTvar", "HQTcov"]
+
+    for plot_it in range(3):
+        plots.append(plt.subplot(1,3,plot_it+1))
+                               #(rows, columns, number)
+        plots[plot_it].set_xlabel(x_lab[plot_it])
+        plots[plot_it].set_ylabel('z [m]')
+        plots[plot_it].set_ylim([0, data["z_half"][-1] + (data["z_half"][1] - data["z_half"][0]) * 0.5])
+        plots[plot_it].grid(True)
+        plots[plot_it].xaxis.set_major_locator(ticker.MaxNLocator(2))
+
+      
+    for var in range(2):
+        plots[0].plot(data[plot_Hvar_m[var]][0],   data["z_half"], ".-", label=plot_Hvar_m[var],  c=color_m0[var])
+        plots[0].plot(data[plot_Hvar_m[var]][1],   data["z_half"], ".-", label=plot_Hvar_m[var],  c=color_m[var])
+        plots[1].plot(data[plot_QTvar_m[var]][0],  data["z_half"], ".-", label=plot_QTvar_m[var], c=color_m0[var])
+        plots[1].plot(data[plot_QTvar_m[var]][1],  data["z_half"], ".-", label=plot_QTvar_m[var], c=color_m[var])
+        plots[2].plot(data[plot_HQTcov_m[var]][0], data["z_half"], ".-", label=plot_HQTcov_m[var],c=color_m0[var])
+        plots[2].plot(data[plot_HQTcov_m[var]][1], data["z_half"], ".-", label=plot_HQTcov_m[var],c=color_m[var])
+
+    #plots[0].set_xlim([0, 1e-3])
+    #plots[1].set_xlim([0, 1e-7])
+    #plots[2].set_xlim([0, 1e-5])
+ 
+    plots[0].axvline(0.01,       c='green', label='assumed')
+    plots[1].axvline(0.5 * 1e-7, c='green', label='assumed')
+    plots[2].axvline(-1e-3,      c='green', label='assumed')
+    plots[0].axhline(1500, c='green')
+    plots[0].axhline(500,  c='green')
+    plots[1].axhline(1500, c='green')
+    plots[2].axhline(1500, c='green')
+    plots[2].axhline(200,  c='green')
+ 
+    plots[0].legend(loc='lower right')
+    plt.tight_layout()
+    plt.savefig(folder + title)
+    plt.clf()
+
+def plot_var_covar_components(data, title, folder="tests/output/"):
+    """
+    Plots variance and covariance profiles from Scampy
+    """
+    plots = []
+    plot_Hvar_c   = ["Hvar_dissipation", "Hvar_entr_gain", "Hvar_detr_loss", "Hvar_shear", "Hvar_rain"]
+    plot_QTvar_c  = ["QTvar_dissipation", "QTvar_entr_gain", "QTvar_detr_loss", "QTvar_shear", "QTvar_rain"]  
+    plot_HQTcov_c = ["HQTcov_dissipation","HQTcov_entr_gain", "HQTcov_detr_loss", "HQTcov_shear", "HQTcov_rain"]
+
+    color_c = ['green', 'pink', 'purple', 'orange', 'blue']
+    x_lab = ["Hvar", "QTvar", "HQTcov"]
+
+    # customize defaults
+    fig = plt.figure(1, figsize=(18,14))
+    mpl.rc('lines', linewidth=6, markersize=12)
+    mpl.rcParams.update({'font.size': 20})
+
+    for plot_it in range(3):
+        plots.append(plt.subplot(1,3,plot_it+1))
+                               #(rows, columns, number)
+        plots[plot_it].set_xlabel(x_lab[plot_it])
+        plots[plot_it].set_ylabel('z [m]')
+        plots[plot_it].set_ylim([0, data["z_half"][-1] + (data["z_half"][1] - data["z_half"][0]) * 0.5])
+        plots[plot_it].grid(True)
+        plots[plot_it].xaxis.set_major_locator(ticker.MaxNLocator(2))
+
+    for var in range(5):
+        plots[0].plot(data[plot_Hvar_c[var]][1],   data["z_half"], ".-", label=plot_Hvar_c[var],  c=color_c[var])
+        plots[1].plot(data[plot_QTvar_c[var]][1],  data["z_half"], ".-", label=plot_QTvar_c[var], c=color_c[var])
+        plots[2].plot(data[plot_HQTcov_c[var]][1], data["z_half"], ".-", label=plot_HQTcov_c[var],c=color_c[var])
+ 
+    plots[0].axhline(1500, c='gray')
+    plots[0].axhline(500,  c='gray')
+    plots[1].axhline(1500, c='gray')
+    plots[2].axhline(1500, c='gray')
+    plots[2].axhline(200,  c='gray')
+ 
+    plots[0].legend(loc='lower right')
+    plt.tight_layout()
+
     plt.savefig(folder + title)
     plt.clf()
 

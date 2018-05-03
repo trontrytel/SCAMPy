@@ -73,4 +73,7 @@ cdef class EnvironmentThermodynamics:
         void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, bint in_Env)#, TimeStepping TS)
         void sommeria_deardorff(self, EnvironmentVariables EnvVar)
 
+        double tmp_stp
+
+
     cpdef satadjust(self, EnvironmentVariables EnvVar, bint in_Env)#, TimeStepping TS)

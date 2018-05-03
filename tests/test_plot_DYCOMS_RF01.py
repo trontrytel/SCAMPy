@@ -27,7 +27,7 @@ def sim_data(request):
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
     setup['namelist']['turbulence']['sgs'] = {}
-    setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = True
+    setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = False
     setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 0.5 * 1e-7
     setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 0.01
     setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-3
@@ -36,7 +36,7 @@ def sim_data(request):
     #TODO sa_quadrature + similarity_diff + calc covar doesnt work -> self.wstar in Turbulence.pyx line 134 is zero (division by zero)
                                                                                                #best     # default
     #setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['surface_area'] = 0.25                       # 0.1 
-    setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 0.1     #0.1      # 0.1
+    setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 100. #0.1     #0.1      # 0.1
     #setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['tke_ed_coeff'] = 0.05               #0.075    # 0.5
     #setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['tke_diss_coeff'] = 20.             #20       # 0.01
     #setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['pressure_drag_coeff'] = 0.375      #0.375    # 0.375
@@ -69,6 +69,15 @@ def test_plot_DYCOMS_RF01(sim_data):
 
     pls.plot_mean(data_to_plot,   "DYCOMS_RF01_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "DYCOMS_RF01_quicklook_drafts.pdf")
+
+def test_plot_var_covar_DYCOMS_RF01(sim_data):
+    """
+    plot DYCOMS_RF01 quicklook profiles
+    """
+    data_to_plot = pls.read_data_avg(sim_data, 100)
+
+    pls.plot_var_covar_mean(data_to_plot,   "DYCOMS_RF01_var_covar_mean.pdf")
+    pls.plot_var_covar_components(data_to_plot,   "DYCOMS_RF01_var_covar_components.pdf")
 
 def test_plot_timeseries_DYCOMS(sim_data):
     """

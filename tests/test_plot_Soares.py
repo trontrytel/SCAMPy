@@ -24,7 +24,7 @@ def sim_data(request):
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
     setup['namelist']['turbulence']['sgs'] = {}
-    setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = True
+    setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = False
     setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 0.5 * 1e-7
     setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 0.01
     setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-3
@@ -64,3 +64,11 @@ def test_plot_timeseries_Soares(sim_data):
 
     pls.plot_timeseries(data_to_plot, "Soares")
 
+def test_plot_var_covar_Soares(sim_data):                                 
+    """                                                                        
+    plot Soares var covar profiles                                        
+    """                                                                        
+    data_to_plot = pls.read_data_avg(sim_data, 100)                            
+
+    pls.plot_var_covar_mean(data_to_plot,       "Soares_var_covar_mean.pdf")                                                                                      
+    pls.plot_var_covar_components(data_to_plot, "Soares_var_covar_comp.pdf")        

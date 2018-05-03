@@ -22,17 +22,21 @@ def sim_data(request):
     setup = pls.simulation_setup('Rico')
     # chenge the defaults  
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
+    #setup["namelist"]['time_stepping']['t_max'] = 10*60. #1*60*60 #+ 60*60
+    #setup["namelist"]['time_stepping']['dt'] = 1
+    #setup["namelist"]['stats_io']['frequency'] = 5
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = False
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
     setup['namelist']['turbulence']['sgs'] = {}
-    setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = True
+    setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = False
     setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 0.5 * 1e-7
     setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 0.01
     setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-3
-    setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 0.01 #0.1
+    setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 100. #0.1
 
-    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'        
+    #setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'        
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'        
 
     #print " "
     #print "namelist"
@@ -56,10 +60,19 @@ def test_plot_Rico(sim_data):
     """
     plot Rico profiles
     """
-    data_to_plot = pls.read_data_avg(sim_data, 100)
+    data_to_plot = pls.read_data_avg(sim_data, 10)
 
     pls.plot_mean(data_to_plot,   "Rico_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "Rico_quicklook_drafts.pdf")
+
+def test_plot_var_covar_Rico(sim_data):
+    """
+    plot Rico variance and covariance of H and QT profiles
+    """
+    data_to_plot = pls.read_data_avg(sim_data, 10)
+
+    pls.plot_var_covar_mean(data_to_plot,   "Rico_var_covar_mean.pdf")
+    pls.plot_var_covar_components(data_to_plot,   "Rico_var_covar_components.pdf")
 
 def test_plot_timeseries_Rico(sim_data):
     """
