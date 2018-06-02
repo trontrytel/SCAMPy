@@ -157,7 +157,7 @@ cdef class EnvironmentThermodynamics:
         elif EnvVar.H.name == 'thetal':
             self.t_to_prog_fp = t_to_thetali_c
             self.prog_to_t_fp = eos_first_guess_thetal
-        
+
         self.qt_dry = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
         self.th_dry = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
         self.t_cloudy = np.zeros(self.Gr.nzg, dtype=np.double, order ='c')
@@ -172,9 +172,12 @@ cdef class EnvironmentThermodynamics:
         self.SH_dt     = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
         self.Sqt_dt    = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
 
-        self.max_supersaturation = paramlist['turbulence']['updraft_microphysics']['max_supersaturation']
+        self.H     = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
+        self.qt    = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
 
-        self.tmp_stp = 0.0
+        self.H_H    = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
+
+        self.max_supersaturation = paramlist['turbulence']['updraft_microphysics']['max_supersaturation']
 
         return
 
@@ -210,10 +213,13 @@ cdef class EnvironmentThermodynamics:
                         tmp_qr = acnv_instant(EnvVar.QL.values[k], EnvVar.QT.values[k],\
                                               self.max_supersaturation,\
                                               EnvVar.T.values[k], self.Ref.p0_half[k])
- 
+                        #source term for H must be before source term for QR 
+                        EnvVar.H.values[k]  += rain_source_to_thetal(self.Ref.p0_half[k], EnvVar.T.values[k],\
+                                                 EnvVar.QT.values[k], EnvVar.QL.values[k], 0.0, EnvVar.QR.values[k])
+                                                                                          #TODO - assumes no ice
                         EnvVar.QR.values[k] += tmp_qr
                         EnvVar.QT.values[k] -= tmp_qr
-                        EnvVar.H.values[k]  += rain_source_to_thetal(tmp_qr, self.Ref.p0_half[k], EnvVar.T.values[k])
+                        EnvVar.QL.values[k] -= tmp_qr
  
                     self.qt_cloudy[k] = EnvVar.QT.values[k]
                     self.qv_cloudy[k] = EnvVar.QT.values[k] - EnvVar.QL.values[k]
@@ -224,18 +230,23 @@ cdef class EnvironmentThermodynamics:
 
 
         return
- 
+
     cdef void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, bint in_Env):
         a, w = np.polynomial.hermite.hermgauss(self.quadrature_order)
 
         #TODO - do quadratures only when var, and covar >0 Otherwise just calculate based on the mean values
-
 
         cdef:
             Py_ssize_t gw = self.Gr.gw
             Py_ssize_t k, m_q, m_h
             double [:] abscissas = a
             double [:] weights = w
+
+            inner_env = { 'ql' : 0.0, 'T': 0.0, 'thl':0.0, 'alpha':0.0, 'cf':0.0, 'qr':0.0}
+            outer_env = { 'ql' : 0.0, 'T': 0.0, 'thl':0.0, 'alpha':0.0, 'cf':0.0, 'qr':0.0}
+            inner_src = { 'tmp_a' : 0.0, 'tmp_b': 1.1}
+            outer_src = { 'tmp_a' : 0.0, 'tmp_b': 1.1}
+
 
             double inner_int_ql, inner_int_T, inner_int_thl, inner_int_alpha, inner_int_cf, inner_int_qr
             double outer_int_ql, outer_int_T, outer_int_thl, outer_int_alpha, outer_int_cf, outer_int_qr
@@ -251,6 +262,11 @@ cdef class EnvironmentThermodynamics:
             double outer_int_Sqt_dt,    inner_int_Sqt_dt
             double outer_int_SH_dt,     inner_int_SH_dt
 
+            double outer_int_H, inner_int_H
+            double outer_int_qt, inner_int_qt
+
+            double outer_int_H_H, inner_int_H_H
+
             double h_hat, qt_hat, sd_h, sd_q, corr, mu_h_star, sigma_h_star, qt_var, qr_m
             double sqpi_inv = 1.0/sqrt(pi)
             double temp_m, alpha_m, qv_m, ql_m, qi_m, thetal_m
@@ -262,203 +278,242 @@ cdef class EnvironmentThermodynamics:
             sys.exit('EDMF_Environment: rain source terms are only defined for thetal as model variable')
 
         if EnvVar.use_prescribed_scalar_var:
-
             for k in xrange(gw, self.Gr.nzg-gw):
                 if k * self.Gr.dz <= 1500:
                     EnvVar.QTvar.values[k]  = EnvVar.prescribed_QTvar
-                else: 
-                    EnvVar.QTvar.values[k]  = 0
-                if k * self.Gr.dz <= 1500 and k * self.Gr.dz > 500: 
+                else:
+                    EnvVar.QTvar.values[k]  = 0.
+                if k * self.Gr.dz <= 1500 and k * self.Gr.dz > 500:
                     EnvVar.Hvar.values[k]   = EnvVar.prescribed_Hvar
                 else:
                     EnvVar.Hvar.values[k]   = 0.
-                if k * self.Gr.dz <= 1500 and k * self.Gr.dz > 200: 
+                if k * self.Gr.dz <= 1500 and k * self.Gr.dz > 200:
                     EnvVar.HQTcov.values[k] = EnvVar.prescribed_HQTcov
                 else:
                     EnvVar.HQTcov.values[k] = 0.
-        
-        #EnvVar.QTvar.values[gw  - 2 : gw + 10] = 0.
-        #EnvVar.Hvar.values[gw   - 2 : gw + 10] = 0.
-        #EnvVar.HQTcov.values[gw - 2 : gw + 10] = 0.
+
+        #with nogil:
+
+        print inner_dict['tmp_a']
+
+        for k in xrange(gw, self.Gr.nzg-gw):
+           if EnvVar.QTvar.values[k] != 0.0 and EnvVar.Hvar.values[k] != 0.0 and EnvVar.HQTcov.values[k] != 0.0:
+               sd_q = sqrt(EnvVar.QTvar.values[k])
+               sd_h = sqrt(EnvVar.Hvar.values[k])
+               corr = fmax(fmin(EnvVar.HQTcov.values[k]/fmax(sd_h*sd_q, 1e-13),1.0),-1.0)
+
+               # limit sd_q to prevent negative qt_hat
+               sd_q_lim = (1e-10 - EnvVar.QT.values[k])/(sqrt2 * abscissas[0])
+               sd_q = fmin(sd_q, sd_q_lim)
+               qt_var = sd_q * sd_q
+               sigma_h_star = sqrt(fmax(1.0-corr*corr,0.0)) * sd_h
+
+               # TODO It would be great to use a python dictionary here, but I dont know how to do in inside nogil.
+               # For now I don't have any idea how to convert those into a nice loop.
+               outer_int_alpha = 0.0
+               outer_int_T = 0.0
+               outer_int_thl = 0.0
+               outer_int_ql = 0.0
+               outer_int_qr = 0.0
+               outer_int_cf = 0.0
+               outer_int_qt_cloudy = 0.0
+               outer_int_T_cloudy = 0.0
+               outer_int_qt_dry = 0.0
+               outer_int_T_dry = 0.0
+
+               outer_int_SH_qt_dt  = 0.0
+               outer_int_Sqt_H_dt  = 0.0
+               outer_int_SH_H_dt   = 0.0
+               outer_int_Sqt_qt_dt = 0.0
+               outer_int_SH_dt     = 0.0
+               outer_int_Sqt_dt    = 0.0
+
+               outer_int_H_H = 0.0
+
+               for m_q in xrange(self.quadrature_order):
+                   qt_hat    = EnvVar.QT.values[k] + sqrt2 * sd_q * abscissas[m_q]
+                   mu_h_star = EnvVar.H.values[k]  + sqrt2 * corr * sd_h * abscissas[m_q]
+
+                   inner_int_alpha = 0.0
+                   inner_int_T = 0.0
+                   inner_int_thl = 0.0
+                   inner_int_ql = 0.0
+                   inner_int_qr = 0.0
+                   inner_int_cf = 0.0
+                   inner_int_qt_cloudy = 0.0
+                   inner_int_T_cloudy = 0.0
+                   inner_int_qt_dry = 0.0
+                   inner_int_T_dry = 0.0
+                   inner_int_SH_qt_dt  = 0.0
+                   inner_int_Sqt_H_dt  = 0.0
+                   inner_int_SH_H_dt   = 0.0
+                   inner_int_Sqt_qt_dt = 0.0
+                   inner_int_SH_dt     = 0.0
+                   inner_int_Sqt_dt    = 0.0
+
+                   inner_int_H_H = 0.0
+
+                   for m_h in xrange(self.quadrature_order):
+                       h_hat = sqrt2 * sigma_h_star * abscissas[m_h] + mu_h_star
+
+                       # condensation
+                       sa = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], qt_hat, h_hat)
+                       temp_m = sa.T
+                       ql_m = sa.ql
+                       # TODO before was:
+                       #thl_m = temp_m / exner_c(self.Ref.p0_half[k])
+                       thl_m  = t_to_thetali_c(self.Ref.p0_half[k], temp_m, qt_hat, ql_m, 0.0)
+                       # TODO before was:
+                       #qv_m  = EnvVar.QT.values[k] - ql_m
+                       qv_m   = qt_hat - ql_m
+                       alpha_m = alpha_c(self.Ref.p0_half[k], temp_m, qt_hat, qv_m)
+
+                       # autoconversion
+                       if in_Env:
+                           qr_m = acnv_instant(ql_m, ql_m + qv_m, self.max_supersaturation, temp_m, self.Ref.p0_half[k])
+                           thl_rain_src = rain_source_to_thetal(self.Ref.p0_half[k], temp_m, qt_hat, ql_m, 0.0, qr_m)
+
+                           #TODO - add rain in the environment
+                           qt_hat -= qr_m
+                           ql_m   -= qr_m
+                           thl_m  += thl_rain_src
+                       else:
+                           qr_m = 0.0
+
+                       # environmental variables
+                       inner_int_ql    += ql_m    * weights[m_h] * sqpi_inv
+                       inner_int_qr    += qr_m    * weights[m_h] * sqpi_inv
+                       inner_int_T     += temp_m  * weights[m_h] * sqpi_inv
+                       inner_int_thl   += thl_m   * weights[m_h] * sqpi_inv
+                       inner_int_alpha += alpha_m * weights[m_h] * sqpi_inv
+
+                       # products for variance and covariance source terms
+                       # TODO - should be divided by dt. To be changed later
+                       if in_Env:
+                           inner_int_Sqt_dt    += -qr_m        * weights[m_h] * sqpi_inv
+                           inner_int_SH_dt     += thl_rain_src * weights[m_h] * sqpi_inv
+
+                           inner_int_Sqt_H_dt  += -qr_m        * thl_m  * weights[m_h] * sqpi_inv
+                           inner_int_Sqt_qt_dt += -qr_m        * qt_hat * weights[m_h] * sqpi_inv
+                           inner_int_SH_H_dt   += thl_rain_src * thl_m  * weights[m_h] * sqpi_inv
+                           inner_int_SH_qt_dt  += thl_rain_src * qt_hat * weights[m_h] * sqpi_inv
+
+                           inner_int_H_H += thl_m * thl_m * weights[m_h] * sqpi_inv
  
-        #print "Env variances in quadratures"
-        #import matplotlib.pyplot as plt                                        
-        #fig = plt.figure()                                                     
-        #plt.subplot(1,3,1) #dupa
-        ##plt.plot(GMV.Hvar.values, self.Gr.z_half)
-        #plt.plot(EnvVar.Hvar.values, self.Gr.z_half)
-        #plt.subplot(1,3,2)                                                     
-        ##plt.plot(GMV.QTvar.values, self.Gr.z_half)                             
-        #plt.plot(EnvVar.QTvar.values, self.Gr.z_half)                             
-        #plt.subplot(1,3,3)                                                     
-        ##plt.plot(GMV.HQTcov.values, self.Gr.z_half)                            
-        #plt.plot(EnvVar.HQTcov.values, self.Gr.z_half)                            
-        #plt.show()                                                             
+                       # cloudy/dry categories for buoyancy in TKE
+                       if ql_m  > 0.0:
+                           inner_int_cf         +=          weights[m_h] * sqpi_inv
+                           inner_int_qt_cloudy  += qt_hat * weights[m_h] * sqpi_inv
+                           inner_int_T_cloudy   += temp_m * weights[m_h] * sqpi_inv
+                       else:
+                           inner_int_qt_dry += qt_hat * weights[m_h] * sqpi_inv
+                           inner_int_T_dry  += temp_m * weights[m_h] * sqpi_inv
 
-        self.tmp_stp += 1.0
-        #if self.tmp_stp >= 1*60*60 + 50*60:
-        #    print "============================================================"
-        with nogil:
-            for k in xrange(gw, self.Gr.nzg-gw):
-                #tmp_eps = 1e-18
-                sd_q = sqrt(EnvVar.QTvar.values[k]) #if EnvVar.QTvar.values[k] > tmp_eps else 0.0 
-                sd_h = sqrt(EnvVar.Hvar.values[k])  #if EnvVar.Hvar.values[k] > tmp_eps else 0.0 
-                corr = fmax(fmin(EnvVar.HQTcov.values[k]/fmax(sd_h*sd_q, 1e-13),1.0),-1.0)
-                #with gil:
-                #    print "------------------------------------"
-                #    print "                   sd_q vs EnvVar.QTvar  ", sd_q, " vs ", EnvVar.QTvar.values[k]
-                #    print "                   sd_h vs EnvVar.Hvar   ", sd_h, " vs ", EnvVar.Hvar.values[k]
-                #    print "                   corr vs EnvVarHqtcov  ", corr, " vs ", EnvVar.HQTcov.values[k]
+                   outer_int_ql        += inner_int_ql        * weights[m_q] * sqpi_inv
+                   outer_int_qr        += inner_int_qr        * weights[m_q] * sqpi_inv
+                   outer_int_T         += inner_int_T         * weights[m_q] * sqpi_inv
+                   outer_int_thl       += inner_int_thl       * weights[m_q] * sqpi_inv
+                   outer_int_alpha     += inner_int_alpha     * weights[m_q] * sqpi_inv
+                   outer_int_cf        += inner_int_cf        * weights[m_q] * sqpi_inv
+                   outer_int_qt_cloudy += inner_int_qt_cloudy * weights[m_q] * sqpi_inv
+                   outer_int_qt_dry    += inner_int_qt_dry    * weights[m_q] * sqpi_inv
+                   outer_int_T_cloudy  += inner_int_T_cloudy  * weights[m_q] * sqpi_inv
+                   outer_int_T_dry     += inner_int_T_dry     * weights[m_q] * sqpi_inv
+                   outer_int_Sqt_H_dt  += inner_int_Sqt_H_dt  * weights[m_q] * sqpi_inv
+                   outer_int_Sqt_qt_dt += inner_int_Sqt_qt_dt * weights[m_q] * sqpi_inv
+                   outer_int_SH_H_dt   += inner_int_SH_H_dt   * weights[m_q] * sqpi_inv
+                   outer_int_SH_qt_dt  += inner_int_SH_qt_dt  * weights[m_q] * sqpi_inv
+                   outer_int_SH_dt     += inner_int_SH_dt     * weights[m_q] * sqpi_inv
+                   outer_int_Sqt_dt    += inner_int_Sqt_dt    * weights[m_q] * sqpi_inv
 
-                # limit sd_q to prevent negative qt_hat
-                sd_q_lim = (1e-10 - EnvVar.QT.values[k])/(sqrt2 * abscissas[0])
-                sd_q = fmin(sd_q, sd_q_lim)
-                qt_var = sd_q * sd_q
-                sigma_h_star = sqrt(fmax(1.0-corr*corr,0.0)) * sd_h
+                   outer_int_H_H += inner_int_H_H * weights[m_q] * sqpi_inv
 
-                # TODO It would be great to use a python dictionary here, but I dont know how to do in inside nogil.
-                # For now I don't have any idea how to convert those into a nice loop.
-                outer_int_alpha = 0.0
-                outer_int_T = 0.0
-                outer_int_thl = 0.0
-                outer_int_ql = 0.0
-                outer_int_qr = 0.0
-                outer_int_cf = 0.0
-                outer_int_qt_cloudy = 0.0
-                outer_int_T_cloudy = 0.0
-                outer_int_qt_dry = 0.0
-                outer_int_T_dry = 0.0
-                outer_int_SH_qt_dt  = 0.0 
-                outer_int_Sqt_H_dt  = 0.0 
-                outer_int_SH_H_dt   = 0.0 
-                outer_int_Sqt_qt_dt = 0.0 
-                outer_int_SH_dt     = 0.0 
-                outer_int_Sqt_dt    = 0.0 
+               EnvVar.T.values[k]   = outer_int_T
+               EnvVar.QL.values[k]  = outer_int_ql
+               #TODO before was
+               #EnvVar.THL.values[k] = t_to_thetali_c(self.Ref.p0_half[k], EnvVar.T.values[k], EnvVar.QT.values[k], EnvVar.QL.values[k], 0.0)
+               EnvVar.THL.values[k] = outer_int_thl
+               EnvVar.B.values[k]   = g * (outer_int_alpha - self.Ref.alpha0_half[k]) / self.Ref.alpha0_half[k]
+               EnvVar.CF.values[k]  = outer_int_cf
+               EnvVar.QR.values[k]  = outer_int_qr
+               #EnvVar.QR.values[k] += outer_int_qr
+               EnvVar.QT.values[k]  = outer_int_qt_cloudy + outer_int_qt_dry
+               EnvVar.H.values[k]   = outer_int_thl
 
-                for m_q in xrange(self.quadrature_order):
-                    qt_hat    = EnvVar.QT.values[k] + sqrt2 * sd_q * abscissas[m_q]
-                    mu_h_star = EnvVar.H.values[k]  + sqrt2 * corr * sd_h * abscissas[m_q]
+               #TODO add tendencies for GMV H, QT and QR due to rain
 
-                    inner_int_alpha = 0.0
-                    inner_int_T = 0.0
-                    inner_int_thl = 0.0
-                    inner_int_ql = 0.0
-                    inner_int_qr = 0.0
-                    inner_int_cf = 0.0
-                    inner_int_qt_cloudy = 0.0
-                    inner_int_T_cloudy = 0.0
-                    inner_int_qt_dry = 0.0
-                    inner_int_T_dry = 0.0
-                    inner_int_SH_qt_dt  = 0.0 
-                    inner_int_Sqt_H_dt  = 0.0 
-                    inner_int_SH_H_dt   = 0.0 
-                    inner_int_Sqt_qt_dt = 0.0 
-                    inner_int_SH_dt     = 0.0 
-                    inner_int_Sqt_dt    = 0.0 
- 
-                    for m_h in xrange(self.quadrature_order):
-                        h_hat = sqrt2 * sigma_h_star * abscissas[m_h] + mu_h_star
+               self.qt_dry[k]      = outer_int_qt_dry
+               self.th_dry[k]      = outer_int_T_dry / exner_c(self.Ref.p0_half[k])
+               self.t_cloudy[k]    = outer_int_T_cloudy
+               self.qv_cloudy[k]   = outer_int_qt_cloudy - outer_int_ql
+               self.qt_cloudy[k]   = outer_int_qt_cloudy
+               self.th_cloudy[k]   = outer_int_T_cloudy / exner_c(self.Ref.p0_half[k])
 
-                        #with gil:
-                           #if self.tmp_stp == 1*60*60 + 59*60:
-                               #print "(qt_hat, h_hat, m_q, m_h ) = (", qt_hat, " , ", h_hat, " , ", m_q, " , ", m_h, ")"
-                        #   print "h_hat",           h_hat 
-                        #   print "sqrt2",           sqrt2 
-                        #   print "sigma_h_star",    sigma_h_star 
-                        #   print "absicissa[m_h]",  abscissas[m_h] 
-                        #   print "mu_h_star",       mu_h_star
- 
-                        # condensation
-                        sa = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], qt_hat, h_hat)
-                        temp_m = sa.T
-                        ql_m = sa.ql
-                        # TODO before was: 
-                        #thl_m = temp_m / exner_c(self.Ref.p0_half[k])
-                        thl_m  = t_to_thetali_c(self.Ref.p0_half[k], temp_m, qt_hat, ql_m, 0.0)
-                        # TODO before was: 
-                        #qv_m  = EnvVar.QT.values[k] - ql_m
-                        qv_m   = qt_hat - ql_m 
-                        alpha_m = alpha_c(self.Ref.p0_half[k], temp_m, qt_hat, qv_m)
+               self.Sqt_H_dt[k]  = outer_int_Sqt_H_dt
+               self.Sqt_qt_dt[k] = outer_int_Sqt_qt_dt
+               self.SH_H_dt[k]   = outer_int_SH_H_dt
+               self.SH_qt_dt[k]  = outer_int_SH_qt_dt
+               self.SH_dt[k]     = outer_int_SH_dt
+               self.Sqt_dt[k]    = outer_int_Sqt_dt
 
-                        # autoconversion
-                        if in_Env:
-                            qr_m = acnv_instant(ql_m, ql_m + qv_m, self.max_supersaturation, temp_m, self.Ref.p0_half[k])
-                            #TODO - add rain in the environment
-                            qt_hat -= qr_m
-                            ql_m -= qr_m
-                            thl_m += rain_source_to_thetal(qr_m, self.Ref.p0_half[k], temp_m) 
-                        else:
-                            qr_m = 0.0
+               self.H[k] = outer_int_thl
+               self.qt[k] = outer_int_qt_cloudy + outer_int_qt_dry
 
-                        # environmental variables
-                        inner_int_ql    += ql_m    * weights[m_h] * sqpi_inv
-                        inner_int_qr    += qr_m    * weights[m_h] * sqpi_inv
-                        inner_int_T     += temp_m  * weights[m_h] * sqpi_inv
-                        inner_int_thl   += thl_m   * weights[m_h] * sqpi_inv
-                        inner_int_alpha += alpha_m * weights[m_h] * sqpi_inv
+               self.H_H[k] = outer_int_H_H
 
-                        # products for variance and covariance source terms
-                        # TODO - should be divided by dt. To be changed later
-                        if in_Env:
-                            inner_int_Sqt_dt    += -qr_m  * weights[m_h] * sqpi_inv
-                            inner_int_SH_dt     += rain_source_to_thetal(qr_m, self.Ref.p0_half[k], temp_m) * weights[m_h] * sqpi_inv 
-                            inner_int_Sqt_H_dt  += inner_int_Sqt_dt * thl_m
-                            inner_int_Sqt_qt_dt += inner_int_Sqt_dt * qt_hat
-                            inner_int_SH_H_dt   += inner_int_SH_dt  * thl_m
-                            inner_int_SH_qt_dt  += inner_int_SH_dt  * qt_hat
- 
-                        # cloudy/dry categories for buoyancy in TKE
-                        if ql_m  > 0.0:
-                            inner_int_cf         +=          weights[m_h] * sqpi_inv
-                            inner_int_qt_cloudy  += qt_hat * weights[m_h] * sqpi_inv
-                            inner_int_T_cloudy   += temp_m * weights[m_h] * sqpi_inv
-                        else:
-                            inner_int_qt_dry += qt_hat * weights[m_h] * sqpi_inv
-                            inner_int_T_dry  += temp_m * weights[m_h] * sqpi_inv
+           else:
+               qt_hat = EnvVar.QT.values[k]
+               h_hat = EnvVar.H.values[k]
+               # condensation
+               sa = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], qt_hat, h_hat)
+               temp_m  = sa.T
+               ql_m    = sa.ql
+               thl_m   = t_to_thetali_c(self.Ref.p0_half[k], temp_m, qt_hat, ql_m, 0.0)
+               qv_m    = qt_hat - ql_m
+               alpha_m = alpha_c(self.Ref.p0_half[k], temp_m, qt_hat, qv_m)
 
-                    outer_int_ql        += inner_int_ql        * weights[m_q] * sqpi_inv
-                    outer_int_qr        += inner_int_qr        * weights[m_q] * sqpi_inv
-                    outer_int_T         += inner_int_T         * weights[m_q] * sqpi_inv
-                    outer_int_thl       += inner_int_thl       * weights[m_q] * sqpi_inv
-                    outer_int_alpha     += inner_int_alpha     * weights[m_q] * sqpi_inv
-                    outer_int_cf        += inner_int_cf        * weights[m_q] * sqpi_inv
-                    outer_int_qt_cloudy += inner_int_qt_cloudy * weights[m_q] * sqpi_inv
-                    outer_int_qt_dry    += inner_int_qt_dry    * weights[m_q] * sqpi_inv
-                    outer_int_T_cloudy  += inner_int_T_cloudy  * weights[m_q] * sqpi_inv
-                    outer_int_T_dry     += inner_int_T_dry     * weights[m_q] * sqpi_inv
-                    outer_int_Sqt_H_dt  += inner_int_Sqt_H_dt  * weights[m_q] * sqpi_inv
-                    outer_int_Sqt_qt_dt += inner_int_Sqt_qt_dt * weights[m_q] * sqpi_inv
-                    outer_int_SH_H_dt   += inner_int_SH_H_dt   * weights[m_q] * sqpi_inv
-                    outer_int_SH_qt_dt  += inner_int_SH_qt_dt  * weights[m_q] * sqpi_inv
-                    outer_int_SH_dt     += inner_int_SH_dt     * weights[m_q] * sqpi_inv
-                    outer_int_Sqt_dt    += inner_int_Sqt_dt    * weights[m_q] * sqpi_inv
+               # autoconversion
+               if in_Env:
+                   qr_m = acnv_instant(ql_m, ql_m + qv_m, self.max_supersaturation, temp_m, self.Ref.p0_half[k])
+                   thl_rain_src = rain_source_to_thetal(self.Ref.p0_half[k], temp_m, qt_hat, ql_m, 0.0, qr_m)
 
-                EnvVar.T.values[k]   = outer_int_T
-                EnvVar.QL.values[k]  = outer_int_ql
-                #TODO before was
-                #EnvVar.THL.values[k] = t_to_thetali_c(self.Ref.p0_half[k], EnvVar.T.values[k], EnvVar.QT.values[k], EnvVar.QL.values[k], 0.0)
-                EnvVar.THL.values[k] = outer_int_thl
-                EnvVar.B.values[k]   = g * (outer_int_alpha - self.Ref.alpha0_half[k]) / self.Ref.alpha0_half[k]
-                EnvVar.CF.values[k]  = outer_int_cf
-                EnvVar.QR.values[k] += outer_int_qr
-                EnvVar.QT.values[k]  = outer_int_qt_cloudy + outer_int_qt_dry
-                EnvVar.H.values[k]   = outer_int_thl 
+                   #TODO - add rain in the environment
+                   qt_hat -= qr_m
+                   ql_m   -= qr_m
+                   thl_m  += thl_rain_src
+               else:
+                   qr_m = 0.0
 
-                #TODO add tendencies for GMV H, QT and QR due to rain
- 
-                self.qt_dry[k]      = outer_int_qt_dry
-                self.th_dry[k]      = outer_int_T_dry / exner_c(self.Ref.p0_half[k])
-                self.t_cloudy[k]    = outer_int_T_cloudy
-                self.qv_cloudy[k]   = outer_int_qt_cloudy - outer_int_ql
-                self.qt_cloudy[k]   = outer_int_qt_cloudy
-                self.th_cloudy[k]   = outer_int_T_cloudy / exner_c(self.Ref.p0_half[k])
-                
-                self.Sqt_H_dt[k]  = outer_int_Sqt_H_dt
-                self.Sqt_qt_dt[k] = outer_int_Sqt_qt_dt
-                self.SH_H_dt[k]   = outer_int_SH_H_dt
-                self.SH_qt_dt[k]  = outer_int_SH_qt_dt
-                self.SH_dt[k]     = outer_int_SH_dt
-                self.Sqt_dt[k]    = outer_int_Sqt_dt
+               EnvVar.T.values[k]   = temp_m
+               EnvVar.QL.values[k]  = ql_m
+               EnvVar.THL.values[k] = thl_m
+               EnvVar.B.values[k]   = g * (alpha_m - self.Ref.alpha0_half[k]) / self.Ref.alpha0_half[k]
+               EnvVar.QR.values[k]  = qr_m
+               EnvVar.QT.values[k]  = qt_hat
+               EnvVar.H.values[k]   = thl_m
+
+               if ql_m > 0.0:
+                   EnvVar.CF.values[k] = 1.
+                   self.t_cloudy[k]    = EnvVar.T.values[k]
+                   self.qv_cloudy[k]   = EnvVar.QT.values[k] - EnvVar.QL.values[k]
+                   self.qt_cloudy[k]   = EnvVar.QT.values[k]
+                   self.th_cloudy[k]   = EnvVar.T.values[k] / exner_c(self.Ref.p0_half[k])
+               else:
+                   EnvVar.CF.values[k] = 0.
+                   self.qt_dry[k]      = EnvVar.QT.values[k]
+                   self.th_dry[k]      = EnvVar.T.values[k] / exner_c(self.Ref.p0_half[k])
+
+               self.SH_dt[k]     = thl_rain_src
+               self.Sqt_dt[k]    = -qr_m
+
+               self.Sqt_H_dt[k]  = self.Sqt_dt[k] * thl_m
+               self.Sqt_qt_dt[k] = self.Sqt_dt[k] * qt_hat
+               self.SH_H_dt[k]   = self.SH_dt[k]  * thl_m
+               self.SH_qt_dt[k]  = self.SH_dt[k]  * qt_hat
+
+               self.H[k]   = thl_m
+               self.qt[k]  = qt_hat
+               self.H_H[k] = thl_m * thl_m
 
         return
 

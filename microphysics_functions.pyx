@@ -1,7 +1,7 @@
 import numpy as np
 cimport numpy as np
 
-from libc.math cimport fmax
+from libc.math cimport fmax, exp
 
 from thermodynamic_functions cimport *
 include "parameters.pxi"
@@ -23,11 +23,21 @@ cdef double q2r(double q_, double qt) nogil :
     return q_ / (1. - qt)
 
 
-cdef double rain_source_to_thetal(double qr, double p0, double T) nogil :
+#cdef double rain_source_to_thetal(double qr, double p0, double T) nogil :
+#    """
+#    Source term for thetal because of ql turning to qr and disappearing from the working fluid
+#    """
+#    return qr / exner_c(p0) * latent_heat(T) / cpd
+
+cdef double rain_source_to_thetal(double p0, double T, double qt, double ql, double qi, double qr) nogil :
     """
     Source term for thetal because of ql turning to qr and disappearing from the working fluid
     """
-    return qr / exner_c(p0) * latent_heat(T) / cpd
+    thetali_old = t_to_thetali_c(p0, T, qt, ql, qi)
+    thetali_new = t_to_thetali_c(p0, T, qt - qr, ql - qr, qi)
+
+    return thetali_new - thetali_old
+
 
 # instantly convert all cloud water exceeding a threshold to rain water 
 # the threshold is specified as axcess saturation
@@ -38,7 +48,12 @@ cdef double acnv_instant(double ql, double qt, double sat_treshold, double T, do
     cdef double psat = pv_star(T)
     cdef double qsat = qv_star_c(p0, qt, psat)
 
+    #with gil:
+    #  if (fmax(0.0, ql - sat_treshold * qsat) != 0.0):
+    #    print "qt, ql, qr, sat_tr, T, psat, qsat = ", qt*1e3, ql *1e3, fmax(0.0, ql - sat_treshold * qsat) * 1e3, sat_treshold, T, psat, qsat
+
     return fmax(0.0, ql - sat_treshold * qsat)
+    #return 1e-3 * ql
 
 # time-rate expressions for 1-moment microphysics
 # autoconversion:   Kessler 1969, see Table 1 in Wood 2005: https://doi.org/10.1175/JAS3530.1

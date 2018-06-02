@@ -67,13 +67,15 @@ cdef class EnvironmentThermodynamics:
         double [:] SH_dt
         double [:] Sqt_dt
 
+        double [:] qt
+        double [:] H
+        double [:] H_H
+
         double max_supersaturation
 
         void eos_update_SA_mean(self, EnvironmentVariables EnvVar, bint in_Env)
         void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, bint in_Env)#, TimeStepping TS)
         void sommeria_deardorff(self, EnvironmentVariables EnvVar)
-
-        double tmp_stp
 
 
     cpdef satadjust(self, EnvironmentVariables EnvVar, bint in_Env)#, TimeStepping TS)

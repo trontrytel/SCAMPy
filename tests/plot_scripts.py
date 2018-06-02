@@ -59,7 +59,7 @@ def simulation_setup(case):
 
 def removing_files():
     """
-    remove the folder with netcdf files from tests 
+    remove the folder with netcdf files from tests
     """
     #TODO - think of something better
     cmd = "rm -r Tests.Output.*"
@@ -68,7 +68,7 @@ def removing_files():
 
 def discrete_cmap(N, base_cmap=None):
     """Create an N-bin discrete colormap from the specified input map"""
- 
+
     # https://gist.github.com/jakevdp/91077b0cae40f8f8244a
 
     # Note that if base_cmap is a string or None, you can simply do
@@ -94,7 +94,8 @@ def read_data_avg(sim_data, n_steps):
                  "Hvar_entr_gain", "QTvar_entr_gain", "HQTcov_entr_gain",\
                  "Hvar_detr_loss", "QTvar_detr_loss", "HQTcov_detr_loss",\
                  "Hvar_shear", "QTvar_shear", "HQTcov_shear",\
-                 "Hvar_rain", "QTvar_rain", "HQTcov_rain"]
+                 "Hvar_rain", "QTvar_rain", "HQTcov_rain"
+                ]
 
     # read the data
     data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:])}
@@ -172,7 +173,8 @@ def read_data_srs(sim_data):
                  "Hvar_entr_gain", "QTvar_entr_gain", "HQTcov_entr_gain",\
                  "Hvar_detr_loss", "QTvar_detr_loss", "HQTcov_detr_loss",\
                  "Hvar_shear", "QTvar_shear", "HQTcov_shear",\
-                 "Hvar_rain", "QTvar_rain", "HQTcov_rain"]
+                 "Hvar_rain", "QTvar_rain", "HQTcov_rain"\
+                ]
 
     # read the data
     data_to_plot = {"z_half" : np.array(sim_data["profiles/z_half"][:]), "t" : np.array(sim_data["profiles/t"][:])}
@@ -215,13 +217,10 @@ def plot_mean(data, title, folder="tests/output/"):
         plots[plot_it].set_ylabel('z [m]')
         plots[plot_it].set_ylim([0, data["z_half"][-1] + (data["z_half"][1] - data["z_half"][0]) * 0.5])
         plots[plot_it].grid(True)
-        for it in xrange(2):
+        for it in xrange(2): #init, end
             plots[plot_it].plot(plot_x[plot_it][it], data["z_half"], '.-', color=color[it], label=label[it])
 
     plots[0].legend(loc='upper right')
-    #plots[2].set_xlim([1, 10])
-    #plots[3].set_xlim([-0.1, 0.5])
-    #plots[4].set_xlim([-50, 350])
     plt.tight_layout()
     plt.savefig(folder + title)
     plt.clf()
@@ -238,14 +237,18 @@ def plot_drafts(data, title, folder="tests/output/"):
     mpl.rc('lines', linewidth=4, markersize=10)
     mpl.rcParams.update({'font.size': 18})
     plots = []
-    qv_mean    = np.array(data["qt_mean"])    - np.array(data["ql_mean"])
-    env_qv     = np.array(data["env_qt"])     - np.array(data["env_ql"])
-    updraft_qv = np.array(data["updraft_qt"]) - np.array(data["updraft_ql"])
+    #qv_mean    = np.array(data["qt_mean"])    - np.array(data["ql_mean"])
+    #env_qv     = np.array(data["env_qt"])     - np.array(data["env_ql"])
+    #updraft_qv = np.array(data["updraft_qt"]) - np.array(data["updraft_ql"])
     # iteration over plots
-    x_lab    = ["QV [g/kg]", "QL [g/kg]",        "QR [g/kg]",        "w [m/s]",         "updraft buoyancy [cm2/s3]",  "updraft area [%]"]
-    plot_upd = [qv_mean,     data["updraft_ql"], data["updraft_qr"], data["updraft_w"], data["updraft_buoyancy"],     data["updraft_area"]]
-    plot_env = [env_qv,      data["env_ql"],     data["env_qr"],     data["env_w"]]
-    plot_mean= [updraft_qv,  data["ql_mean"],    data["qr_mean"]]
+    #x_lab    = ["QV [g/kg]", "QL [g/kg]",        "QR [g/kg]",        "w [m/s]",         "updraft buoyancy [cm2/s3]",  "updraft area [%]"]
+    x_lab    = ["QT [g/kg]", "QL [g/kg]",        "QR [g/kg]",        "w [m/s]",         "updraft buoyancy [cm2/s3]",  "updraft area [%]"]
+    #plot_upd = [qv_mean,     data["updraft_ql"], data["updraft_qr"], data["updraft_w"], data["updraft_buoyancy"],     data["updraft_area"]]
+    #plot_env = [env_qv,      data["env_ql"],     data["env_qr"],     data["env_w"]]
+    #plot_mean= [updraft_qv,  data["ql_mean"],    data["qr_mean"]]
+    plot_upd = [data["qt_mean"],     data["updraft_ql"], data["updraft_qr"], data["updraft_w"], data["updraft_buoyancy"],     data["updraft_area"]]
+    plot_env = [data["env_qt"],      data["env_ql"],     data["env_qr"],     data["env_w"]]
+    plot_mean= [data["updraft_qt"],  data["ql_mean"],    data["qr_mean"]]
     color_mean= "purple"
     color_env = "red"
     color_upd = "blue"
@@ -265,18 +268,15 @@ def plot_drafts(data, title, folder="tests/output/"):
             plots[plot_it].plot(plot_upd[plot_it][1], data["z_half"], ".-", color=color_upd, label=label_upd)
         if (plot_it == 5):
             plots[plot_it].plot(plot_upd[plot_it][1] * 100, data["z_half"], ".-", color=color_upd, label=label_upd)
+        # plot environment
         if (plot_it < 4):
-            # plot environment
             plots[plot_it].plot(plot_env[plot_it][1], data["z_half"], ".-", color=color_env, label=label_env)
+        # plot mean
         if (plot_it < 3):
-            # plot mean
             plots[plot_it].plot(plot_mean[plot_it][1], data["z_half"], ".-", color=color_mean, label=label_mean)
 
 
     plots[0].legend(loc='upper right')
-    #plots[0].set_xlim([1, 10])
-    #plots[5].set_xlim([-50, 350])
-    #plots[5].set_xlim([-0.1, 0.5])
     plt.savefig(folder + title)
     plt.clf()
 
@@ -307,7 +307,6 @@ def plot_var_covar_mean(data, title, folder="tests/output/"):
         plots[plot_it].grid(True)
         plots[plot_it].xaxis.set_major_locator(ticker.MaxNLocator(2))
 
-      
     for var in range(2):
         plots[0].plot(data[plot_Hvar_m[var]][0],   data["z_half"], ".-", label=plot_Hvar_m[var],  c=color_m0[var])
         plots[0].plot(data[plot_Hvar_m[var]][1],   data["z_half"], ".-", label=plot_Hvar_m[var],  c=color_m[var])
@@ -319,7 +318,7 @@ def plot_var_covar_mean(data, title, folder="tests/output/"):
     #plots[0].set_xlim([0, 1e-3])
     #plots[1].set_xlim([0, 1e-7])
     #plots[2].set_xlim([0, 1e-5])
- 
+
     plots[0].axvline(0.01,       c='green', label='assumed')
     plots[1].axvline(0.5 * 1e-7, c='green', label='assumed')
     plots[2].axvline(-1e-3,      c='green', label='assumed')
@@ -328,7 +327,7 @@ def plot_var_covar_mean(data, title, folder="tests/output/"):
     plots[1].axhline(1500, c='green')
     plots[2].axhline(1500, c='green')
     plots[2].axhline(200,  c='green')
- 
+
     plots[0].legend(loc='lower right')
     plt.tight_layout()
     plt.savefig(folder + title)
@@ -340,7 +339,7 @@ def plot_var_covar_components(data, title, folder="tests/output/"):
     """
     plots = []
     plot_Hvar_c   = ["Hvar_dissipation", "Hvar_entr_gain", "Hvar_detr_loss", "Hvar_shear", "Hvar_rain"]
-    plot_QTvar_c  = ["QTvar_dissipation", "QTvar_entr_gain", "QTvar_detr_loss", "QTvar_shear", "QTvar_rain"]  
+    plot_QTvar_c  = ["QTvar_dissipation", "QTvar_entr_gain", "QTvar_detr_loss", "QTvar_shear", "QTvar_rain"]
     plot_HQTcov_c = ["HQTcov_dissipation","HQTcov_entr_gain", "HQTcov_detr_loss", "HQTcov_shear", "HQTcov_rain"]
 
     color_c = ['green', 'pink', 'purple', 'orange', 'blue']
@@ -364,13 +363,13 @@ def plot_var_covar_components(data, title, folder="tests/output/"):
         plots[0].plot(data[plot_Hvar_c[var]][1],   data["z_half"], ".-", label=plot_Hvar_c[var],  c=color_c[var])
         plots[1].plot(data[plot_QTvar_c[var]][1],  data["z_half"], ".-", label=plot_QTvar_c[var], c=color_c[var])
         plots[2].plot(data[plot_HQTcov_c[var]][1], data["z_half"], ".-", label=plot_HQTcov_c[var],c=color_c[var])
- 
+
     plots[0].axhline(1500, c='gray')
     plots[0].axhline(500,  c='gray')
     plots[1].axhline(1500, c='gray')
     plots[2].axhline(1500, c='gray')
     plots[2].axhline(200,  c='gray')
- 
+
     plots[0].legend(loc='lower right')
     plt.tight_layout()
 

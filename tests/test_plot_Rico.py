@@ -1,4 +1,3 @@
-p:w
 import sys
 sys.path.insert(0, "./")
 
@@ -21,23 +20,26 @@ def sim_data(request):
 
     # generate namelists and paramlists
     setup = pls.simulation_setup('Rico')
-    # chenge the defaults  
+    # change the defaults
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
-    #setup["namelist"]['time_stepping']['t_max'] = 10*60. #1*60*60 #+ 60*60
-    #setup["namelist"]['time_stepping']['dt'] = 1
-    #setup["namelist"]['stats_io']['frequency'] = 5
+    #setup["namelist"]['time_stepping']['t_max'] = 3*60*60
+    #setup["namelist"]['time_stepping']['dt'] = 1.
+    #setup["namelist"]['stats_io']['frequency'] = 60
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = False
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
-    setup['namelist']['turbulence']['sgs'] = {}
-    setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = True
-    setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 0.5 * 1e-7
-    setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 0.01
-    setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-3
-    setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 0.0001 #0.1
 
-    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'        
-    #setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'        
+    #setup['namelist']['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 10
+
+    #setup['namelist']['turbulence']['sgs'] = {}
+    #setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = True
+    #setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 1e-8
+    #setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 1e-3
+    #setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-4
+    setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = .005
+
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
+    #setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
 
     #print " "
     #print "namelist"
@@ -48,8 +50,8 @@ def sim_data(request):
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
-    
-    # simulation results 
+
+    # simulation results
     sim_data = Dataset(setup["outfile"], 'r')
 
     # remove netcdf file after tests

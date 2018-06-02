@@ -235,6 +235,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         self.UpdVar.io(Stats)
         self.EnvVar.io(Stats)
+
         Stats.write_profile('eddy_viscosity', self.KM.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('eddy_diffusivity', self.KH.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         with nogil:
@@ -1424,7 +1425,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         self.compute_covariance_entr()
         self.compute_covariance_shear(GMV)
-        self.compute_covariance_rain(TS)
+        self.compute_covariance_rain(TS, GMV)
         self.reset_surface_covariance(GMV, Case)
         self.update_covariance_ED(GMV, Case, TS)
         self.cleanup_covariance(GMV) 
@@ -1539,7 +1540,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 self.Hvar_detr_loss[k] = 0.0
                 self.QTvar_detr_loss[k] = 0.0
                 self.HQTcov_detr_loss[k] = 0.0
-                # TODO the same for HQTcov_detr_loss ? 
+                # TODO the same for HQTcov_detr_loss ?
                 for i in xrange(self.n_updrafts):
                     w_u = interp2pt(self.UpdVar.W.values[i,k-1], self.UpdVar.W.values[i,k])
                     self.Hvar_detr_loss[k]   += self.UpdVar.Area.values[i,k] * w_u * self.entr_sc[i,k]
@@ -1550,24 +1551,54 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 self.HQTcov_detr_loss[k] *= self.Ref.rho0_half[k] * self.EnvVar.HQTcov.values[k]
         return
 
-    cpdef compute_covariance_rain(self, TimeStepping TS):
+    cpdef compute_covariance_rain(self, TimeStepping TS, GridMeanVariables GMV):
         cdef:
             Py_ssize_t i, k
             # TODO defined again in compute_covariance_shear and compute_covaraince
             double [:] ae = np.subtract(np.ones((self.Gr.nzg,),dtype=np.double, order='c'),self.UpdVar.Area.bulkvalues) # area of environment
             double SH_H_dt, Sqt_qt_dt, SH_qt_dt, Sqt_H_dt
-     
+
         with nogil:
             for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
-                SH_H_dt   = self.EnvThermo.SH_H_dt[k]   - self.EnvVar.H.values[k]  * self.EnvThermo.SH_dt[k]
-                Sqt_qt_dt = self.EnvThermo.Sqt_qt_dt[k] - self.EnvVar.QT.values[k] * self.EnvThermo.Sqt_dt[k]
-                SH_qt_dt  = self.EnvThermo.SH_qt_dt[k]  - self.EnvVar.QT.values[k] * self.EnvThermo.SH_dt[k]
-                Sqt_H_dt  = self.EnvThermo.Sqt_H_dt[k]  - self.EnvVar.H.values[k]  * self.EnvThermo.Sqt_dt[k]
+
+                SH_H_dt   = self.EnvThermo.SH_H_dt[k]   - self.EnvThermo.H[k]  * self.EnvThermo.SH_dt[k]
+                Sqt_qt_dt = self.EnvThermo.Sqt_qt_dt[k] - self.EnvThermo.qt[k] * self.EnvThermo.Sqt_dt[k]
+                SH_qt_dt  = self.EnvThermo.SH_qt_dt[k]  - self.EnvThermo.qt[k] * self.EnvThermo.SH_dt[k]
+                Sqt_H_dt  = self.EnvThermo.Sqt_H_dt[k]  - self.EnvThermo.H[k]  * self.EnvThermo.Sqt_dt[k]
 
                 self.Hvar_rain[k]   = self.Ref.rho0_half[k] * ae[k] * 2. * SH_H_dt          * TS.dti
                 self.QTvar_rain[k]  = self.Ref.rho0_half[k] * ae[k] * 2. * Sqt_qt_dt        * TS.dti
                 self.HQTcov_rain[k] = self.Ref.rho0_half[k] * ae[k] * (SH_qt_dt + Sqt_H_dt) * TS.dti
-                                                                                            # ^^ TODO 
+
+                #self.Hvar_rain[k]   = self.Ref.rho0_half[k] * ae[k] * 2. * SH_H_dt          * TS.dti * 1e-4
+                #self.QTvar_rain[k]  = self.Ref.rho0_half[k] * ae[k] * 2. * Sqt_qt_dt        * TS.dti * 1e-4
+                #self.HQTcov_rain[k] = self.Ref.rho0_half[k] * ae[k] * (SH_qt_dt + Sqt_H_dt) * TS.dti * 1e-4
+
+                #self.Hvar_rain[k]   = 1e-3
+                #self.QTvar_rain[k]  = -1e-9
+                #self.HQTcov_rain[k] = -1e-5
+
+                #self.Hvar_rain[k]   = 0.
+                #self.QTvar_rain[k]  = 0.
+                #self.HQTcov_rain[k] = 0.
+
+        #if (np.min(self.Hvar_rain) != 0.0 or np.max(self.Hvar_rain) != 0.0):
+        #    import matplotlib.pyplot as plt
+        #    fig = plt.figure()
+        #    plt.subplot(2,3,1)
+        #    plt.plot(self.Hvar_rain, self.Gr.z_half)
+        #    plt.subplot(2,3,2)
+        #    plt.plot(self.QTvar_rain, self.Gr.z_half)
+        #    plt.subplot(2,3,3)
+        #    plt.plot(self.HQTcov_rain, self.Gr.z_half)
+        #    plt.subplot(2,3,4)
+        #    plt.plot(GMV.Hvar.values[1:-1], self.Gr.z_half[1:-1])
+        #    plt.subplot(2,3,5)
+        #    plt.plot(GMV.QTvar.values[1:-1], self.Gr.z_half[1:-1])
+        #    plt.subplot(2,3,6)
+        #    plt.plot(GMV.HQTcov.values[1:-1], self.Gr.z_half[1:-1])
+        #    plt.show()
+
         return
 
     cpdef update_covariance_ED(self, GridMeanVariables GMV, CasesBase Case,TimeStepping TS):
@@ -1641,7 +1672,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                          + self.Ref.rho0_half[k] * ae[k]  *sqrt(fmax(self.EnvVar.TKE.values[k],0))/fmax(self.mixing_length[k],1.0) * self.tke_diss_coeff)
                 c[kk] = (self.Ref.rho0_half[k+1] * ae[k+1] * whalf[k+1] * dzi - rho_ae_K_m[k] * dzi * dzi)
                 x[kk] = (self.Ref.rho0_half[k] * ae_old[k] * self.EnvVar.Hvar.values[k] * dti
-                         + self.Hvar_shear[k] + self.Hvar_entr_gain[k] + self.Hvar_rain[k]) 
+                         + self.Hvar_shear[k] + self.Hvar_entr_gain[k] + self.Hvar_rain[k])
 
             a[0] = 0.0
             b[0] = 1.0
