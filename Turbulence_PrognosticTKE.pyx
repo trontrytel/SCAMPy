@@ -1470,7 +1470,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         #plt.show()
 
         return
-      
+
     cpdef cleanup_covariance(self, GridMeanVariables GMV):
         cdef:
             double tmp_eps = 1e-18
@@ -1569,18 +1569,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 self.Hvar_rain[k]   = self.Ref.rho0_half[k] * ae[k] * 2. * SH_H_dt          * TS.dti
                 self.QTvar_rain[k]  = self.Ref.rho0_half[k] * ae[k] * 2. * Sqt_qt_dt        * TS.dti
                 self.HQTcov_rain[k] = self.Ref.rho0_half[k] * ae[k] * (SH_qt_dt + Sqt_H_dt) * TS.dti
-
-                #self.Hvar_rain[k]   = self.Ref.rho0_half[k] * ae[k] * 2. * SH_H_dt          * TS.dti * 1e-4
-                #self.QTvar_rain[k]  = self.Ref.rho0_half[k] * ae[k] * 2. * Sqt_qt_dt        * TS.dti * 1e-4
-                #self.HQTcov_rain[k] = self.Ref.rho0_half[k] * ae[k] * (SH_qt_dt + Sqt_H_dt) * TS.dti * 1e-4
-
-                #self.Hvar_rain[k]   = 1e-3
-                #self.QTvar_rain[k]  = -1e-9
-                #self.HQTcov_rain[k] = -1e-5
-
-                #self.Hvar_rain[k]   = 0.
-                #self.QTvar_rain[k]  = 0.
-                #self.HQTcov_rain[k] = 0.
 
         #if (np.min(self.Hvar_rain) != 0.0 or np.max(self.Hvar_rain) != 0.0):
         #    import matplotlib.pyplot as plt

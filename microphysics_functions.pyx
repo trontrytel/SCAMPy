@@ -7,16 +7,16 @@ from thermodynamic_functions cimport *
 include "parameters.pxi"
 
 cdef double r2q(double r_, double qt) nogil :
-    """ 
+    """
     Convert mixing ratio to specific humidity assuming
     qd = 1 - qt
     qt = qv + ql + qi
     qr = mr/md+mv+ml+mi
     """
-    return r_ * (1. - qt) 
- 
+    return r_ * (1. - qt)
+
 cdef double q2r(double q_, double qt) nogil :
-    """ 
+    """
     Convert specific humidity to mixing ratio
     see r2q for assumptions
     """
@@ -39,7 +39,7 @@ cdef double rain_source_to_thetal(double p0, double T, double qt, double ql, dou
     return thetali_new - thetali_old
 
 
-# instantly convert all cloud water exceeding a threshold to rain water 
+# instantly convert all cloud water exceeding a threshold to rain water
 # the threshold is specified as axcess saturation
 # rain water is immediately removed from the domain
 # Tiedke:   TODO - add reference
@@ -48,16 +48,11 @@ cdef double acnv_instant(double ql, double qt, double sat_treshold, double T, do
     cdef double psat = pv_star(T)
     cdef double qsat = qv_star_c(p0, qt, psat)
 
-    #with gil:
-    #  if (fmax(0.0, ql - sat_treshold * qsat) != 0.0):
-    #    print "qt, ql, qr, sat_tr, T, psat, qsat = ", qt*1e3, ql *1e3, fmax(0.0, ql - sat_treshold * qsat) * 1e3, sat_treshold, T, psat, qsat
-
     return fmax(0.0, ql - sat_treshold * qsat)
-    #return 1e-3 * ql
 
 # time-rate expressions for 1-moment microphysics
 # autoconversion:   Kessler 1969, see Table 1 in Wood 2005: https://doi.org/10.1175/JAS3530.1
-# accretion, rain evaporation rain terminal velocity: 
+# accretion, rain evaporation rain terminal velocity:
 #    Grabowski and Smolarkiewicz 1996 eqs: 5b-5d
 #    https://doi.org/10.1175/1520-0493(1996)124<0487:TTLSLM>2.0.CO;2
 
@@ -94,7 +89,8 @@ cdef double evap_rate(double rho, double qv, double qr, double qt, double T, dou
     #      dq/dr     * dr/dt
 
 cdef double terminal_velocity(double rho, double rho0, double qr, double qt) nogil :
-    
-    cdef double rr = q2r(qr, qt)    
+
+    cdef double rr = q2r(qr, qt)
 
     return 14.34 * rho0**0.5 * rho**-0.3654 * rr**0.1346
+
