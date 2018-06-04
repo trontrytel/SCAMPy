@@ -36,7 +36,7 @@ def sim_data(request):
     #setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 1e-8
     #setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 1e-3
     #setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-4
-    #setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = .005
+    setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = .005
 
     setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
     #setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'

@@ -95,7 +95,7 @@ cdef double terminal_velocity(double rho, double rho0, double qr, double qt) nog
     return 14.34 * rho0**0.5 * rho**-0.3654 * rr**0.1346
 
 
-cdef mph_struct microphysics(double T, double ql, double p0, double qt, double H,\
+cdef mph_struct microphysics(double T, double ql, double p0, double qt,\
                              double max_supersat, bint in_Env) nogil:
     """
     do condensation and autoconversion
@@ -110,7 +110,7 @@ cdef mph_struct microphysics(double T, double ql, double p0, double qt, double H
 
     _ret.T     = T
     _ret.ql    = ql
-    _ret.H     = t_to_thetali_c(p0, T, qt, ql, 0.0)
+    _ret.thl   = t_to_thetali_c(p0, T, qt, ql, 0.0)
     _ret.qv    = qt - ql
     _ret.alpha = alpha_c(p0, T, qt, _ret.qv)
     _ret.qr    = 0.0
@@ -121,7 +121,7 @@ cdef mph_struct microphysics(double T, double ql, double p0, double qt, double H
         _ret.thl_rain_src = rain_source_to_thetal(p0, T, qt, ql, 0.0, _ret.qr)
 
         _ret.qt  -= _ret.qr
-        #_ret.ql  -= _ret.qr
+        _ret.ql  -= _ret.qr
         _ret.thl += _ret.thl_rain_src
 
     return _ret
