@@ -60,22 +60,17 @@ cdef class EnvironmentThermodynamics:
         double [:] qt_cloudy
         double [:] th_cloudy
 
-        double [:] Sqt_H_dt
-        double [:] Sqt_qt_dt
-        double [:] SH_H_dt
-        double [:] SH_qt_dt
-        double [:] SH_dt
-        double [:] Sqt_dt
-
-        double [:] qt
-        double [:] H
-        double [:] H_H
+        double [:] Hvar_rain_dt
+        double [:] QTvar_rain_dt
+        double [:] HQTcov_rain_dt
 
         double max_supersaturation
+
+        void update_EnvVar(self,    int k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double qr, double alpha) nogil
+        void update_cloud_dry(self, int k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double qv) nogil
 
         void eos_update_SA_mean(self, EnvironmentVariables EnvVar, bint in_Env)
         void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, bint in_Env)#, TimeStepping TS)
         void sommeria_deardorff(self, EnvironmentVariables EnvVar)
-
 
     cpdef satadjust(self, EnvironmentVariables EnvVar, bint in_Env)#, TimeStepping TS)

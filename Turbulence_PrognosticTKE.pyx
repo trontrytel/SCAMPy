@@ -1556,19 +1556,13 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             Py_ssize_t i, k
             # TODO defined again in compute_covariance_shear and compute_covaraince
             double [:] ae = np.subtract(np.ones((self.Gr.nzg,),dtype=np.double, order='c'),self.UpdVar.Area.bulkvalues) # area of environment
-            double SH_H_dt, Sqt_qt_dt, SH_qt_dt, Sqt_H_dt
 
         with nogil:
             for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
 
-                SH_H_dt   = self.EnvThermo.SH_H_dt[k]   - self.EnvThermo.H[k]  * self.EnvThermo.SH_dt[k]
-                Sqt_qt_dt = self.EnvThermo.Sqt_qt_dt[k] - self.EnvThermo.qt[k] * self.EnvThermo.Sqt_dt[k]
-                SH_qt_dt  = self.EnvThermo.SH_qt_dt[k]  - self.EnvThermo.qt[k] * self.EnvThermo.SH_dt[k]
-                Sqt_H_dt  = self.EnvThermo.Sqt_H_dt[k]  - self.EnvThermo.H[k]  * self.EnvThermo.Sqt_dt[k]
-
-                self.Hvar_rain[k]   = self.Ref.rho0_half[k] * ae[k] * 2. * SH_H_dt          * TS.dti
-                self.QTvar_rain[k]  = self.Ref.rho0_half[k] * ae[k] * 2. * Sqt_qt_dt        * TS.dti
-                self.HQTcov_rain[k] = self.Ref.rho0_half[k] * ae[k] * (SH_qt_dt + Sqt_H_dt) * TS.dti
+                self.Hvar_rain[k]   = self.Ref.rho0_half[k] * ae[k] * 2. * self.EnvThermo.Hvar_rain_dt[k]   * TS.dti
+                self.QTvar_rain[k]  = self.Ref.rho0_half[k] * ae[k] * 2. * self.EnvThermo.QTvar_rain_dt[k]  * TS.dti
+                self.HQTcov_rain[k] = self.Ref.rho0_half[k] * ae[k] *      self.EnvThermo.HQTcov_rain_dt[k] * TS.dti
 
         #if (np.min(self.Hvar_rain) != 0.0 or np.max(self.Hvar_rain) != 0.0):
         #    import matplotlib.pyplot as plt

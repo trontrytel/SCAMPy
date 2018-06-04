@@ -121,11 +121,6 @@ cdef double eos_first_guess_entropy(double H, double pd, double pv, double qt ) 
     return (T_tilde *exp((H - qd*(sd_tilde - Rd *log(pd/p_tilde))
                               - qt * (sv_tilde - Rv * log(pv/p_tilde)))/((qd*cpd + qt * cpv))))
 
-
-
-
-
-
 cdef eos_struct eos( double (*t_to_prog)(double, double,double,double, double) nogil,
                      double (*prog_to_t)(double,double, double, double) nogil,
                      double p0, double qt, double prog) nogil:
