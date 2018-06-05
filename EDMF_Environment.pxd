@@ -66,8 +66,8 @@ cdef class EnvironmentThermodynamics:
 
         double max_supersaturation
 
-        void update_EnvVar(self,    int k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double qr, double alpha) nogil
-        void update_cloud_dry(self, int k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double qv) nogil
+        void update_EnvVar(self,    long k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double qr, double alpha) nogil
+        void update_cloud_dry(self, long k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double qv) nogil
 
         void eos_update_SA_mean(self, EnvironmentVariables EnvVar, bint in_Env)
         void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, bint in_Env)#, TimeStepping TS)
