@@ -22,13 +22,6 @@ cdef double q2r(double q_, double qt) nogil :
     """
     return q_ / (1. - qt)
 
-
-#cdef double rain_source_to_thetal(double qr, double p0, double T) nogil :
-#    """
-#    Source term for thetal because of ql turning to qr and disappearing from the working fluid
-#    """
-#    return qr / exner_c(p0) * latent_heat(T) / cpd
-
 cdef double rain_source_to_thetal(double p0, double T, double qt, double ql, double qi, double qr) nogil :
     """
     Source term for thetal because of ql turning to qr and disappearing from the working fluid
@@ -36,8 +29,8 @@ cdef double rain_source_to_thetal(double p0, double T, double qt, double ql, dou
     thetali_old = t_to_thetali_c(p0, T, qt, ql, qi)
     thetali_new = t_to_thetali_c(p0, T, qt - qr, ql - qr, qi)
 
+    #TODO - check: Before it was qr / exner_c(p0) * latent_heat(T) / cpd
     return thetali_new - thetali_old
-
 
 # instantly convert all cloud water exceeding a threshold to rain water
 # the threshold is specified as axcess saturation
@@ -101,16 +94,12 @@ cdef mph_struct microphysics(double T, double ql, double p0, double qt,\
     do condensation and autoconversion
     return updated T, THL, qt, qv, ql, qr, alpha
     """
-    # TODO before was:   thl_m = sa.T / exner_c(p0)
-    # TODO before was:   qv_m  = EnvVar.QT.values[k] - ql_m
-    # TODO add rain to environment
     # TODO assumes no ice
-
     cdef mph_struct _ret
 
     _ret.T     = T
     _ret.ql    = ql
-    _ret.thl   = t_to_thetali_c(p0, T, qt, ql, 0.0)
+    _ret.thl   = t_to_thetali_c(p0, T, qt, ql, 0.0)  # TODO - check: Before was:   thl_m = sa.T / exner_c(p0)
     _ret.qv    = qt - ql
     _ret.alpha = alpha_c(p0, T, qt, _ret.qv)
     _ret.qr    = 0.0
