@@ -32,7 +32,8 @@ def sim_data(request):
     #setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 0.01
     #setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-3
 
-    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
+    #setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
     #TODO sa_quadrature + similarity_diff + calc covar doesnt work -> self.wstar in Turbulence.pyx line 134 is zero (division by zero)
 
                                                                                                #best     # default
@@ -58,7 +59,7 @@ def sim_data(request):
     sim_data = Dataset(setup["outfile"], 'r')
 
     # remove netcdf files after tests
-    request.addfinalizer(pls.removing_files)
+    #request.addfinalizer(pls.removing_files)
 
     return sim_data
 

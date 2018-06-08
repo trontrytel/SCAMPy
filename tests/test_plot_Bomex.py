@@ -35,8 +35,8 @@ def sim_data(request):
 
     #setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 100. #0.1
 
-    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
-    #setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
+    #setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
 
     #TODO - use_local_micro=False    - no clouds
     #     - entrainment = bw_2       - oscillations in w
@@ -49,7 +49,7 @@ def sim_data(request):
     sim_data = Dataset(setup["outfile"], 'r')
 
     # remove netcdf file after tests
-    request.addfinalizer(pls.removing_files)
+    #request.addfinalizer(pls.removing_files)
 
     return sim_data
 

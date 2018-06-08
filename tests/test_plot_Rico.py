@@ -29,17 +29,17 @@ def sim_data(request):
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
 
-    #setup['namelist']['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 10
+    #setup['namelist']['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 3
 
     #setup['namelist']['turbulence']['sgs'] = {}
     #setup['namelist']['turbulence']['sgs']['use_prescribed_scalar_var'] = True
     #setup['namelist']['turbulence']['sgs']['prescribed_QTvar'] = 1e-8
     #setup['namelist']['turbulence']['sgs']['prescribed_Hvar'] = 1e-3
     #setup['namelist']['turbulence']['sgs']['prescribed_HQTcov'] = -1e-4
-    #setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = .005
+    setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = .005
 
-    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
-    #setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
+    #setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
 
     #print " "
     #print "namelist"
@@ -55,7 +55,7 @@ def sim_data(request):
     sim_data = Dataset(setup["outfile"], 'r')
 
     # remove netcdf file after tests
-    request.addfinalizer(pls.removing_files)
+    #request.addfinalizer(pls.removing_files)
 
     return sim_data
 
