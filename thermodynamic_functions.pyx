@@ -22,16 +22,27 @@ cdef double exner_c(double p0, double kappa = kappa) nogil  :
 cdef  double theta_c(double p0, double T) nogil :
     return T / exner_c(p0)
 
-
+                                                                             # TODO - L is not used here
 cdef  double thetali_c(double p0, double T, double qt, double ql, double qi, double L) nogil  :
     # Liquid ice potential temperature consistent with Triopoli and Cotton (1981)
-    return theta_c(p0, T) * exp(-latent_heat(T)*(ql/(1.0 - qt) + qi/(1.0 -qt))/(T*cpd))
+    return theta_c(p0, T) * exp(-latent_heat(T) * (ql / (1.0 - qt) + qi / (1.0 - qt)) / (T*cpd))
 
 
 cdef  double pd_c(double p0, double qt, double qv)  nogil :
+    """
+    Dry air partial pressure
+    See assumptions for pv_c below
+    """
     return p0*(1.0-qt)/(1.0 - qt + eps_vi * qv)
 
 cdef  double pv_c(double p0, double qt, double qv) nogil  :
+    """
+    Water vapor partial pressure
+    Calculated assuming:
+        p0 = pd + pv
+        qt = qv + ql + qi
+        qd = 1 - qt
+    """
     return p0 * eps_vi * qv /(1.0 - qt + eps_vi * qv)
 
 
@@ -110,14 +121,19 @@ cdef double eos_first_guess_entropy(double H, double pd, double pv, double qt ) 
     return (T_tilde *exp((H - qd*(sd_tilde - Rd *log(pd/p_tilde))
                               - qt * (sv_tilde - Rv * log(pv/p_tilde)))/((qd*cpd + qt * cpv))))
 
-
-
-
-
-
 cdef eos_struct eos( double (*t_to_prog)(double, double,double,double, double) nogil,
                      double (*prog_to_t)(double,double, double, double) nogil,
                      double p0, double qt, double prog) nogil:
+    """
+    Saturation adjustment
+        arguments: method to calculate prognostic variable (thetal or entropy) from temperature
+                   method to calculate first guess of temperature from prognostic variable (assuming no liquid water or ice)
+                   total pressure
+                   total specific humidity
+                   prognostic variable (thetal or entropy)
+          returns: new temperature and liquid water specific humidity (as two fields of _ret structure)
+    """
+
     cdef double qv = qt
     cdef double ql = 0.0
 
