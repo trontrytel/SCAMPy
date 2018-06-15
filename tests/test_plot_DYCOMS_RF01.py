@@ -23,7 +23,7 @@ def sim_data(request):
     setup = pls.simulation_setup('DYCOMS_RF01')
     # chenge the defaults  
     #setup["namelist"]['stats_io']['frequency'] = setup["namelist"]['time_stepping']['t_max']
-    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = True
+    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = False
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
     #setup['namelist']['turbulence']['sgs'] = {}
@@ -59,7 +59,7 @@ def sim_data(request):
     sim_data = Dataset(setup["outfile"], 'r')
 
     # remove netcdf files after tests
-    #request.addfinalizer(pls.removing_files)
+    request.addfinalizer(pls.removing_files)
 
     return sim_data
 

@@ -134,10 +134,10 @@ cdef eos_struct eos( double (*t_to_prog)(double, double,double,double, double) n
           returns: new temperature and liquid water specific humidity (as two fields of _ret structure)
     """
 
+    cdef eos_struct _ret
+
     cdef double qv = qt
     cdef double ql = 0.0
-
-    cdef eos_struct _ret
 
     cdef double pv_1 = pv_c(p0,qt,qt )
     cdef double pd_1 = p0 - pv_1
@@ -147,35 +147,40 @@ cdef eos_struct eos( double (*t_to_prog)(double, double,double,double, double) n
 
     cdef double ql_1, prog_1, f_1, T_2, delta_T
     cdef double qv_star_2, ql_2=0.0, pv_star_2, pv_2, pd_2, prog_2, f_2
-    # If not saturated
-    if(qt <= qv_star_1):
-        _ret.T = T_1
+
+    if prog == 0.0:
+        _ret.T  = 0.0
         _ret.ql = 0.0
-
     else:
-        ql_1 = qt - qv_star_1
-        prog_1 = t_to_prog(p0, T_1, qt, ql_1, 0.0)
-        f_1 = prog - prog_1
-        T_2 = T_1 + ql_1 * latent_heat(T_1) /((1.0 - qt)*cpd + qv_star_1 * cpv)
-        delta_T  = fabs(T_2 - T_1)
+        # If not saturated
+        if(qt <= qv_star_1):
+            _ret.T = T_1
+            _ret.ql = 0.0
 
-        while delta_T > 1.0e-3 or ql_2 < 0.0:
-            pv_star_2 = pv_star(T_2)
-            qv_star_2 = qv_star_c(p0,qt,pv_star_2)
-            pv_2 = pv_c(p0, qt, qv_star_2)
-            pd_2 = p0 - pv_2
-            ql_2 = qt - qv_star_2
-            prog_2 =  t_to_prog(p0,T_2,qt, ql_2, 0.0   )
-            f_2 = prog - prog_2
-            T_n = T_2 - f_2*(T_2 - T_1)/(f_2 - f_1)
-            T_1 = T_2
-            T_2 = T_n
-            f_1 = f_2
+        else:
+            ql_1 = qt - qv_star_1
+            prog_1 = t_to_prog(p0, T_1, qt, ql_1, 0.0)
+            f_1 = prog - prog_1
+            T_2 = T_1 + ql_1 * latent_heat(T_1) /((1.0 - qt)*cpd + qv_star_1 * cpv)
             delta_T  = fabs(T_2 - T_1)
 
-        _ret.T  = T_2
-        qv = qv_star_2
-        _ret.ql = ql_2
+            while delta_T > 1.0e-3 or ql_2 < 0.0:
+                pv_star_2 = pv_star(T_2)
+                qv_star_2 = qv_star_c(p0,qt,pv_star_2)
+                pv_2 = pv_c(p0, qt, qv_star_2)
+                pd_2 = p0 - pv_2
+                ql_2 = qt - qv_star_2
+                prog_2 =  t_to_prog(p0,T_2,qt, ql_2, 0.0   )
+                f_2 = prog - prog_2
+                T_n = T_2 - f_2*(T_2 - T_1)/(f_2 - f_1)
+                T_1 = T_2
+                T_2 = T_n
+                f_1 = f_2
+                delta_T  = fabs(T_2 - T_1)
+
+            _ret.T  = T_2
+            qv = qv_star_2
+            _ret.ql = ql_2
 
     return _ret
 

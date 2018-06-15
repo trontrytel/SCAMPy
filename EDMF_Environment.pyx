@@ -29,7 +29,6 @@ cdef class EnvironmentVariable:
         self.name = name
         self.units = units
 
-
 cdef class EnvironmentVariables:
     def __init__(self,  namelist, Grid Gr  ):
         cdef Py_ssize_t nz = Gr.nzg

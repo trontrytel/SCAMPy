@@ -20,7 +20,6 @@ cdef class Grid:
         :param Parallel: ParallelMPI class
         :return:
         '''
-
         #Get the grid spacing
         self.dz = namelist['grid']['dz']
 
@@ -36,16 +35,11 @@ cdef class Grid:
         self.z_half = np.empty((self.nz+2*self.gw),dtype=np.double,order='c')
         self.z = np.empty((self.nz+2*self.gw),dtype=np.double,order='c')
 
-
         cdef int i, count = 0
         for i in xrange(-self.gw,self.nz+self.gw,1):
             self.z[count] = (i + 1) * self.dz
             self.z_half[count] = (i+0.5)*self.dz
             count += 1
 
-
         return
-
-
-
 

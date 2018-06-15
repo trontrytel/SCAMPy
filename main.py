@@ -17,7 +17,8 @@ def main():
     paramlist = json.loads(file_paramlist)
     del file_paramlist
 
-    main1d(namelist, paramlist)
+    #main1d(namelist, paramlist)
+    scampify()
 
     return
 
@@ -29,6 +30,14 @@ def main1d(namelist, paramlist):
     print('The simulation has completed.')
 
     return
+
+def scampify():
+    import scampify2
+    Simulation = scampify2.Scampify1d()
+    Simulation.initialize()
+    Simulation.do_environment()
+    Simulation.do_updrafts()
+    Simulation.plot_all()
 
 if __name__ == "__main__":
     main()
