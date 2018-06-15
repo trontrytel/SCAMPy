@@ -31,7 +31,7 @@ def read_reference(ncdf_dataset):
     r_dict = {}
     if casename == 'Bomex':
         var_list = ['p0',      'p0_half', 'alpha0',      'alpha0_half', 'rho0',      'rho0_half']
-    elif casename == 'DYCOMS_RF01' or casename == 'Bomex_100_20':
+    elif casename in ['DYCOMS_RF01', 'Bomex_100_20', 'Bomex_40_20']:
         var_list = ['p0_full', 'p0',      'alpha0_full', 'alpha0',      'rho0_full', 'rho0']
     else:
         print "wrong casename", casename
@@ -72,7 +72,7 @@ namelist['thermodynamics']['thermal_variable'] = 'thetal'
 namelist['thermodynamics']['saturation'] = {}
 namelist['thermodynamics']['saturation'] = 'sa_quadrature'
 namelist['condensation'] = {}
-namelist['condensation']['quadrature_order'] = 100
+#namelist['condensation']['quadrature_order'] = 100
 
 paramlist = {}
 paramlist['turbulence'] = {}
@@ -83,12 +83,15 @@ paramlist['turbulence']['updraft_microphysics']['max_supersaturation'] = 44.#0.0
 
 namelist_gr = {}
 namelist_gr['grid'] = {}
-casename = 'Bomex'
+#casename = 'Bomex'
+casename = 'Bomex_40_20'
 #casename = 'Bomex_100_20'
 #casename = 'DYCOMS_RF01'
 time = 200
+sgs_flag = True
+sgs_str = 'sgs'
 
-if casename == 'Bomex' or casename == 'Bomex_100_20':
+if casename in ['Bomex', 'Bomex_100_20', 'Bomex_40_20']:
     namelist_gr['grid']['dz'] = 20. # 40 in SCM 20 in LES
     namelist_gr['grid']['gw'] = 0   #  2 in SCM  7 in LES
     namelist_gr['grid']['nz'] = 150 # 75 in SCM 75 in LES
@@ -121,7 +124,7 @@ cdef class Scampify1d:
             self.ref_state.alpha0_half = r_dict['alpha0_half']
             self.ref_state.rho0        = r_dict['rho0']
             self.ref_state.rho0_half   = r_dict['rho0_half']
-        elif casename == 'DYCOMS_RF01' or casename == 'Bomex_100_20':
+        elif casename in ['DYCOMS_RF01', 'Bomex_100_20', 'Bomex_40_20']:
             self.ref_state.p0          = r_dict['p0_full']
             self.ref_state.p0_half     = r_dict['p0']
             self.ref_state.alpha0      = r_dict['alpha0_full']
@@ -157,8 +160,10 @@ cdef class Scampify1d:
 
     def do_environment(self):
 
-        #self.env_thr.eos_update_SA_mean(self.env_var, True)
-        self.env_thr.eos_update_SA_sgs(self.env_var, True)
+        if sgs_flag:
+            self.env_thr.eos_update_SA_sgs(self.env_var, True)
+        else:
+            self.env_thr.eos_update_SA_mean(self.env_var, True)
 
     cpdef do_updrafts(self):
         cdef:
@@ -266,5 +271,5 @@ cdef class Scampify1d:
         ax_arr[2, 2].legend(frameon=False)
         ax_arr[2, 2].grid(True)
 
-        plt.savefig("tests/scampify/output/Bomex_mock_SCM_sgs_quad_100.pdf")
+        plt.savefig("tests/scampify/output/"+casename+"_mock_SCM_"+sgs_str+".pdf")
 
