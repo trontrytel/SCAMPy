@@ -84,12 +84,12 @@ paramlist['turbulence']['updraft_microphysics']['max_supersaturation'] = 44.#0.0
 namelist_gr = {}
 namelist_gr['grid'] = {}
 #casename = 'Bomex'
-casename = 'Bomex_40_20'
+#casename = 'Bomex_40_20'
 #casename = 'Bomex_100_20'
-#casename = 'DYCOMS_RF01'
-time = 200
-sgs_flag = True
-sgs_str = 'sgs'
+casename = 'DYCOMS_RF01'
+time = 240
+sgs_flag = False
+sgs_str = 'mean'
 
 if casename in ['Bomex', 'Bomex_100_20', 'Bomex_40_20']:
     namelist_gr['grid']['dz'] = 20. # 40 in SCM 20 in LES
@@ -226,24 +226,22 @@ cdef class Scampify1d:
 
         ax_arr[1, 0].plot(v_dict['Hvar'][time,:], p_dict['z_half'], c='darkorange', lw=3)
         ax_arr[1, 0].set(xlabel="Hvar", ylabel='height [m]')
-        ax_arr[1, 0].set_xlim(-0.01, 0.22)
+        ax_arr[1, 0].set_xlim(-0.2, 4.)
         ax_arr[1, 0].legend(frameon=False)
         ax_arr[1, 0].grid(True)
 
         ax_arr[1, 1].plot(v_dict['QTvar'][time,:], p_dict['z_half'], c='darkorange', lw=3)
         ax_arr[1, 1].set(xlabel="QTvar")
         ax_arr[1, 1].tick_params(labelleft='off')
-        ax_arr[1, 1].set_xlim(-1e-8, 4*1e-7)
-        ax_arr[1, 1].xaxis.set_major_locator(ticker.MultipleLocator(1e-7))
-        #ax_arr[1, 1].xaxis.set_major_locator(ticker.MultipleLocator(1e-6))
+        ax_arr[1, 1].set_xlim(-1e-7, 2.4e-6)
+        ax_arr[1, 1].xaxis.set_major_locator(ticker.MultipleLocator(1.2e-6))
         ax_arr[1, 1].legend(frameon=False)
         ax_arr[1, 1].grid(True)
 
         ax_arr[1, 2].plot(v_dict['HQTcov'][time,:], p_dict['z_half'], c='darkorange', lw=3)
         ax_arr[1, 2].set(xlabel="HQTcov")
-        ax_arr[1, 2].set_xlim(-3e-4, 1e-5)
-        #ax_arr[1, 2].xaxis.set_major_locator(ticker.MultipleLocator(1e-3))
-        ax_arr[1, 2].xaxis.set_major_locator(ticker.MultipleLocator(1e-4))
+        ax_arr[1, 2].set_xlim(-3e-3, 1e-4)
+        ax_arr[1, 2].xaxis.set_major_locator(ticker.MultipleLocator(1e-3))
         ax_arr[1, 2].tick_params(labelleft='off')
         ax_arr[1, 2].legend(frameon=False)
         ax_arr[1, 2].grid(True)
@@ -251,21 +249,21 @@ cdef class Scampify1d:
         ax_arr[2, 0].plot(np.array(self.upd_var.QL.values[0,:])*1e3, p_dict['z_half'], label='mock SCM', c='limegreen', lw=3)
         ax_arr[2, 0].plot(p_dict['updraft_ql'][time,:]*1e3, p_dict['z_half'], label='LES', c='blue', lw=3)
         ax_arr[2, 0].set(xlabel="upd ql [g/kg]", ylabel='height [m]')
-        ax_arr[2, 0].set_xlim(-1e-1, 1.8)
+        ax_arr[2, 0].set_xlim(-1e-1, .6)
         ax_arr[2, 0].legend(frameon=False)
         ax_arr[2, 0].grid(True)
 
         ax_arr[2, 1].plot(np.array(self.env_var.QL.values[:])*1e3, p_dict['z_half'], label='mock SCM', c='limegreen', lw=3)
         ax_arr[2, 1].plot(p_dict['env_ql'][time,:]*1e3, p_dict['z_half'], label='LES', c='darkorange', lw=3)
         ax_arr[2, 1].set(xlabel="env ql [g/kg]")
-        ax_arr[2, 1].set_xlim(-1e-4, 8e-3)
+        ax_arr[2, 1].set_xlim(-1e-1, .6)
         ax_arr[2, 1].tick_params(labelleft='off')
         ax_arr[2, 1].legend(frameon=False)
         ax_arr[2, 1].grid(True)
 
         ax_arr[2, 2].plot(ql_mean, p_dict['z_half'], label='mock SCM', c='limegreen', lw=3)
         ax_arr[2, 2].plot(p_dict['ql_mean'][time,:]*1e3, p_dict['z_half'], label='LES', c='black', lw=3)
-        ax_arr[2, 2].set_xlim(-1e-3, 0.015)
+        ax_arr[2, 2].set_xlim(-1e-1, .6)
         ax_arr[2, 2].set(xlabel="mean ql [g/kg]")
         ax_arr[2, 2].tick_params(labelleft='off')
         ax_arr[2, 2].legend(frameon=False)
