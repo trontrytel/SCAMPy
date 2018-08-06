@@ -22,7 +22,7 @@ def sim_data(request):
     # generate namelists and paramlists
     setup = pls.simulation_setup('DYCOMS_RF01')
     # chenge the defaults
-    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = False
+    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
 
@@ -33,11 +33,11 @@ def sim_data(request):
     #TODO sa_quadrature + similarity_diff + calc covar doesnt work -> self.wstar in Turbulence.pyx line 134 is zero (division by zero)
 
     #                                                                                           #best     # default
-    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['surface_area'] = 0.1                #0.25     # 0.1
-    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['tke_ed_coeff'] = 0.05               #0.075    # 0.5    <---- /10
-    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['tke_diss_coeff'] = 10.              #20       # 0.01   <---- *1000
-    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['pressure_drag_coeff'] = 0.375       #0.375    # 0.375
-    setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['pressure_plume_spacing'] = 5.       #5        # 500.0  <---- /100
+    #setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['surface_area'] = 0.1                #0.25     # 0.1
+    #setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['tke_ed_coeff'] = 0.05               #0.075    # 0.5    <---- /10
+    #setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['tke_diss_coeff'] = 10.              #20       # 0.01   <---- *1000
+    #setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['pressure_drag_coeff'] = 0.375       #0.375    # 0.375
+    #setup['paramlist']['turbulence']['EDMF_PrognosticTKE']['pressure_plume_spacing'] = 5.       #5        # 500.0  <---- /100
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
