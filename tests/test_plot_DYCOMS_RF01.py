@@ -24,10 +24,10 @@ def sim_data(request):
     # chenge the defaults
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_similarity_diffusivity'] = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
-    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = False
 
-    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
-    #setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
+    #setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
 
     setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 100.      #0.1      # 0.1
     #TODO sa_quadrature + similarity_diff + calc covar doesnt work -> self.wstar in Turbulence.pyx line 134 is zero (division by zero)
