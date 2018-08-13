@@ -8,7 +8,7 @@ Information about the EDMF parameterization implemented in SCAMPy can be found i
 Tan, Z., C. M. Kaul, K. G. Pressel, Y. Cohen, T. Schneider, and J. Teixeira, 2018:
 An extended eddy-diffusivity mass-flux scheme for unified representation of
 subgrid-scale turbulence and convection. Journal of Advances in Modeling Earth Systems, 2018.
-(see [Tan et al., 2018](https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1002/2017MS001162).
+(see [Tan et al., 2018](https://agupubs.onlinelibrary.wiley.com/doi/abs/10.1002/2017MS001162)).
 
 The code is written in Python and Cython.
 
