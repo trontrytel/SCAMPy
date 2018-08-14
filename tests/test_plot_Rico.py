@@ -21,7 +21,7 @@ def sim_data(request):
     # generate namelists and paramlists
     setup = pls.simulation_setup('Rico')
     # change the defaults
-    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = False
+    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
@@ -43,7 +43,7 @@ def test_plot_Rico(sim_data):
     pls.plot_mean(data_to_plot,   "Rico_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "Rico_quicklook_drafts.pdf")
 
-@pytest.mark.skip(reason="wont work without use_scalar_var")
+#@pytest.mark.skip(reason="wont work without use_scalar_var")
 def test_plot_var_covar_Rico(sim_data):
     """
     plot Rico variance and covariance of H and QT profiles
