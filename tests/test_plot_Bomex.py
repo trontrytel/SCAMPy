@@ -22,7 +22,7 @@ def sim_data(request):
     # generate namelists and paramlists
     setup = pls.simulation_setup('Bomex')
     # change the defaults
-    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
+    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = False
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
@@ -39,7 +39,7 @@ def test_plot_Bomex(sim_data):
     """
     plot Bomex profiles
     """
-    data_to_plot = pls.read_data_avg(sim_data, 100)
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100)
 
     pls.plot_mean(data_to_plot,   "Bomex_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "Bomex_quicklook_drafts.pdf")
@@ -60,11 +60,12 @@ def test_plot_timeseries_1D_Bomex(sim_data):
 
     pls.plot_timeseries_1D(data_to_plot, "Bomex_timeseries_1D.pdf")
 
+@pytest.mark.skip(reason="wont work without use_scalar_var")
 def test_plot_var_covar_Bomex(sim_data):
     """
     plot Bomex var covar
     """
-    data_to_plot = pls.read_data_avg(sim_data, 100)
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_covar=True)
 
     pls.plot_var_covar_mean(data_to_plot,       "Bomex_var_covar_mean.pdf")
     pls.plot_var_covar_components(data_to_plot, "Bomex_var_covar_components.pdf")

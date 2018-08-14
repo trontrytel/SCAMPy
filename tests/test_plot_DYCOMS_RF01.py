@@ -22,7 +22,7 @@ def sim_data(request):
     # generate namelists and paramlists
     setup = pls.simulation_setup('DYCOMS_RF01')
     # chenge the defaults
-    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = False
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
@@ -39,16 +39,17 @@ def test_plot_DYCOMS_RF01(sim_data):
     """
     plot DYCOMS_RF01 quicklook profiles
     """
-    data_to_plot = pls.read_data_avg(sim_data, 100)
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100)
 
     pls.plot_mean(data_to_plot,   "DYCOMS_RF01_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "DYCOMS_RF01_quicklook_drafts.pdf")
 
+@pytest.mark.skip(reason="wont work without use_scalar_var")
 def test_plot_var_covar_DYCOMS_RF01(sim_data):
     """
     plot DYCOMS_RF01 quicklook profiles
     """
-    data_to_plot = pls.read_data_avg(sim_data, 100)
+    data_to_plot = pls.read_data_avg(sim_data, n_steps=100, var_covar=True)
 
     pls.plot_var_covar_mean(data_to_plot,       "DYCOMS_RF01_var_covar_mean.pdf")
     pls.plot_var_covar_components(data_to_plot, "DYCOMS_RF01_var_covar_components.pdf")
