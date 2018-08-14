@@ -22,7 +22,12 @@ def sim_data(request):
     # generate namelists and paramlists
     setup = pls.simulation_setup('DYCOMS_RF01')
     # chenge the defaults
-    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var'] = False
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var'] = True
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
+    setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'  # dry, inverse_w, b_w2
+
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature' # sa_mean
+    setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 0.1
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
@@ -44,7 +49,7 @@ def test_plot_DYCOMS_RF01(sim_data):
     pls.plot_mean(data_to_plot,   "DYCOMS_RF01_quicklook.pdf")
     pls.plot_drafts(data_to_plot, "DYCOMS_RF01_quicklook_drafts.pdf")
 
-@pytest.mark.skip(reason="wont work without calc_scalar_var")
+#@pytest.mark.skip(reason="wont work without calc_scalar_var")
 def test_plot_var_covar_DYCOMS_RF01(sim_data):
     """
     plot DYCOMS_RF01 quicklook profiles
