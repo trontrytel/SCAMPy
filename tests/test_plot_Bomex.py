@@ -22,7 +22,7 @@ def sim_data(request):
     # generate namelists and paramlists
     setup = pls.simulation_setup('Bomex')
     # change the defaults
-    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
+    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var'] = False
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
@@ -60,7 +60,7 @@ def test_plot_timeseries_1D_Bomex(sim_data):
 
     pls.plot_timeseries_1D(data_to_plot, "Bomex_timeseries_1D.pdf")
 
-#@pytest.mark.skip(reason="wont work without use_scalar_var")
+@pytest.mark.skip(reason="wont work without calc_scalar_var")
 def test_plot_var_covar_Bomex(sim_data):
     """
     plot Bomex var covar
