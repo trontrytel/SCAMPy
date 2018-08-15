@@ -670,7 +670,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     val1 = 1.0/(1.0-self.UpdVar.Area.bulkvalues[k])
                     val2 = self.UpdVar.Area.bulkvalues[k] * val1
                     self.EnvVar.QT.values[k] = val1 * GMV.QT.values[k] - val2 * self.UpdVar.QT.bulkvalues[k]
-                    self.EnvVar.H.values[k] = val1 * GMV.H.values[k] - val2 * self.UpdVar.H.bulkvalues[k]
+                    self.EnvVar.H.values[k]  = val1 * GMV.H.values[k]  - val2 * self.UpdVar.H.bulkvalues[k]
+                    self.EnvVar.QR.values[k] = val1 * GMV.QR.values[k] - val2 * self.UpdVar.QR.bulkvalues[k]
                     # Have to account for staggering of W--interpolate area fraction to the "full" grid points
                     # Assuming GMV.W = 0!
                     au_full = 0.5 * (self.UpdVar.Area.bulkvalues[k+1] + self.UpdVar.Area.bulkvalues[k])
@@ -697,7 +698,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     val2 = self.UpdVar.Area.bulkvalues[k] * val1
 
                     self.EnvVar.QT.values[k] = val1 * GMV.QT.mf_update[k] - val2 * self.UpdVar.QT.bulkvalues[k]
-                    self.EnvVar.H.values[k] = val1 * GMV.H.mf_update[k] - val2 * self.UpdVar.H.bulkvalues[k]
+                    self.EnvVar.H.values[k]  = val1 * GMV.H.mf_update[k]  - val2 * self.UpdVar.H.bulkvalues[k]
+                    self.EnvVar.QR.values[k] = val1 * GMV.QR.mf_update[k] - val2 * self.UpdVar.QR.bulkvalues[k]
                     # Have to account for staggering of W
                     # Assuming GMV.W = 0!
                     au_full = 0.5 * (self.UpdVar.Area.bulkvalues[k+1] + self.UpdVar.Area.bulkvalues[k])
