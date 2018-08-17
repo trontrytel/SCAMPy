@@ -410,6 +410,9 @@ cdef class UpdraftMicrophysics:
     cdef void compute_update_combined_local_thetal(self, double p0, double T, double *qt, double *ql, double *qr, double *h,
                                                Py_ssize_t i, Py_ssize_t k) nogil :
 
+        """
+        Compute and apply precipitation soure terms to QT and H
+        """
         # Language note: array indexing must be used to dereference pointers in Cython. * notation (C-style dereferencing)
         # is reserved for packing tuples
 
