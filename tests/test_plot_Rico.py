@@ -24,10 +24,11 @@ def sim_data(request):
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var'] = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'  # dry, inverse_w, b_w2
+    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 5
 
-    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature' # sa_mean
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
     #setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
-    setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 0.1
+    #setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 0.1
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
