@@ -137,9 +137,16 @@ cdef class GridMeanVariables:
         # Just leave this zero for now!
         self.W = VariablePrognostic(Gr.nzg, 'full', 'velocity','sym', 'v', 'm/s' )
 
+        try:
+            self.rain_model = namelist['turbulence']['EDMF_PrognosticTKE']['calculate_tke']
+        except:
+            self.rain_model = False
+
         # Create thermodynamic variables
         self.QT = VariablePrognostic(Gr.nzg, 'half', 'scalar','sym', 'qt', 'kg/kg')
-        self.QR = VariablePrognostic(Gr.nzg, 'half', 'scalar','sym', 'qr', 'kg/kg')
+        if self.rain_model:
+            self.QR = VariablePrognostic(Gr.nzg, 'half', 'scalar','sym', 'qr', 'kg/kg')
+            self.rain_Area = VariablePrognostic(Gr.nzg, 'half', 'scalar','sym', 'rain_area', '[-]')
 
         if namelist['thermodynamics']['thermal_variable'] == 'entropy':
             self.H = VariablePrognostic(Gr.nzg, 'half', 'scalar', 'sym','s', 'J/kg/K' )
@@ -201,8 +208,10 @@ cdef class GridMeanVariables:
         self.U.zero_tendencies(self.Gr)
         self.V.zero_tendencies(self.Gr)
         self.QT.zero_tendencies(self.Gr)
-        self.QR.zero_tendencies(self.Gr)
         self.H.zero_tendencies(self.Gr)
+        if self.rain_model:
+            self.QR.zero_tendencies(self.Gr)
+            self.rain_Area.zero_tendencies(self.Gr)
         return
 
     cpdef update(self,  TimeStepping TS):
@@ -214,14 +223,17 @@ cdef class GridMeanVariables:
                 self.V.values[k]  +=  self.V.tendencies[k] * TS.dt
                 self.H.values[k]  +=  self.H.tendencies[k] * TS.dt
                 self.QT.values[k] +=  self.QT.tendencies[k] * TS.dt
-                self.QR.values[k] +=  self.QR.tendencies[k] * TS.dt
-
+                if self.rain_model:
+                    self.QR.values[k] +=  self.QR.tendencies[k] * TS.dt
+                    self.rain_Area.values[k] +=  self.rain_Area.tendencies[k] * TS.dt
 
         self.U.set_bcs(self.Gr)
         self.V.set_bcs(self.Gr)
         self.H.set_bcs(self.Gr)
         self.QT.set_bcs(self.Gr)
-        self.QR.set_bcs(self.Gr)
+        if self.rain_model:
+            # TODO
+            self.QR.set_bcs(self.Gr)
 
         if self.calc_tke:
             self.TKE.set_bcs(self.Gr)

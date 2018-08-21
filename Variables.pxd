@@ -53,6 +53,7 @@ cdef class GridMeanVariables:
         double (*prog_to_t_fp)(double H, double pd, double pv, double qt ) nogil
         bint calc_tke
         bint calc_scalar_var
+        bint rain_model
         str EnvThermo_scheme
 
     cpdef zero_tendencies(self)

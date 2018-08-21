@@ -121,12 +121,12 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         # Create the class for updraft thermodynamics
         self.UpdThermo = EDMF_Updrafts.UpdraftThermodynamics(self.n_updrafts, Gr, Ref, self.UpdVar)
         # Create the class for updraft microphysics
-        self.UpdMicro = EDMF_Updrafts.UpdraftMicrophysics(paramlist, self.n_updrafts, Gr, Ref)
+        self.UpdMicro = EDMF_Updrafts.UpdraftMicrophysics(namelist, self.n_updrafts, Gr, Ref)
 
         # Create the environment variable class (major diagnostic and prognostic variables)
         self.EnvVar = EDMF_Environment.EnvironmentVariables(namelist,Gr)
         # Create the class for environment thermodynamics
-        self.EnvThermo = EDMF_Environment.EnvironmentThermodynamics(namelist, paramlist, Gr, Ref, self.EnvVar)
+        self.EnvThermo = EDMF_Environment.EnvironmentThermodynamics(namelist, Gr, Ref, self.EnvVar)
 
         # Entrainment rates
         self.entr_sc = np.zeros((self.n_updrafts, Gr.nzg),dtype=np.double,order='c')
@@ -413,6 +413,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             self.compute_entrainment_detrainment(GMV, Case)
             self.solve_updraft_velocity_area(GMV,TS)
             self.solve_updraft_scalars(GMV, Case, TS)
+            self.solve_updraft_rain()
             self.UpdVar.set_values_with_new()
             time_elapsed += self.dt_upd
             self.dt_upd = np.minimum(TS.dt-time_elapsed,  0.5 * self.Gr.dz/fmax(np.max(self.UpdVar.W.values),1e-10))
@@ -700,7 +701,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     val2 = self.UpdVar.Area.bulkvalues[k] * val1
                     self.EnvVar.QT.values[k] = val1 * GMV.QT.values[k] - val2 * self.UpdVar.QT.bulkvalues[k]
                     self.EnvVar.H.values[k]  = val1 * GMV.H.values[k]  - val2 * self.UpdVar.H.bulkvalues[k]
-                    self.EnvVar.QR.values[k] = val1 * GMV.QR.values[k] - val2 * self.UpdVar.QR.bulkvalues[k]
+                    #self.EnvVar.QR.values[k] = val1 * GMV.QR.values[k] - val2 * self.UpdVar.QR.bulkvalues[k]
                     # Have to account for staggering of W--interpolate area fraction to the "full" grid points
                     # Assuming GMV.W = 0!
                     au_full = 0.5 * (self.UpdVar.Area.bulkvalues[k+1] + self.UpdVar.Area.bulkvalues[k])
@@ -729,7 +730,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
                     self.EnvVar.QT.values[k] = val1 * GMV.QT.mf_update[k] - val2 * self.UpdVar.QT.bulkvalues[k]
                     self.EnvVar.H.values[k]  = val1 * GMV.H.mf_update[k]  - val2 * self.UpdVar.H.bulkvalues[k]
-                    self.EnvVar.QR.values[k] = val1 * GMV.QR.mf_update[k] - val2 * self.UpdVar.QR.bulkvalues[k]
+                    #self.EnvVar.QR.values[k] = val1 * GMV.QR.mf_update[k] - val2 * self.UpdVar.QR.bulkvalues[k]
                     # Have to account for staggering of W
                     # Assuming GMV.W = 0!
                     au_full = 0.5 * (self.UpdVar.Area.bulkvalues[k+1] + self.UpdVar.Area.bulkvalues[k])

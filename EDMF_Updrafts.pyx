@@ -71,7 +71,10 @@ cdef class UpdraftVariables:
         self.Area = UpdraftVariable(nu, nzg, 'full', 'scalar', 'area_fraction','[-]' )
         self.QT = UpdraftVariable(nu, nzg, 'half', 'scalar', 'qt','kg/kg' )
         self.QL = UpdraftVariable(nu, nzg, 'half', 'scalar', 'ql','kg/kg' )
+
         self.QR = UpdraftVariable(nu, nzg, 'half', 'scalar', 'qr','kg/kg' )
+        self.rain_Area = UpdraftVariable(nu, nzg, 'half', 'scalar', 'rain_area','rain_area_fraction [-]' )
+
         if namelist['thermodynamics']['thermal_variable'] == 'entropy':
             self.H = UpdraftVariable(nu, nzg, 'half', 'scalar', 's','J/kg/K' )
         elif namelist['thermodynamics']['thermal_variable'] == 'thetal':
@@ -121,11 +124,15 @@ cdef class UpdraftVariables:
                         self.Area.values[i,k] = self.updraft_fraction/self.n_updrafts
                     self.QT.values[i,k] = GMV.QT.values[k]
                     self.QL.values[i,k] = GMV.QL.values[k]
-                    self.QR.values[i,k] = GMV.QR.values[k]
+
+                    self.QR.values[i,k] = 0.0
+                    self.rain_Area.values[i,k] = 0.0  # TODO?
+
                     self.H.values[i,k] = GMV.H.values[k]
                     self.T.values[i,k] = GMV.T.values[k]
                     self.B.values[i,k] = 0.0
                 self.Area.values[i,gw] = self.updraft_fraction/self.n_updrafts
+                self.rain_Area.values[i,gw] = self.updraft_fraction/self.n_updrafts
 
         self.QT.set_bcs(self.Gr)
         self.QR.set_bcs(self.Gr)
@@ -139,6 +146,7 @@ cdef class UpdraftVariables:
         Stats.add_profile('updraft_qt')
         Stats.add_profile('updraft_ql')
         Stats.add_profile('updraft_qr')
+        Stats.add_profile('updraft_qr_area')
         if self.H.name == 'thetal':
             Stats.add_profile('updraft_thetal')
         else:
@@ -159,9 +167,11 @@ cdef class UpdraftVariables:
             Py_ssize_t i, k
 
         self.Area.bulkvalues = np.sum(self.Area.values,axis=0)
+        self.rain_Area.bulkvalues = np.sum(self.rain_Area.values,axis=0)
         self.W.bulkvalues[:] = 0.0
         self.QT.bulkvalues[:] = 0.0
         self.QL.bulkvalues[:] = 0.0
+        self.QR.bulkvalues[:] = 0.0
         self.QR.bulkvalues[:] = 0.0
         self.H.bulkvalues[:] = 0.0
         self.T.bulkvalues[:] = 0.0
@@ -174,15 +184,15 @@ cdef class UpdraftVariables:
                     for i in xrange(self.n_updrafts):
                         self.QT.bulkvalues[k] += self.Area.values[i,k] * self.QT.values[i,k]/self.Area.bulkvalues[k]
                         self.QL.bulkvalues[k] += self.Area.values[i,k] * self.QL.values[i,k]/self.Area.bulkvalues[k]
-                        self.QR.bulkvalues[k] += self.Area.values[i,k] * self.QR.values[i,k]/self.Area.bulkvalues[k]
                         self.H.bulkvalues[k] += self.Area.values[i,k] * self.H.values[i,k]/self.Area.bulkvalues[k]
                         self.T.bulkvalues[k] += self.Area.values[i,k] * self.T.values[i,k]/self.Area.bulkvalues[k]
                         self.B.bulkvalues[k] += self.Area.values[i,k] * self.B.values[i,k]/self.Area.bulkvalues[k]
                         self.W.bulkvalues[k] += ((self.Area.values[i,k] + self.Area.values[i,k+1]) * self.W.values[i,k]
                                             /(self.Area.bulkvalues[k] + self.Area.bulkvalues[k+1]))
+                        self.QR.bulkvalues[k] += self.rain_Area.values[i,k] * self.QR.values[i,k] / self.rain_Area.bulkvalues[k]
                 else:
                     self.QT.bulkvalues[k] = GMV.QT.values[k]
-                    self.QR.bulkvalues[k] = GMV.QR.values[k]
+                    self.QR.bulkvalues[k] = 0.0
                     self.QL.bulkvalues[k] = 0.0
                     self.H.bulkvalues[k] = GMV.H.values[k]
                     self.T.bulkvalues[k] = GMV.T.values[k]
@@ -200,6 +210,7 @@ cdef class UpdraftVariables:
                     self.QT.new[i,k] = self.QT.values[i,k]
                     self.QL.new[i,k] = self.QL.values[i,k]
                     self.QR.new[i,k] = self.QR.values[i,k]
+                    self.rain_Area.new[i,k] = self.rain_Area.values[i,k]
                     self.H.new[i,k] = self.H.values[i,k]
                     self.THL.new[i,k] = self.THL.values[i,k]
                     self.T.new[i,k] = self.T.values[i,k]
@@ -213,6 +224,7 @@ cdef class UpdraftVariables:
                 for k in xrange(self.Gr.nzg):
                     self.W.old[i,k] = self.W.values[i,k]
                     self.Area.old[i,k] = self.Area.values[i,k]
+                    self.rain_Area.old[i,k] = self.rain_Area.values[i,k]
                     self.QT.old[i,k] = self.QT.values[i,k]
                     self.QL.old[i,k] = self.QL.values[i,k]
                     self.QR.old[i,k] = self.QR.values[i,k]
@@ -231,6 +243,7 @@ cdef class UpdraftVariables:
                     self.QT.values[i,k] = self.QT.new[i,k]
                     self.QL.values[i,k] = self.QL.new[i,k]
                     self.QR.values[i,k] = self.QR.new[i,k]
+                    self.rain_Area.values[i,k] = self.rain_Area.new[i,k]
                     self.H.values[i,k] = self.H.new[i,k]
                     self.THL.values[i,k] = self.THL.new[i,k]
                     self.T.values[i,k] = self.T.new[i,k]
@@ -245,6 +258,8 @@ cdef class UpdraftVariables:
         Stats.write_profile('updraft_qt', self.QT.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('updraft_ql', self.QL.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('updraft_qr', self.QR.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        Stats.write_profile('updraft_qr_area', self.rain_Area.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+
         if self.H.name == 'thetal':
             Stats.write_profile('updraft_thetal', self.H.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         else:
@@ -358,11 +373,11 @@ cdef class UpdraftThermodynamics:
 
 #Implements a simple "microphysics" that clips excess humidity above a user-specified level
 cdef class UpdraftMicrophysics:
-    def __init__(self, paramlist, n_updraft, Grid.Grid Gr, ReferenceState.ReferenceState Ref):
+    def __init__(self, namelist, n_updraft, Grid.Grid Gr, ReferenceState.ReferenceState Ref):
         self.Gr = Gr
         self.Ref = Ref
         self.n_updraft = n_updraft
-        self.max_supersaturation = paramlist['turbulence']['updraft_microphysics']['max_supersaturation']
+        self.max_supersaturation = namelist['microphysics']['max_supersaturation']
         self.prec_source_h = np.zeros((n_updraft, Gr.nzg), dtype=np.double, order='c')
         self.prec_source_qt = np.zeros((n_updraft, Gr.nzg), dtype=np.double, order='c')
         self.prec_source_h_tot = np.zeros((Gr.nzg,), dtype=np.double, order='c')

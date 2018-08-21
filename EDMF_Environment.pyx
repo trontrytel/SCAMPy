@@ -148,11 +148,11 @@ cdef class EnvironmentVariables:
         return
 
 cdef class EnvironmentThermodynamics:
-    def __init__(self, namelist, paramlist, Grid Gr, ReferenceState Ref, EnvironmentVariables EnvVar):
+    def __init__(self, namelist, Grid Gr, ReferenceState Ref, EnvironmentVariables EnvVar):
         self.Gr = Gr
         self.Ref = Ref
         try:
-            self.quadrature_order = namelist['condensation']['quadrature_order']
+            self.quadrature_order = namelist['microphysics']['quadrature_order']
         except:
             self.quadrature_order = 5
         if EnvVar.H.name == 's':
@@ -174,7 +174,7 @@ cdef class EnvironmentThermodynamics:
         self.QTvar_rain_dt  = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
         self.HQTcov_rain_dt = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
 
-        self.max_supersaturation = paramlist['turbulence']['updraft_microphysics']['max_supersaturation']
+        self.max_supersaturation = namelist['microphysics']['max_supersaturation']
 
         return
 

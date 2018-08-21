@@ -177,6 +177,11 @@ def Rico():
     namelist['thermodynamics']['saturation'] = 'sa_mean'
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
 
+    namelist['microphysics'] = {}
+    namelist['microphysics']['max_supersaturation'] = 0.1
+    namelist['microphysics']['rain_model'] = True
+    namelist['microphysics']['quadrature_order'] = 5
+
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 20.0
     namelist['time_stepping']['t_max'] = 86400.0
