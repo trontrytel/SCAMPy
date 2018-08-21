@@ -72,8 +72,13 @@ cdef class UpdraftVariables:
         self.QT = UpdraftVariable(nu, nzg, 'half', 'scalar', 'qt','kg/kg' )
         self.QL = UpdraftVariable(nu, nzg, 'half', 'scalar', 'ql','kg/kg' )
 
-        self.QR = UpdraftVariable(nu, nzg, 'half', 'scalar', 'qr','kg/kg' )
-        self.rain_Area = UpdraftVariable(nu, nzg, 'half', 'scalar', 'rain_area','rain_area_fraction [-]' )
+        try:
+            self.rain_model = namelist['turbulence']['EDMF_PrognosticTKE']['calculate_tke']
+        except:
+            self.rain_model = False
+        if rain_model:
+            self.QR = UpdraftVariable(nu, nzg, 'half', 'scalar', 'qr','kg/kg' )
+            self.rain_Area = UpdraftVariable(nu, nzg, 'half', 'scalar', 'rain_area','rain_area_fraction [-]' )
 
         if namelist['thermodynamics']['thermal_variable'] == 'entropy':
             self.H = UpdraftVariable(nu, nzg, 'half', 'scalar', 's','J/kg/K' )
@@ -124,19 +129,24 @@ cdef class UpdraftVariables:
                         self.Area.values[i,k] = self.updraft_fraction/self.n_updrafts
                     self.QT.values[i,k] = GMV.QT.values[k]
                     self.QL.values[i,k] = GMV.QL.values[k]
-
-                    self.QR.values[i,k] = 0.0
-                    self.rain_Area.values[i,k] = 0.0  # TODO?
+                    if self.rain_model:
+                        self.QR.values[i,k] = 0.0
+                        self.rain_Area.values[i,k] = 0.0  # TODO?
 
                     self.H.values[i,k] = GMV.H.values[k]
                     self.T.values[i,k] = GMV.T.values[k]
                     self.B.values[i,k] = 0.0
+
                 self.Area.values[i,gw] = self.updraft_fraction/self.n_updrafts
-                self.rain_Area.values[i,gw] = self.updraft_fraction/self.n_updrafts
+                if self.rain_model:
+                    self.rain_Area.values[i,gw] = self.updraft_fraction/self.n_updrafts
 
         self.QT.set_bcs(self.Gr)
-        self.QR.set_bcs(self.Gr)
         self.H.set_bcs(self.Gr)
+
+        if self.rain_model:
+            self.QR.set_bcs(self.Gr)
+            self.rain_Area.set_bcs(self.Gr)
 
         return
 
@@ -145,8 +155,9 @@ cdef class UpdraftVariables:
         Stats.add_profile('updraft_w')
         Stats.add_profile('updraft_qt')
         Stats.add_profile('updraft_ql')
-        Stats.add_profile('updraft_qr')
-        Stats.add_profile('updraft_qr_area')
+        if self.rain_model:
+            Stats.add_profile('updraft_qr')
+            Stats.add_profile('updraft_rain_area')
         if self.H.name == 'thetal':
             Stats.add_profile('updraft_thetal')
         else:
@@ -167,16 +178,15 @@ cdef class UpdraftVariables:
             Py_ssize_t i, k
 
         self.Area.bulkvalues = np.sum(self.Area.values,axis=0)
-        self.rain_Area.bulkvalues = np.sum(self.rain_Area.values,axis=0)
         self.W.bulkvalues[:] = 0.0
         self.QT.bulkvalues[:] = 0.0
         self.QL.bulkvalues[:] = 0.0
-        self.QR.bulkvalues[:] = 0.0
-        self.QR.bulkvalues[:] = 0.0
         self.H.bulkvalues[:] = 0.0
         self.T.bulkvalues[:] = 0.0
         self.B.bulkvalues[:] = 0.0
-
+        if self.rain_model:
+            self.QR.bulkvalues[:] = 0.0
+            self.rain_Area.bulkvalues = np.sum(self.rain_Area.values,axis=0)
 
         with nogil:
             for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
@@ -189,15 +199,22 @@ cdef class UpdraftVariables:
                         self.B.bulkvalues[k] += self.Area.values[i,k] * self.B.values[i,k]/self.Area.bulkvalues[k]
                         self.W.bulkvalues[k] += ((self.Area.values[i,k] + self.Area.values[i,k+1]) * self.W.values[i,k]
                                             /(self.Area.bulkvalues[k] + self.Area.bulkvalues[k+1]))
-                        self.QR.bulkvalues[k] += self.rain_Area.values[i,k] * self.QR.values[i,k] / self.rain_Area.bulkvalues[k]
+
                 else:
                     self.QT.bulkvalues[k] = GMV.QT.values[k]
-                    self.QR.bulkvalues[k] = 0.0
                     self.QL.bulkvalues[k] = 0.0
                     self.H.bulkvalues[k] = GMV.H.values[k]
                     self.T.bulkvalues[k] = GMV.T.values[k]
                     self.B.bulkvalues[k] = 0.0
                     self.W.bulkvalues[k] = 0.0
+
+            if self.rain_model:
+                for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
+                    if self.rain_Area.bulkvalues[k] > 1.0e-20:
+                        for i in xrange(self.n_updrafts):
+                            self.QR.bulkvalues[k] += self.rain_Area.values[i,k] * self.QR.values[i,k] / self.rain_Area.bulkvalues[k]
+                    else
+                        self.QR.bulkvalues[k] = 0.0
 
         return
     # quick utility to set "new" arrays with values in the "values" arrays
@@ -209,12 +226,15 @@ cdef class UpdraftVariables:
                     self.Area.new[i,k] = self.Area.values[i,k]
                     self.QT.new[i,k] = self.QT.values[i,k]
                     self.QL.new[i,k] = self.QL.values[i,k]
-                    self.QR.new[i,k] = self.QR.values[i,k]
-                    self.rain_Area.new[i,k] = self.rain_Area.values[i,k]
                     self.H.new[i,k] = self.H.values[i,k]
                     self.THL.new[i,k] = self.THL.values[i,k]
                     self.T.new[i,k] = self.T.values[i,k]
                     self.B.new[i,k] = self.B.values[i,k]
+            if self.rain_model:
+                for i in xrange(self.n_updrafts):
+                    for k in xrange(self.Gr.nzg):
+                        self.rain_Area.new[i,k] = self.rain_Area.values[i,k]
+                        self.QR.new[i,k] = self.QR.values[i,k]
         return
 
     # quick utility to set "new" arrays with values in the "values" arrays
@@ -224,14 +244,17 @@ cdef class UpdraftVariables:
                 for k in xrange(self.Gr.nzg):
                     self.W.old[i,k] = self.W.values[i,k]
                     self.Area.old[i,k] = self.Area.values[i,k]
-                    self.rain_Area.old[i,k] = self.rain_Area.values[i,k]
                     self.QT.old[i,k] = self.QT.values[i,k]
                     self.QL.old[i,k] = self.QL.values[i,k]
-                    self.QR.old[i,k] = self.QR.values[i,k]
                     self.H.old[i,k] = self.H.values[i,k]
                     self.THL.old[i,k] = self.THL.values[i,k]
                     self.T.old[i,k] = self.T.values[i,k]
                     self.B.old[i,k] = self.B.values[i,k]
+            if self.rain_model:
+                for i in xrange(self.n_updrafts):
+                    for k in xrange(self.Gr.nzg):
+                        self.rain_Area.old[i,k] = self.rain_Area.values[i,k]
+                        self.QR.old[i,k] = self.QR.values[i,k]
         return
     # quick utility to set "tmp" arrays with values in the "new" arrays
     cpdef set_values_with_new(self):
@@ -242,12 +265,15 @@ cdef class UpdraftVariables:
                     self.Area.values[i,k] = self.Area.new[i,k]
                     self.QT.values[i,k] = self.QT.new[i,k]
                     self.QL.values[i,k] = self.QL.new[i,k]
-                    self.QR.values[i,k] = self.QR.new[i,k]
-                    self.rain_Area.values[i,k] = self.rain_Area.new[i,k]
                     self.H.values[i,k] = self.H.new[i,k]
                     self.THL.values[i,k] = self.THL.new[i,k]
                     self.T.values[i,k] = self.T.new[i,k]
                     self.B.values[i,k] = self.B.new[i,k]
+            if self.rain_model:
+                for i in xrange(self.n_updrafts):
+                    for k in xrange(self.Gr.nzg):
+                        self.QR.values[i,k] = self.QR.new[i,k]
+                        self.rain_Area.values[i,k] = self.rain_Area.new[i,k]
         return
 
 

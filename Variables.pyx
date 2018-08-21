@@ -210,6 +210,7 @@ cdef class GridMeanVariables:
         self.QT.zero_tendencies(self.Gr)
         self.H.zero_tendencies(self.Gr)
         if self.rain_model:
+            #TODO - do I need that?
             self.QR.zero_tendencies(self.Gr)
             self.rain_Area.zero_tendencies(self.Gr)
         return
@@ -224,6 +225,7 @@ cdef class GridMeanVariables:
                 self.H.values[k]  +=  self.H.tendencies[k] * TS.dt
                 self.QT.values[k] +=  self.QT.tendencies[k] * TS.dt
                 if self.rain_model:
+                    #TODO - do I need that?
                     self.QR.values[k] +=  self.QR.tendencies[k] * TS.dt
                     self.rain_Area.values[k] +=  self.rain_Area.tendencies[k] * TS.dt
 
@@ -232,8 +234,9 @@ cdef class GridMeanVariables:
         self.H.set_bcs(self.Gr)
         self.QT.set_bcs(self.Gr)
         if self.rain_model:
-            # TODO
+            # TODO - what are the boundary conditions for rain
             self.QR.set_bcs(self.Gr)
+            self.rain_Area.set_bcs(self.Gr)
 
         if self.calc_tke:
             self.TKE.set_bcs(self.Gr)
@@ -253,7 +256,9 @@ cdef class GridMeanVariables:
         Stats.add_profile('u_mean')
         Stats.add_profile('v_mean')
         Stats.add_profile('qt_mean')
-        Stats.add_profile('qr_mean')
+        if self.rain_model:
+            Stats.add_profile('qr_mean')
+            Stats.add_profile('rain_area')
         if self.H.name == 's':
             Stats.add_profile('s_mean')
             Stats.add_profile('thetal_mean')
@@ -282,7 +287,9 @@ cdef class GridMeanVariables:
         Stats.write_profile('v_mean',self.V.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('qt_mean',self.QT.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('ql_mean',self.QL.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
-        Stats.write_profile('qr_mean',self.QR.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        if self.rain_model:
+            Stats.write_profile('qr_mean',self.QR.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+            Stats.write_profile('rain_area',self.rain_Area.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('temperature_mean',self.T.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('buoyancy_mean',self.B.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         if self.H.name == 's':
