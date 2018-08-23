@@ -46,6 +46,11 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             print('Turbulence--EDMF_PrognosticTKE: defaulting to local (level-by-level) microphysics')
 
         try:
+            self.rain_model = namelist['microphysics']['rain_model']
+        except:
+            self.rain_model = False
+
+        try:
             self.calc_tke = namelist['turbulence']['EDMF_PrognosticTKE']['calculate_tke']
         except:
             self.calc_tke = True
@@ -382,7 +387,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         #   - the buoyancy of updrafts and environment is updated such that
         #     the mean buoyancy with repect to reference state alpha_0 is zero.
         self.decompose_environment(GMV, 'mf_update')
-        self.EnvThermo.satadjust(self.EnvVar, True)
+        self.EnvThermo.satadjust(self.EnvVar, True, self.rain_model)
         self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
 
         self.compute_eddy_diffusivities_tke(GMV, Case)
@@ -423,7 +428,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             # instead of calling EnvThermo saturation adjustment scheme for every updraft.
             # If we are using quadratures this is expensive and probably unnecessary.
             self.decompose_environment(GMV, 'values')
-            self.EnvThermo.satadjust(self.EnvVar, False)
+            self.EnvThermo.satadjust(self.EnvVar, False, False)
             self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
         return
 
@@ -452,10 +457,17 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                          self.UpdVar.QT.values[i,gw], self.UpdVar.H.values[i,gw])
                 self.UpdVar.QL.values[i,gw] = sa.ql
                 self.UpdVar.T.values[i,gw] = sa.T
-                self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[gw], self.UpdVar.T.values[i,gw],
-                                                                   &self.UpdVar.QT.values[i,gw], &self.UpdVar.QL.values[i,gw],
-                                                                   &self.UpdVar.QR.values[i,gw], &self.UpdVar.H.values[i,gw],
-                                                                   i, gw)
+                if self.rain_model:
+                    self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[gw], self.UpdVar.T.values[i,gw],
+                                                                       &self.UpdVar.QT.values[i,gw], &self.UpdVar.QL.values[i,gw],
+                                                                       &self.UpdVar.H.values[i,gw],
+                                                                       i, gw, &self.UpdVar.QR.values[i,gw])
+                else:
+                    self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[gw], self.UpdVar.T.values[i,gw],
+                                                                       &self.UpdVar.QT.values[i,gw], &self.UpdVar.QL.values[i,gw],
+                                                                       &self.UpdVar.H.values[i,gw],
+                                                                       i, gw)
+
                 for k in xrange(gw+1, self.Gr.nzg-gw):
                     denom = 1.0 + self.entr_sc[i,k] * dz
                     self.UpdVar.H.values[i,k] = (self.UpdVar.H.values[i,k-1] + self.entr_sc[i,k] * dz * GMV.H.values[k])/denom
@@ -466,16 +478,25 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                              self.UpdVar.QT.values[i,k], self.UpdVar.H.values[i,k])
                     self.UpdVar.QL.values[i,k] = sa.ql
                     self.UpdVar.T.values[i,k] = sa.T
-                    self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[k], self.UpdVar.T.values[i,k],
-                                                                       &self.UpdVar.QT.values[i,k], &self.UpdVar.QL.values[i,k],
-                                                                       &self.UpdVar.QR.values[i,k], &self.UpdVar.H.values[i,k],
-                                                                       i, k)
+                    if self.rain_model:
+                        self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[k], self.UpdVar.T.values[i,k],
+                                                                           &self.UpdVar.QT.values[i,k], &self.UpdVar.QL.values[i,k],
+                                                                           &self.UpdVar.H.values[i,k],
+                                                                           i, k, &self.UpdVar.QR.values[i,k])
+                    else:
+                        self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[k], self.UpdVar.T.values[i,k],
+                                                                           &self.UpdVar.QT.values[i,k], &self.UpdVar.QL.values[i,k],
+                                                                           &self.UpdVar.H.values[i,k],
+                                                                           i, k)
+
+
+
         self.UpdVar.QT.set_bcs(self.Gr)
         self.UpdVar.QR.set_bcs(self.Gr)
         self.UpdVar.H.set_bcs(self.Gr)
         # TODO - see comment (####)
         self.decompose_environment(GMV, 'values')
-        self.EnvThermo.satadjust(self.EnvVar, False)
+        self.EnvThermo.satadjust(self.EnvVar, False, False)
         self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
 
         # Solve updraft velocity equation
@@ -542,7 +563,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         # TODO - see comment (####)
         self.decompose_environment(GMV, 'values')
-        self.EnvThermo.satadjust(self.EnvVar, False)
+        self.EnvThermo.satadjust(self.EnvVar, False, False)
         self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
 
         self.UpdVar.Area.set_bcs(self.Gr)
@@ -1001,10 +1022,16 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     self.UpdVar.QL.new[i,gw] = sa.ql
                     self.UpdVar.T.new[i,gw] = sa.T
                     # remove precipitation (update QT, QL and H)
-                    self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[gw], self.UpdVar.T.new[i,gw],
-                                                                       &self.UpdVar.QT.new[i,gw], &self.UpdVar.QL.new[i,gw],
-                                                                       &self.UpdVar.QR.new[i,gw], &self.UpdVar.H.new[i,gw],
-                                                                       i, gw)
+                    if self.rain_model:
+                        self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[gw], self.UpdVar.T.new[i,gw],
+                                                                           &self.UpdVar.QT.new[i,gw], &self.UpdVar.QL.new[i,gw],
+                                                                           &self.UpdVar.H.new[i,gw],
+                                                                           i, gw, &self.UpdVar.QR.new[i,gw])
+                    else:
+                        self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[gw], self.UpdVar.T.new[i,gw],
+                                                                           &self.UpdVar.QT.new[i,gw], &self.UpdVar.QL.new[i,gw],
+                                                                           &self.UpdVar.H.new[i,gw],
+                                                                           i, gw)
 
                 # starting from the bottom do entrainment at each level
                 for k in xrange(gw+1, self.Gr.nzg-gw):
@@ -1040,10 +1067,17 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
                     if self.use_local_micro:
                         # remove precipitation (pdate QT, QL and H)
-                        self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[k], self.UpdVar.T.new[i,k],
-                                                                       &self.UpdVar.QT.new[i,k], &self.UpdVar.QL.new[i,k],
-                                                                       &self.UpdVar.QR.new[i,k], &self.UpdVar.H.new[i,k],
-                                                                       i, k)
+                        if self.rain_model:
+                            self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[k], self.UpdVar.T.new[i,k],
+                                                                              &self.UpdVar.QT.new[i,k], &self.UpdVar.QL.new[i,k],
+                                                                              &self.UpdVar.H.new[i,k],
+                                                                              i, k, &self.UpdVar.QR.new[i,k])
+                        else:
+                            self.UpdMicro.compute_update_combined_local_thetal(self.Ref.p0_half[k], self.UpdVar.T.new[i,k],
+                                                                               &self.UpdVar.QT.new[i,k], &self.UpdVar.QL.new[i,k],
+                                                                               &self.UpdVar.H.new[i,k],
+                                                                               i, k)
+
 
         if self.use_local_micro:
             # save the total source terms for H and QT due to precipitation

@@ -138,7 +138,7 @@ cdef class GridMeanVariables:
         self.W = VariablePrognostic(Gr.nzg, 'full', 'velocity','sym', 'v', 'm/s' )
 
         try:
-            self.rain_model = namelist['turbulence']['EDMF_PrognosticTKE']['calculate_tke']
+            self.rain_model = namelist['microphysics']['rain_model']
         except:
             self.rain_model = False
 

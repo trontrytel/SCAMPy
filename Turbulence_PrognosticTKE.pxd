@@ -25,6 +25,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         bint use_steady_updrafts
         bint calc_scalar_var
         bint calc_tke
+        bint rain_model
         double surface_area
         double minimum_area
         double entrainment_factor

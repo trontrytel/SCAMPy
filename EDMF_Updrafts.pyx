@@ -73,7 +73,7 @@ cdef class UpdraftVariables:
         self.QL = UpdraftVariable(nu, nzg, 'half', 'scalar', 'ql','kg/kg' )
 
         try:
-            self.rain_model = namelist['turbulence']['EDMF_PrognosticTKE']['calculate_tke']
+            self.rain_model = namelist['microphysics']['rain_model']
         except:
             self.rain_model = False
         if rain_model:
@@ -213,7 +213,7 @@ cdef class UpdraftVariables:
                     if self.rain_Area.bulkvalues[k] > 1.0e-20:
                         for i in xrange(self.n_updrafts):
                             self.QR.bulkvalues[k] += self.rain_Area.values[i,k] * self.QR.values[i,k] / self.rain_Area.bulkvalues[k]
-                    else
+                    else:
                         self.QR.bulkvalues[k] = 0.0
 
         return
@@ -283,8 +283,9 @@ cdef class UpdraftVariables:
         Stats.write_profile('updraft_w', self.W.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('updraft_qt', self.QT.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('updraft_ql', self.QL.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
-        Stats.write_profile('updraft_qr', self.QR.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
-        Stats.write_profile('updraft_qr_area', self.rain_Area.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        if self.rain_model:
+            Stats.write_profile('updraft_qr', self.QR.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+            Stats.write_profile('updraft_qr_area', self.rain_Area.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
 
         if self.H.name == 'thetal':
             Stats.write_profile('updraft_thetal', self.H.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
@@ -444,12 +445,14 @@ cdef class UpdraftMicrophysics:
                 for k in xrange(self.Gr.nzg):
                     UpdVar.QT.values[i,k] += self.prec_source_qt[i,k]
                     UpdVar.QL.values[i,k] += self.prec_source_qt[i,k]
-                    UpdVar.QR.values[i,k] -= self.prec_source_qt[i,k]
                     UpdVar.H.values[i,k] += self.prec_source_h[i,k]
+                    if self.rain_model:
+                        #TODO
+                        UpdVar.QR.values[i,k] -= self.prec_source_qt[i,k]
         return
 
-    cdef void compute_update_combined_local_thetal(self, double p0, double T, double *qt, double *ql, double *qr, double *h,
-                                               Py_ssize_t i, Py_ssize_t k) nogil :
+    cdef void compute_update_combined_local_thetal(self, double p0, double T, double *qt, double *ql,  double *h,
+                                               Py_ssize_t i, Py_ssize_t k, double *qr) nogil :
 
         """
         Compute and apply precipitation soure terms to QT and H
@@ -463,7 +466,10 @@ cdef class UpdraftMicrophysics:
                                                                              #TODO - assumes no ice
         qt[0] += self.prec_source_qt[i,k]
         ql[0] += self.prec_source_qt[i,k]
-        qr[0] -= self.prec_source_qt[i,k]
         h[0]  += self.prec_source_h[i,k]
+
+        if self.rain_model:
+            #TODO
+            qr[0] -= self.prec_source_qt[i,k]
 
         return

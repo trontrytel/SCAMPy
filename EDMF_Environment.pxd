@@ -34,6 +34,7 @@ cdef class EnvironmentVariables:
         bint calc_tke
         bint calc_scalar_var
         bint use_prescribed_scalar_var
+        bint rain_model
         double prescribed_QTvar
         double prescribed_Hvar
         double prescribed_HQTcov
@@ -66,11 +67,12 @@ cdef class EnvironmentThermodynamics:
 
         double max_supersaturation
 
-        void update_EnvVar(self,    long k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double qr, double alpha) nogil
+        void update_EnvVar(self,    long k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double alpha) nogil
+        void update_EnvRain(self,   long k, EnvironmentVariables EnvVar, double qr) nogil
         void update_cloud_dry(self, long k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double qv) nogil
 
-        void eos_update_SA_mean(self, EnvironmentVariables EnvVar, bint in_Env)
-        void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, bint in_Env)#, TimeStepping TS)
+        void eos_update_SA_mean(self, EnvironmentVariables EnvVar, bint in_Env, bint rain_model)
+        void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, bint in_Env, bint rain_model)#, TimeStepping TS)
         void sommeria_deardorff(self, EnvironmentVariables EnvVar)
 
-    cpdef satadjust(self, EnvironmentVariables EnvVar, bint in_Env)#, TimeStepping TS)
+    cpdef satadjust(self, EnvironmentVariables EnvVar, bint in_Env, bint rain_model)#, TimeStepping TS)
