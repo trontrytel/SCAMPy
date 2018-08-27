@@ -119,7 +119,12 @@ cdef class EnvironmentVariables:
             Stats.add_profile('env_HQTcov')
         if self.EnvThermo_scheme == 'sommeria_deardorff':
             Stats.add_profile('env_THVvar')
+
+        Stats.add_ts('env_puddle') #TODO
+
         return
+
+
 
     cpdef io(self, NetCDFIO_Stats Stats):
         Stats.write_profile('env_w', self.W.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
@@ -141,7 +146,13 @@ cdef class EnvironmentVariables:
         if self.EnvThermo_scheme  == 'sommeria_deardorff':
             Stats.write_profile('env_THVvar', self.THVvar.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
 
+        env_puddle = 0.0
+        for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
+            env_puddle += self.Area.values[k] * self.QR.values[k]
+        Stats.write_ts('env_puddle', env_puddle)
+
         #ToDo [suggested by CK for AJ ;]
+        # AJ:  OK
         # Add output of environmental cloud fraction, cloud base, cloud top (while the latter can be gleaned from ql profiles
         # it is more convenient to simply have them in the stats files!
         # Add the same with respect to the grid mean
@@ -185,7 +196,7 @@ cdef class EnvironmentThermodynamics:
         EnvVar.H.values[k]   = H
         EnvVar.QT.values[k]  = qt
         EnvVar.QL.values[k]  = ql
-        EnvVar.QR.values[k] += qr
+        EnvVar.QR.values[k]  = qr
         EnvVar.B.values[k]   = buoyancy_c(self.Ref.alpha0_half[k], alpha)
         return
 

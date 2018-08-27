@@ -151,6 +151,7 @@ cdef class UpdraftVariables:
         Stats.add_ts('updraft_cloud_base')
         Stats.add_ts('updraft_cloud_top')
 
+        Stats.add_ts('updraft_puddle')
         return
 
     cpdef set_means(self, GridMeanVariables GMV):
@@ -261,6 +262,11 @@ cdef class UpdraftVariables:
         Stats.write_ts('updraft_cloud_base', np.amin(self.cloud_base))
         Stats.write_ts('updraft_cloud_top', np.amax(self.cloud_top))
 
+        updraft_puddle = 0.0
+        for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
+            for i in xrange(self.n_updrafts):
+                updraft_puddle += self.Area.values[i,k] * self.QR.values[i,k]
+        Stats.write_ts('updraft_puddle', updraft_puddle)
         return
 
     cpdef get_cloud_base_top_cover(self):
@@ -403,7 +409,7 @@ cdef class UpdraftMicrophysics:
                 for k in xrange(self.Gr.nzg):
                     UpdVar.QT.values[i,k] += self.prec_source_qt[i,k]
                     UpdVar.QL.values[i,k] += self.prec_source_qt[i,k]
-                    UpdVar.QR.values[i,k] -= self.prec_source_qt[i,k]
+                    UpdVar.QR.values[i,k] = self.prec_source_qt[i,k]
                     UpdVar.H.values[i,k] += self.prec_source_h[i,k]
         return
 
@@ -419,7 +425,7 @@ cdef class UpdraftMicrophysics:
                                                                              #TODO - assumes no ice
         qt[0] += self.prec_source_qt[i,k]
         ql[0] += self.prec_source_qt[i,k]
-        qr[0] -= self.prec_source_qt[i,k]
+        qr[0]  = self.prec_source_qt[i,k]
         h[0]  += self.prec_source_h[i,k]
 
         return
