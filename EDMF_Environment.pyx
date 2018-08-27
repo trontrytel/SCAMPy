@@ -47,6 +47,8 @@ cdef class EnvironmentVariables:
         self.T = EnvironmentVariable( nz, 'half', 'scalar', 'temperature','K' )
         self.B = EnvironmentVariable( nz, 'half', 'scalar', 'buoyancy','m^2/s^3' )
         self.CF = EnvironmentVariable(nz, 'half', 'scalar','cloud_fraction', '-')
+        self.Area = EnvironmentVariable(nz, 'half', 'scalar','env_area', '-')
+
 
         # TKE   TODO   repeated from Variables.pyx logic
         if  namelist['turbulence']['scheme'] == 'EDMF_PrognosticTKE':
@@ -106,6 +108,7 @@ cdef class EnvironmentVariables:
         Stats.add_profile('env_qt')
         Stats.add_profile('env_ql')
         Stats.add_profile('env_qr')
+        Stats.add_profile('env_area')
         if self.H.name == 's':
             Stats.add_profile('env_s')
         else:
@@ -131,6 +134,7 @@ cdef class EnvironmentVariables:
         Stats.write_profile('env_qt', self.QT.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_ql', self.QL.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_qr', self.QR.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        Stats.write_profile('env_area', self.Area.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         if self.H.name == 's':
             Stats.write_profile('env_s', self.H.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         else:

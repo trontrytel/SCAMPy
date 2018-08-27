@@ -409,7 +409,7 @@ cdef class UpdraftMicrophysics:
                 for k in xrange(self.Gr.nzg):
                     UpdVar.QT.values[i,k] += self.prec_source_qt[i,k]
                     UpdVar.QL.values[i,k] += self.prec_source_qt[i,k]
-                    UpdVar.QR.values[i,k] = self.prec_source_qt[i,k]
+                    UpdVar.QR.values[i,k] = - self.prec_source_qt[i,k]
                     UpdVar.H.values[i,k] += self.prec_source_h[i,k]
         return
 
@@ -425,7 +425,7 @@ cdef class UpdraftMicrophysics:
                                                                              #TODO - assumes no ice
         qt[0] += self.prec_source_qt[i,k]
         ql[0] += self.prec_source_qt[i,k]
-        qr[0]  = self.prec_source_qt[i,k]
+        qr[0]  = - self.prec_source_qt[i,k]
         h[0]  += self.prec_source_h[i,k]
 
         return
