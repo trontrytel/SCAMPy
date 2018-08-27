@@ -123,7 +123,7 @@ cdef class EnvironmentVariables:
         if self.EnvThermo_scheme == 'sommeria_deardorff':
             Stats.add_profile('env_THVvar')
 
-        Stats.add_ts('env_puddle') #TODO
+        Stats.add_ts('env_puddle')
 
         return
 
