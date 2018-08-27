@@ -67,6 +67,7 @@ cdef class ParameterizationBase:
             for k in xrange(gw,nzg-gw):
                 GMV.H.tendencies[k] += (GMV.H.new[k] - GMV.H.values[k]) * TS.dti
                 GMV.QT.tendencies[k] += (GMV.QT.new[k] - GMV.QT.values[k]) * TS.dti
+                GMV.QR.tendencies[k] += (GMV.QR.new[k] - GMV.QR.values[k]) * TS.dti
                 GMV.U.tendencies[k] += (GMV.U.new[k] - GMV.U.values[k]) * TS.dti
                 GMV.V.tendencies[k] += (GMV.V.new[k] - GMV.V.values[k]) * TS.dti
 
@@ -208,17 +209,6 @@ cdef class SimilarityED(ParameterizationBase):
         with nogil:
             for k in xrange(nz):
                 GMV.QT.new[k+gw] = x[k]
-
-        # Solve QR
-        with nogil:
-            for k in xrange(nz):
-                x[k] = GMV.QR.values[k+gw]
-            x[0] = x[0]
-
-        tridiag_solve(self.Gr.nz, &x[0],&a[0], &b[0], &c[0])
-        with nogil:
-            for k in xrange(nz):
-                GMV.QR.new[k+gw] = x[k]
 
         # Solve H
         with nogil:

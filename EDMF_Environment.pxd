@@ -20,6 +20,7 @@ cdef class EnvironmentVariables:
         EnvironmentVariable QT
         EnvironmentVariable QL
         EnvironmentVariable QR
+        EnvironmentVariable rain_Area
         EnvironmentVariable H
         EnvironmentVariable THL
         EnvironmentVariable T

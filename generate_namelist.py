@@ -96,6 +96,10 @@ def Bomex():
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
     namelist['thermodynamics']['saturation'] = 'sa_mean'
 
+    namelist['microphysics'] = {}
+    namelist['microphysics']['max_supersaturation'] = 0.1
+    namelist['microphysics']['rain_model'] = False
+
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 20.0
     namelist['time_stepping']['t_max'] = 21600.0
@@ -180,7 +184,6 @@ def Rico():
 
     namelist['microphysics'] = {}
     namelist['microphysics']['max_supersaturation'] = 0.1
-    namelist['microphysics']['rain_model'] = True
 
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 20.0

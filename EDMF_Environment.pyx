@@ -47,12 +47,12 @@ cdef class EnvironmentVariables:
         self.B = EnvironmentVariable( nz, 'half', 'scalar', 'buoyancy','m^2/s^3' )
         self.CF = EnvironmentVariable(nz, 'half', 'scalar','cloud_fraction', '-')
 
+        self.QR = EnvironmentVariable( nz, 'half', 'scalar', 'qr','kg/kg' )
         try:
             self.rain_model = namelist['microphysics']['rain_model']
         except:
             self.rain_model = False
         if self.rain_model:
-            self.QR = EnvironmentVariable( nz, 'half', 'scalar', 'qr','kg/kg' )
             self.rain_Area = EnvironmentVariable(nz, 'half', 'scalar', 'rain_area','rain_area_fraction [-]' )
 
         # TKE   TODO   repeated from Variables.pyx logic
@@ -112,8 +112,8 @@ cdef class EnvironmentVariables:
         Stats.add_profile('env_w')
         Stats.add_profile('env_qt')
         Stats.add_profile('env_ql')
+        Stats.add_profile('env_qr')
         if self.rain_model:
-            Stats.add_profile('env_qr')
             Stats.add_profile('env_rain_area')
         if self.H.name == 's':
             Stats.add_profile('env_s')
@@ -134,8 +134,8 @@ cdef class EnvironmentVariables:
         Stats.write_profile('env_w', self.W.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_qt', self.QT.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_ql', self.QL.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        Stats.write_profile('env_qr', self.QR.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         if self.rain_model:
-            Stats.write_profile('env_qr', self.QR.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
             Stats.write_profile('env_rain_area', self.rain_Area.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         if self.H.name == 's':
             Stats.write_profile('env_s', self.H.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])

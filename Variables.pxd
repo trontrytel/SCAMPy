@@ -39,6 +39,7 @@ cdef class GridMeanVariables:
         VariablePrognostic W
         VariablePrognostic QT
         VariablePrognostic QR
+        VariablePrognostic rain_Area
         VariablePrognostic H
         VariableDiagnostic QL
         VariableDiagnostic T

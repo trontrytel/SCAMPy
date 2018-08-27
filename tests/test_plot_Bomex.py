@@ -14,7 +14,6 @@ import pprint as pp
 
 import main as scampy
 import plot_scripts as pls
-import pytest_wrapper as wrp
 
 @pytest.fixture(scope="module")
 def sim_data(request):
@@ -28,7 +27,9 @@ def sim_data(request):
 
     setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
     #setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
-    setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 0.1
+
+    setup['namelist']['microphysics']['max_supersaturation'] = 0.1
+    setup['namelist']['microphysics']['rain_model'] = False
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])
