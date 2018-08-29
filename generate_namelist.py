@@ -48,6 +48,10 @@ def Soares():
     namelist['grid']['gw'] = 2
     namelist['grid']['dz'] = 20.0
 
+    namelist['microphysics'] = {}
+    namelist['microphysics']['max_supersaturation'] = 0.1
+    namelist['microphysics']['rain_model'] = False
+
     namelist['thermodynamics'] = {}
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
     namelist['thermodynamics']['saturation'] = 'sa_mean'

@@ -26,7 +26,7 @@ cdef class UpdraftVariables:
         UpdraftVariable QT
         UpdraftVariable QL
         UpdraftVariable QR
-        UpdraftVariable rain_Area
+        UpdraftVariable RainArea
         UpdraftVariable H
         UpdraftVariable THL
         UpdraftVariable T
@@ -55,7 +55,7 @@ cdef class UpdraftThermodynamics:
         ReferenceState.ReferenceState Ref
         Py_ssize_t n_updraft
 
-    cpdef satadjust(self, UpdraftVariables UpdVar)
+    #cpdef satadjust(self, UpdraftVariables UpdVar) TODO - not used?
     cpdef buoyancy(self, UpdraftVariables UpdVar, EnvironmentVariables EnvVar,
                    GridMeanVariables GMV, bint extrap)
 
@@ -70,7 +70,12 @@ cdef class UpdraftMicrophysics:
         double [:] prec_source_qt_tot
         double max_supersaturation
 
-    cdef void compute_update_combined_local_thetal(self, double p0, double t, double *qt, double *ql, double *h,
-                                                   Py_ssize_t i, Py_ssize_t k, double *qr, bint rain_model) nogil
-    cpdef compute_sources(self, UpdraftVariables UpdVar)
-    cpdef update_updraftvars(self, UpdraftVariables UpdVar, bint rain_model)
+    cpdef compute_column_sources(self, UpdraftVariables UpdVar)
+    cpdef update_column_UpdVar(self,   UpdraftVariables UpdVar)
+    cpdef update_column_UpdRain(self,  UpdraftVariables UpdVar)
+
+    cdef void update_UpdVar(self, double *qt, double *ql, double *h, double *T,
+                            double qr_src, double th_src, double qt_new, double ql_new, double T_new, double thl_new,
+                            Py_ssize_t i, Py_ssize_t k) nogil
+
+    cdef void update_UpdRain(self, UpdraftVariables UpdVar, double qr_new, Py_ssize_t i, Py_ssize_t k) nogil

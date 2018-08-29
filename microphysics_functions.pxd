@@ -9,6 +9,10 @@ cdef struct mph_struct:
     double ql
     double qr
 
+cdef struct rain_struct:
+    double qr
+    double ar
+
 cdef double r2q(double r_, double qt) nogil
 cdef double q2r(double q_, double qt) nogil
 cdef double rain_source_to_thetal(double p0, double T, double qt, double ql, double qi, double qr) nogil
@@ -20,3 +24,4 @@ cdef double evap_rate(double rho, double qv, double qr, double qt, double T, dou
 cdef double terminal_velocity(double rho, double rho0, double qr, double qt) nogil
 cdef mph_struct microphysics(double T, double ql, double p0, double qt,\
                              double max_supersat, bint in_Env) nogil
+cdef rain_struct rain_area(double source_area, double source_qr, double current_area, double current_qr) nogil

@@ -91,7 +91,7 @@ cdef double terminal_velocity(double rho, double rho0, double qr, double qt) nog
 cdef mph_struct microphysics(double T, double ql, double p0, double qt,\
                              double max_supersat, bint in_Env) nogil:
     """
-    do condensation and autoconversion
+    do autoconversion
     return updated T, THL, qt, qv, ql, qr, alpha
     """
     # TODO assumes no ice
@@ -115,3 +115,34 @@ cdef mph_struct microphysics(double T, double ql, double p0, double qt,\
         _ret.thl += _ret.thl_rain_src
 
     return _ret
+
+cdef rain_struct rain_area(double source_area, double source_qr, double current_area, double current_qr) nogil:
+    """
+    Source terams for rain and rain area
+    """
+
+    cdef double a_big, q_big, a_sml, q_sml
+    cdef rain_struct _ret
+
+    if current_area != 0.:
+
+        if current_area >= source_area:
+            a_big = current_area
+            q_big = current_qr
+            a_sml = source_area
+            q_sml = source_qr
+        else:
+            a_sml = current_area
+            q_sml = current_qr
+            a_big = source_area
+            q_big = source_qr
+
+        _ret.qr = q_big + a_sml / a_big * q_sml
+        _ret.ar = a_big
+
+    else:
+        _ret.qr = source_qr
+        _ret.ar = source_area
+
+    return _ret
+

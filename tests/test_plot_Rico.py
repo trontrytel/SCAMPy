@@ -24,11 +24,10 @@ def sim_data(request):
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var'] = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['use_local_micro'] = True
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'  # dry, inverse_w, b_w2
-    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 7
+    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
 
-    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
-    #setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
-    #setup['paramlist']['turbulence']['updraft_microphysics']['max_supersaturation'] = 0.1
+    #setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
 
     setup['namelist']['microphysics']['rain_model'] = False
     setup['namelist']['microphysics']['max_supersaturation'] = 0.1
@@ -40,7 +39,7 @@ def sim_data(request):
     sim_data = Dataset(setup["outfile"], 'r')
 
     # remove netcdf file after tests
-    #request.addfinalizer(pls.removing_files)
+    request.addfinalizer(pls.removing_files)
 
     return sim_data
 
