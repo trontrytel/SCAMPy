@@ -14,7 +14,6 @@ import pprint as pp
 
 import main as scampy
 import plot_scripts as pls
-import pytest_wrapper as wrp
 
 @pytest.fixture(scope="module")
 def sim_data(request):
@@ -22,7 +21,7 @@ def sim_data(request):
     # generate namelists and paramlists
     setup = pls.simulation_setup('life_cycle_Tan2018')
     # change the defaults
-    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['use_scalar_var'] = True
+    setup['namelist']['turbulence']['EDMF_PrognosticTKE']['calc_scalar_var'] = True
 
     # run scampy
     scampy.main1d(setup["namelist"], setup["paramlist"])

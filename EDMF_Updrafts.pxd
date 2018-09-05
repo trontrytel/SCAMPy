@@ -25,15 +25,12 @@ cdef class UpdraftVariables:
         UpdraftVariable Area
         UpdraftVariable QT
         UpdraftVariable QL
-        UpdraftVariable QR
-        UpdraftVariable RainArea
         UpdraftVariable H
         UpdraftVariable THL
         UpdraftVariable T
         UpdraftVariable B
         Py_ssize_t n_updrafts
         bint prognostic
-        bint rain_model
         double updraft_fraction
         double [:] cloud_base
         double [:] cloud_top
@@ -46,6 +43,21 @@ cdef class UpdraftVariables:
     cpdef set_old_with_values(self)
     cpdef set_values_with_new(self)
     cpdef get_cloud_base_top_cover(self)
+
+cdef class UpdraftRain:
+    cdef:
+        Grid.Grid Gr
+        Py_ssize_t n_updrafts
+
+        UpdraftVariable QR
+        UpdraftVariable RainArea
+
+        bint rain_model
+
+    cpdef initialize_io(self, NetCDFIO_Stats Stats)
+    cpdef io(self, NetCDFIO_Stats Stats)
+
+    cpdef set_means(self, GridMeanVariables GMV)
 
 cdef class UpdraftThermodynamics:
     cdef:

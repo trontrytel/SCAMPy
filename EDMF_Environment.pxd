@@ -15,13 +15,10 @@ cdef class EnvironmentVariable:
 
 cdef class EnvironmentVariables:
     cdef:
-
         EnvironmentVariable W
         EnvironmentVariable QT
         EnvironmentVariable QL
-        EnvironmentVariable QR
         EnvironmentVariable EnvArea
-        EnvironmentVariable RainArea
         EnvironmentVariable H
         EnvironmentVariable THL
         EnvironmentVariable T
@@ -32,17 +29,32 @@ cdef class EnvironmentVariables:
         EnvironmentVariable HQTcov
         EnvironmentVariable CF
         EnvironmentVariable THVvar
+
         Grid Gr
+
         bint calc_tke
         bint calc_scalar_var
         bint use_prescribed_scalar_var
-        bint rain_model
+        bint use_sommeria_deardorff
+        bint use_quadrature
+
         double prescribed_QTvar
         double prescribed_Hvar
         double prescribed_HQTcov
-        bint use_sommeria_deardorff
-        bint use_quadrature
+
         str EnvThermo_scheme
+
+    cpdef initialize_io(self, NetCDFIO_Stats Stats )
+    cpdef io(self, NetCDFIO_Stats Stats)
+
+cdef class EnvironmentRain:
+    cdef:
+        EnvironmentVariable QR
+        EnvironmentVariable RainArea
+
+        double max_supersaturation
+
+        bint rain_model
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats )
     cpdef io(self, NetCDFIO_Stats Stats)
@@ -67,15 +79,13 @@ cdef class EnvironmentThermodynamics:
         double [:] QTvar_rain_dt
         double [:] HQTcov_rain_dt
 
-        double max_supersaturation
-
         void update_EnvVar(self,    Py_ssize_t k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double alpha) nogil
-        void update_EnvRain(self,   Py_ssize_t k, EnvironmentVariables EnvVar, double qr) nogil
+        void update_EnvRain(self,   Py_ssize_t k, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, double qr) nogil
         void update_cloud_dry(self, Py_ssize_t k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double qv) nogil
 
         void eos_update_SA_smpl(self, EnvironmentVariables EnvVar)
-        void eos_update_SA_mean(self, EnvironmentVariables EnvVar, bint rain_model)
-        void eos_update_SA_sgs(self,  EnvironmentVariables EnvVar, bint rain_model)#, TimeStepping TS)
+        void eos_update_SA_mean(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model)
+        void eos_update_SA_sgs(self,  EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model)#, TimeStepping TS)
         void sommeria_deardorff(self, EnvironmentVariables EnvVar)
 
-    cpdef satadjust(self, EnvironmentVariables EnvVar, bint rain_model)#, TimeStepping TS)
+    cpdef satadjust(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model)#, TimeStepping TS)

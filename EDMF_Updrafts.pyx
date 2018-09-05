@@ -72,14 +72,6 @@ cdef class UpdraftVariables:
         self.QT = UpdraftVariable(nu, nzg, 'half', 'scalar', 'qt','kg/kg' )
         self.QL = UpdraftVariable(nu, nzg, 'half', 'scalar', 'ql','kg/kg' )
 
-        self.QR       = UpdraftVariable(nu, nzg, 'half', 'scalar', 'qr',        'kg/kg' )
-        try:
-            self.rain_model = namelist['microphysics']['rain_model']
-        except:
-            self.rain_model = False
-        if self.rain_model: #TODO - should be moved to a different class
-            self.RainArea = UpdraftVariable(nu, nzg, 'half', 'scalar', 'rain_area', 'rain_area_fraction [-]' )
-
         if namelist['thermodynamics']['thermal_variable'] == 'entropy':
             self.H = UpdraftVariable(nu, nzg, 'half', 'scalar', 's','J/kg/K' )
         elif namelist['thermodynamics']['thermal_variable'] == 'thetal':
@@ -128,24 +120,14 @@ cdef class UpdraftVariables:
                         self.Area.values[i,k] = self.updraft_fraction/self.n_updrafts
                     self.QT.values[i,k] = GMV.QT.values[k]
                     self.QL.values[i,k] = GMV.QL.values[k]
-                    self.QR.values[i,k] = GMV.QR.values[k]
-                    if self.rain_model:
-                        self.RainArea.values[i,k] = 0.0
-
-                    self.H.values[i,k] = GMV.H.values[k]
-                    self.T.values[i,k] = GMV.T.values[k]
-                    self.B.values[i,k] = 0.0
+                    self.H.values[i,k]  = GMV.H.values[k]
+                    self.T.values[i,k]  = GMV.T.values[k]
+                    self.B.values[i,k]  = 0.0
 
                 self.Area.values[i,gw] = self.updraft_fraction/self.n_updrafts
-                if self.rain_model:
-                    self.RainArea.values[i,gw] = 0.0
 
         self.QT.set_bcs(self.Gr)
         self.H.set_bcs(self.Gr)
-        self.QR.set_bcs(self.Gr)
-
-        if self.rain_model:
-            self.RainArea.set_bcs(self.Gr)
 
         return
 
@@ -154,14 +136,13 @@ cdef class UpdraftVariables:
         Stats.add_profile('updraft_w')
         Stats.add_profile('updraft_qt')
         Stats.add_profile('updraft_ql')
-        Stats.add_profile('updraft_qr')
-        if self.rain_model:
-            Stats.add_profile('updraft_rain_area')
+
         if self.H.name == 'thetal':
             Stats.add_profile('updraft_thetal')
         else:
             # Stats.add_profile('updraft_thetal')
             Stats.add_profile('updraft_s')
+
         Stats.add_profile('updraft_temperature')
         Stats.add_profile('updraft_buoyancy')
 
@@ -183,9 +164,6 @@ cdef class UpdraftVariables:
         self.H.bulkvalues[:] = 0.0
         self.T.bulkvalues[:] = 0.0
         self.B.bulkvalues[:] = 0.0
-        self.QR.bulkvalues[:] = 0.0
-        if self.rain_model:
-            self.RainArea.bulkvalues = np.sum(self.RainArea.values,axis=0)
 
         with nogil:
             for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
@@ -207,15 +185,8 @@ cdef class UpdraftVariables:
                     self.B.bulkvalues[k] = 0.0
                     self.W.bulkvalues[k] = 0.0
 
-            if self.rain_model:
-                for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
-                    if self.RainArea.bulkvalues[k] > 1.0e-20:
-                        for i in xrange(self.n_updrafts):
-                            self.QR.bulkvalues[k] += self.RainArea.values[i,k] * self.QR.values[i,k] / self.RainArea.bulkvalues[k]
-                    else:
-                        self.QR.bulkvalues[k] = 0.0
-
         return
+
     # quick utility to set "new" arrays with values in the "values" arrays
     cpdef set_new_with_values(self):
         with nogil:
@@ -229,11 +200,6 @@ cdef class UpdraftVariables:
                     self.THL.new[i,k] = self.THL.values[i,k]
                     self.T.new[i,k] = self.T.values[i,k]
                     self.B.new[i,k] = self.B.values[i,k]
-            if self.rain_model:
-                for i in xrange(self.n_updrafts):
-                    for k in xrange(self.Gr.nzg):
-                        self.RainArea.new[i,k] = self.RainArea.values[i,k]
-                        self.QR.new[i,k] = self.QR.values[i,k]
         return
 
     # quick utility to set "new" arrays with values in the "values" arrays
@@ -249,12 +215,8 @@ cdef class UpdraftVariables:
                     self.THL.old[i,k] = self.THL.values[i,k]
                     self.T.old[i,k] = self.T.values[i,k]
                     self.B.old[i,k] = self.B.values[i,k]
-            if self.rain_model:
-                for i in xrange(self.n_updrafts):
-                    for k in xrange(self.Gr.nzg):
-                        self.RainArea.old[i,k] = self.RainArea.values[i,k]
-                        self.QR.old[i,k] = self.QR.values[i,k]
         return
+
     # quick utility to set "tmp" arrays with values in the "new" arrays
     cpdef set_values_with_new(self):
         with nogil:
@@ -268,13 +230,7 @@ cdef class UpdraftVariables:
                     self.THL.values[i,k] = self.THL.new[i,k]
                     self.T.values[i,k] = self.T.new[i,k]
                     self.B.values[i,k] = self.B.new[i,k]
-            if self.rain_model:
-                for i in xrange(self.n_updrafts):
-                    for k in xrange(self.Gr.nzg):
-                        self.QR.values[i,k] = self.QR.new[i,k]
-                        self.RainArea.values[i,k] = self.RainArea.new[i,k]
         return
-
 
     cpdef io(self, NetCDFIO_Stats Stats):
 
@@ -282,17 +238,16 @@ cdef class UpdraftVariables:
         Stats.write_profile('updraft_w', self.W.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('updraft_qt', self.QT.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('updraft_ql', self.QL.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
-        Stats.write_profile('updraft_qr', self.QR.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
-        if self.rain_model:
-            Stats.write_profile('updraft_rain_area', self.RainArea.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
 
         if self.H.name == 'thetal':
             Stats.write_profile('updraft_thetal', self.H.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         else:
             Stats.write_profile('updraft_s', self.H.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
             #Stats.write_profile('updraft_thetal', self.THL.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+
         Stats.write_profile('updraft_temperature', self.T.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('updraft_buoyancy', self.B.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+
         self.get_cloud_base_top_cover()
         # Note definition of cloud cover : each updraft is associated with a cloud cover equal to the maximum
         # area fraction of the updraft where ql > 0. Each updraft is assumed to have maximum overlap with respect to
@@ -317,8 +272,52 @@ cdef class UpdraftVariables:
                     self.cloud_base[i] = fmin(self.cloud_base[i], self.Gr.z_half[k])
                     self.cloud_top[i] = fmax(self.cloud_top[i], self.Gr.z_half[k])
                     self.cloud_cover[i] = fmax(self.cloud_cover[i], self.Area.values[i,k])
+        return
 
+cdef class UpdraftRain:
+    def __init__(self, nu, namelist, paramlist, Grid.Grid Gr):
+        self.Gr = Gr
+        self.n_updrafts = nu
+        cdef:
+            Py_ssize_t nzg = Gr.nzg
+            Py_ssize_t i, k
 
+        self.QR       = UpdraftVariable(nu, nzg, 'half', 'scalar', 'qr',        'kg/kg')
+        self.RainArea = UpdraftVariable(nu, nzg, 'half', 'scalar', 'rain_area', 'rain_area_fraction [-]' )
+
+        try:
+            self.rain_model = namelist['microphysics']['rain_model']
+        except:
+            self.rain_model = False
+
+        return
+
+    #cpdef initialize(self, GridMeanVariables GMV): - TODO what should be the boundary conditions and the initial values?
+
+    cpdef initialize_io(self, NetCDFIO_Stats Stats):
+        Stats.add_profile('updraft_qr')
+        Stats.add_profile('updraft_rain_area')
+        return
+
+    cpdef io(self, NetCDFIO_Stats Stats):
+        Stats.write_profile('updraft_qr',        self.QR.bulkvalues[self.Gr.gw       : self.Gr.nzg - self.Gr.gw])
+        Stats.write_profile('updraft_rain_area', self.RainArea.bulkvalues[self.Gr.gw : self.Gr.nzg - self.Gr.gw])
+        return
+
+    cpdef set_means(self, GridMeanVariables GMV):
+        cdef:
+            Py_ssize_t i, k
+
+        self.QR.bulkvalues[:]    = 0.0
+        self.RainArea.bulkvalues = np.sum(self.RainArea.values,axis=0)
+
+        with nogil:
+            for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
+                if self.RainArea.bulkvalues[k] > 1.0e-20:
+                    for i in xrange(self.n_updrafts):
+                        self.QR.bulkvalues[k] += self.RainArea.values[i,k] * self.QR.values[i,k] / self.RainArea.bulkvalues[k]
+                else:
+                    self.QR.bulkvalues[k] = 0.0
         return
 
 cdef class UpdraftThermodynamics:
@@ -450,7 +449,7 @@ cdef class UpdraftMicrophysics:
                     UpdVar.H.values[i,k] += self.prec_source_h[i,k]
         return
 
-    cpdef update_column_UpdRain(self, UpdraftVariables UpdVar):
+    cpdef update_column_UpdRain(self, UpdraftVariables UpdVar, UpdraftRain UpdRain):
     #cpdef update_updraftvars(self, UpdraftVariables UpdVar, bint rain_model):
         """
         Apply precipitation source terms to rain variables
@@ -463,10 +462,10 @@ cdef class UpdraftMicrophysics:
             for i in xrange(self.n_updraft):
                 for k in xrange(self.Gr.nzg):
                     rst = rain_area(UpdVar.Area.values[i,k], -self.prec_source_qt[i,k],\
-                                    UpdVar.RainArea.values[i,k], UpdVar.QR.values[i,k])
+                                    UpdRain.RainArea.values[i,k], UpdRain.QR.values[i,k])
 
-                    UpdVar.QR.values[i,k] = rst.qr
-                    UpdVar.RainArea.values[i,k] = rst.ar
+                    UpdRain.QR.values[i,k] = rst.qr
+                    UpdRain.RainArea.values[i,k] = rst.ar
         return
 
     cdef void update_UpdVar(self, double *qt, double *ql, double *h, double *T,\
@@ -476,7 +475,6 @@ cdef class UpdraftMicrophysics:
         """
         update updraft variables after saturation adjustment and rain
         """
-
         self.prec_source_qt[i,k] = -qr_src
         self.prec_source_h[i,k]  = th_src
 
@@ -489,14 +487,14 @@ cdef class UpdraftMicrophysics:
 
         return
 
-    cdef void update_UpdRain(self, UpdraftVariables UpdVar, double qr_new, Py_ssize_t i, Py_ssize_t k) nogil :
+    cdef void update_UpdRain(self, double *upd_area, double *qr, double *rain_area, double qr_new, Py_ssize_t i, Py_ssize_t k) nogil:
         """
         update rain variables
         """
         cdef rain_struct rst
-        rst = rain_area(UpdVar.Area.values[i,k], qr_new, UpdVar.RainArea.values[i,k], UpdVar.QR.values[i,k])
+        rst = rain_area(upd_area[0], qr_new, rain_Area[0], qr[0])
 
-        UpdVar.QR.values[i,k] = rst.qr
-        UpdVar.RainArea.values[i,k] = rst.ar
+        qr[0]        = rst.qr
+        rain_area[0] = rst.ar
 
         return

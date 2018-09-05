@@ -89,7 +89,7 @@ cdef double terminal_velocity(double rho, double rho0, double qr, double qt) nog
 
 
 cdef mph_struct microphysics(double T, double ql, double p0, double qt,\
-                             double max_supersat, bint in_Env) nogil:
+                             double max_supersat, bint rain) nogil:
     """
     do autoconversion
     return updated T, THL, qt, qv, ql, qr, alpha
@@ -97,16 +97,19 @@ cdef mph_struct microphysics(double T, double ql, double p0, double qt,\
     # TODO assumes no ice
     cdef mph_struct _ret
 
-    _ret.T     = T
+    _ret.qt    = qt
     _ret.ql    = ql
+    _ret.qv    = qt - ql
+
+    _ret.T     = T
     _ret.thl   = t_to_thetali_c(p0, T, qt, ql, 0.0)
     _ret.th    = theta_c(p0, T)
-    _ret.qv    = qt - ql
     _ret.alpha = alpha_c(p0, T, qt, _ret.qv)
-    _ret.qr    = 0.0
-    _ret.qt    = qt
 
-    if in_Env:
+    _ret.qr    = 0.0
+    _ret.thl_rain_src = 0.0
+
+    if rain:
         _ret.qr           = acnv_instant(ql, qt, max_supersat, T, p0)
         _ret.thl_rain_src = rain_source_to_thetal(p0, T, qt, ql, 0.0, _ret.qr)
 

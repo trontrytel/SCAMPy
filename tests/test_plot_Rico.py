@@ -26,8 +26,8 @@ def sim_data(request):
     setup["namelist"]['turbulence']['EDMF_PrognosticTKE']['entrainment'] = 'b_w2'  # dry, inverse_w, b_w2
     setup['namelist']['turbulence']['EDMF_PrognosticTKE']['updraft_number'] = 1
 
-    #setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
-    setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
+    setup['namelist']['thermodynamics']['saturation'] = 'sa_quadrature'
+    #setup['namelist']['thermodynamics']['saturation'] = 'sa_mean'
 
     setup['namelist']['microphysics']['rain_model'] = False
     setup['namelist']['microphysics']['max_supersaturation'] = 0.1

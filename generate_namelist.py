@@ -147,6 +147,10 @@ def life_cycle_Tan2018():
     namelist['thermodynamics']['saturation'] = 'sa_mean'
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
 
+    namelist['microphysics'] = {}
+    namelist['microphysics']['max_supersaturation'] = 0.1
+    namelist['microphysics']['rain_model'] = False
+
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 30.0
     namelist['time_stepping']['t_max'] = 6*3600.0
@@ -360,6 +364,10 @@ def DYCOMS_RF01():
     namelist['thermodynamics'] = {}
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
     namelist['thermodynamics']['saturation'] = 'sa_mean'  # sa_mean, sa_quadrature, sommeria_deardorff
+
+    namelist['microphysics'] = {}
+    namelist['microphysics']['max_supersaturation'] = 0.1
+    namelist['microphysics']['rain_model'] = False
 
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 10.0

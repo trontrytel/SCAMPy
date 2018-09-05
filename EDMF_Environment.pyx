@@ -38,30 +38,19 @@ cdef class EnvironmentVariables:
         self.W = EnvironmentVariable(nz, 'full', 'velocity', 'w','m/s' )
         self.QT = EnvironmentVariable( nz, 'half', 'scalar', 'qt','kg/kg' )
         self.QL = EnvironmentVariable( nz, 'half', 'scalar', 'ql','kg/kg' )
-        #TODO - move to separate class?
-        self.QR = EnvironmentVariable( nz, 'half', 'scalar', 'qr','kg/kg' )
-        self.QR.values[:] = 0.0
 
         if namelist['thermodynamics']['thermal_variable'] == 'entropy':
             self.H = EnvironmentVariable( nz, 'half', 'scalar', 's','J/kg/K' )
         elif namelist['thermodynamics']['thermal_variable'] == 'thetal':
             self.H = EnvironmentVariable( nz, 'half', 'scalar', 'thetal','K' )
+
         self.THL = EnvironmentVariable(nz, 'half', 'scalar', 'thetal', 'K')
         self.T = EnvironmentVariable( nz, 'half', 'scalar', 'temperature','K' )
         self.B = EnvironmentVariable( nz, 'half', 'scalar', 'buoyancy','m^2/s^3' )
         self.CF = EnvironmentVariable(nz, 'half', 'scalar','cloud_fraction', '-')
         self.EnvArea = EnvironmentVariable(nz, 'half', 'scalar', 'env_area', '-')
 
-        #TODO - move to the separate class?
-        try:
-            self.rain_model = namelist['microphysics']['rain_model']
-        except:
-            self.rain_model = False
-        if self.rain_model:
-            self.RainArea = EnvironmentVariable(nz, 'half', 'scalar', 'rain_area','rain_area_fraction [-]' )
-            self.RainArea.values[:] = 0.0
-
-        # TKE   TODO   repeated from Variables.pyx logic
+        # TODO - the flag setting is repeated from Variables.pyx logic
         if  namelist['turbulence']['scheme'] == 'EDMF_PrognosticTKE':
             self.calc_tke = True
         else:
@@ -118,12 +107,8 @@ cdef class EnvironmentVariables:
         Stats.add_profile('env_w')
         Stats.add_profile('env_qt')
         Stats.add_profile('env_ql')
-        Stats.add_profile('env_qr')
         Stats.add_profile('env_area')
         Stats.add_profile('env_temperature')
-
-        if self.rain_model:
-            Stats.add_profile('env_rain_area')
 
         if self.H.name == 's':
             Stats.add_profile('env_s')
@@ -144,12 +129,8 @@ cdef class EnvironmentVariables:
         Stats.write_profile('env_w', self.W.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_qt', self.QT.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_ql', self.QL.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
-        Stats.write_profile('env_qr', self.QR.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_area', self.EnvArea.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_temperature', self.T.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
-
-        if self.rain_model:
-            Stats.write_profile('env_rain_area', self.RainArea.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
 
         if self.H.name == 's':
             Stats.write_profile('env_s', self.H.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
@@ -171,13 +152,42 @@ cdef class EnvironmentVariables:
         # Add the same with respect to the grid mean
         return
 
+cdef class EnvironmentRain:
+    def __init__(self,  namelist, Grid Gr  ):
+        cdef Py_ssize_t nz = Gr.nzg
+        self.Gr = Gr
+
+        self.QR       = EnvironmentVariable(nz, 'half', 'scalar', 'qr',       'kg/kg')
+        self.RainArea = EnvironmentVariable(nz, 'half', 'scalar', 'rain_area','rain_area_fraction [-]')
+
+        self.max_supersaturation = namelist['microphysics']['max_supersaturation']
+
+        try:
+            self.rain_model = namelist['microphysics']['rain_model']
+        except:
+            self.rain_model = False
+
+        return
+
+    #cpdef initialize(self, GridMeanVariables GMV): - TODO what should be the boundary conditions and the initial values?
+
+    cpdef initialize_io(self, NetCDFIO_Stats Stats):
+        Stats.add_profile('env_qr')
+        Stats.add_profile('env_rain_area')
+        return
+
+    cpdef io(self, NetCDFIO_Stats Stats):
+        Stats.write_profile('env_qr', self.QR.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        Stats.write_profile('env_rain_area', self.RainArea.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        return
+
 cdef class EnvironmentThermodynamics:
     def __init__(self, namelist, Grid Gr, ReferenceState Ref, EnvironmentVariables EnvVar):
         self.Gr = Gr
         self.Ref = Ref
         try:
             self.quadrature_order = namelist['thermodynamics']['quadrature_order']
-        except:
+        exc ept:
             self.quadrature_order = 5
         if EnvVar.H.name == 's':
             self.t_to_prog_fp = t_to_entropy_c
@@ -198,8 +208,6 @@ cdef class EnvironmentThermodynamics:
         self.QTvar_rain_dt  = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
         self.HQTcov_rain_dt = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
 
-        self.max_supersaturation = namelist['microphysics']['max_supersaturation']
-
         return
 
     cdef void update_EnvVar(self, Py_ssize_t k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double alpha) nogil :
@@ -212,14 +220,14 @@ cdef class EnvironmentThermodynamics:
         EnvVar.B.values[k]   = buoyancy_c(self.Ref.alpha0_half[k], alpha)
         return
 
-    cdef void update_EnvRain(self, Py_ssize_t k, EnvironmentVariables EnvVar, double qr) nogil:
+    cdef void update_EnvRain(self, Py_ssize_t k, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, double qr) nogil:
         # TODO - replace with pointers ?
         cdef rain_struct rst
 
-        rst = rain_area(EnvVar.EnvArea.values[k], qr, EnvVar.RainArea.values[k], EnvVar.QR.values[k])
+        rst = rain_area(EnvVar.EnvArea.values[k], qr, EnvRain.RainArea.values[k], EnvRain.QR.values[k])
 
-        EnvVar.QR.values[k] = rst.qr
-        EnvVar.RainArea.values[k] = rst.ar
+        EnvRain.QR.values[k] = rst.qr
+        EnvRain.RainArea.values[k] = rst.ar
 
         return
 
@@ -245,7 +253,6 @@ cdef class EnvironmentThermodynamics:
             eos_struct sa
             mph_struct mph
 
-        pass
         with nogil:
             for k in xrange(gw, self.Gr.nzg-gw):
                 sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.H.values[k])
@@ -256,7 +263,7 @@ cdef class EnvironmentThermodynamics:
         return
 
 
-    cdef void eos_update_SA_mean(self, EnvironmentVariables EnvVar, bint rain_model):
+    cdef void eos_update_SA_mean(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model):
 
         cdef:
             Py_ssize_t k
@@ -272,15 +279,15 @@ cdef class EnvironmentThermodynamics:
             for k in xrange(gw,self.Gr.nzg-gw):
                 # condensation + autoconversion
                 sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.H.values[k])
-                mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], self.max_supersaturation, False)
+                mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], self.max_supersaturation, True)
 
                 self.update_EnvVar(k,    EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                 self.update_cloud_dry(k, EnvVar, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
                 if rain_model and mph.qr > 0.:
-                    self.update_EnvRain(k, EnvVar, mph.qr)
+                    self.update_EnvRain(k, EnvVar, EnvRain, mph.qr)
         return
 
-    cdef void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, bint rain_model):
+    cdef void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model):
         a, w = np.polynomial.hermite.hermgauss(self.quadrature_order)
 
         #TODO - remember you output source terms multipierd by dt (bec. of instanteneous autoconcv)
@@ -407,7 +414,7 @@ cdef class EnvironmentThermodynamics:
                                        outer_env[i_qt_cld] + outer_env[i_qt_dry],\
                                        outer_env[i_ql], outer_env[i_alpha])
                     if rain_model and outer_env[i_qr] > 0.:
-                         self.update_EnvRain(k, EnvVar, outer_env[i_qr])
+                         self.update_EnvRain(k, EnvVar, EnvRain, outer_env[i_qr])
 
                     # update cloudy/dry variables for buoyancy in TKE
                     EnvVar.CF.values[k]  = outer_env[i_cf]
@@ -431,7 +438,7 @@ cdef class EnvironmentThermodynamics:
                     self.update_EnvVar(k, EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                     if rain_model and mph.qr > 0.:
                          self.update_EnvRain(k, EnvVar, mph.qr)
-                    self.update_cloud_dry(k, EnvVar, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
+                    self.update_cloud_dry(k, EnvVar, EnvRain, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
 
                     self.Hvar_rain_dt[k]   = 0.
                     self.QTvar_rain_dt[k]  = 0.
