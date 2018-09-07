@@ -187,7 +187,7 @@ cdef class EnvironmentThermodynamics:
         self.Ref = Ref
         try:
             self.quadrature_order = namelist['thermodynamics']['quadrature_order']
-        exc ept:
+        except:
             self.quadrature_order = 5
         if EnvVar.H.name == 's':
             self.t_to_prog_fp = t_to_entropy_c
@@ -437,8 +437,8 @@ cdef class EnvironmentThermodynamics:
 
                     self.update_EnvVar(k, EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                     if rain_model and mph.qr > 0.:
-                         self.update_EnvRain(k, EnvVar, mph.qr)
-                    self.update_cloud_dry(k, EnvVar, EnvRain, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
+                         self.update_EnvRain(k, EnvVar, EnvRain, mph.qr)
+                    self.update_cloud_dry(k, EnvVar, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
 
                     self.Hvar_rain_dt[k]   = 0.
                     self.QTvar_rain_dt[k]  = 0.
@@ -511,7 +511,7 @@ cdef class EnvironmentThermodynamics:
             sys.exit('EDMF_Environment: Sommeria Deardorff is not defined for using entropy as thermodyanmic variable')
         return
 
-    cpdef satadjust(self, EnvironmentVariables EnvVar, bint rain_model):#, TimeStepping TS):
+    cpdef satadjust(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model):#, TimeStepping TS):
 
         if EnvVar.EnvThermo_scheme == 'sa_mean':
             self.eos_update_SA_mean(EnvVar, rain_model)
