@@ -84,10 +84,10 @@ cdef class UpdraftMicrophysics:
 
     cpdef compute_column_sources(self, UpdraftVariables UpdVar)
     cpdef update_column_UpdVar(self,   UpdraftVariables UpdVar)
-    cpdef update_column_UpdRain(self,  UpdraftVariables UpdVar)
+    cpdef update_column_UpdRain(self,  UpdraftVariables UpdVar, UpdraftRain UpdRain)
 
     cdef void update_UpdVar(self, double *qt, double *ql, double *h, double *T,
                             double qr_src, double th_src, double qt_new, double ql_new, double T_new, double thl_new,
                             Py_ssize_t i, Py_ssize_t k) nogil
 
-    cdef void update_UpdRain(self, UpdraftVariables UpdVar, double qr_new, Py_ssize_t i, Py_ssize_t k) nogil
+    cdef void update_UpdRain(self, double *upd_area, double *qr, double *rain_Area, double qr_new, Py_ssize_t i, Py_ssize_t k) nogil

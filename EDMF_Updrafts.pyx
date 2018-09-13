@@ -333,21 +333,6 @@ cdef class UpdraftThermodynamics:
             self.prog_to_t_fp = eos_first_guess_thetal
 
         return
-    # TODO - not used
-    #cpdef satadjust(self, UpdraftVariables UpdVar):
-    #    #Update T, QL
-    #    cdef:
-    #        Py_ssize_t k, i
-    #        eos_struct sa
-
-    #    with nogil:
-    #        for i in xrange(self.n_updraft):
-    #            for k in xrange(self.Gr.nzg):
-    #                sa = eos(self.t_to_prog_fp,self.prog_to_t_fp, self.Ref.p0_half[k],
-    #                         UpdVar.QT.values[i,k], UpdVar.H.values[i,k])
-    #                UpdVar.QL.values[i,k] = sa.ql
-    #                UpdVar.T.values[i,k] = sa.T
-    #    return
 
     cpdef buoyancy(self,  UpdraftVariables UpdVar, EnvironmentVariables EnvVar,GridMeanVariables GMV, bint extrap):
         cdef:
@@ -487,7 +472,7 @@ cdef class UpdraftMicrophysics:
 
         return
 
-    cdef void update_UpdRain(self, double *upd_area, double *qr, double *rain_area, double qr_new, Py_ssize_t i, Py_ssize_t k) nogil:
+    cdef void update_UpdRain(self, double *upd_area, double *qr, double *rain_Area, double qr_new, Py_ssize_t i, Py_ssize_t k) nogil:
         """
         update rain variables
         """
@@ -495,6 +480,6 @@ cdef class UpdraftMicrophysics:
         rst = rain_area(upd_area[0], qr_new, rain_Area[0], qr[0])
 
         qr[0]        = rst.qr
-        rain_area[0] = rst.ar
+        rain_Area[0] = rst.ar
 
         return

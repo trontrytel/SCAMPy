@@ -256,7 +256,7 @@ cdef class EnvironmentThermodynamics:
         with nogil:
             for k in xrange(gw, self.Gr.nzg-gw):
                 sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.H.values[k])
-                mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], self.max_supersaturation, False)
+                mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], 0., False)
 
                 self.update_EnvVar(k,    EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                 self.update_cloud_dry(k, EnvVar, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
@@ -268,9 +268,9 @@ cdef class EnvironmentThermodynamics:
         cdef:
             Py_ssize_t k
             Py_ssize_t gw = self.Gr.gw
-
             eos_struct sa
             mph_struct mph
+            double max_supersat = EnvRain.max_supersaturation
 
         if EnvVar.H.name != 'thetal':
             sys.exit('EDMF_Environment: rain source terms are defined for thetal as model variable')
@@ -279,7 +279,7 @@ cdef class EnvironmentThermodynamics:
             for k in xrange(gw,self.Gr.nzg-gw):
                 # condensation + autoconversion
                 sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.H.values[k])
-                mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], self.max_supersaturation, True)
+                mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], max_supersat, True)
 
                 self.update_EnvVar(k,    EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                 self.update_cloud_dry(k, EnvVar, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
@@ -315,6 +315,7 @@ cdef class EnvironmentThermodynamics:
             double sd_q_lim
             eos_struct sa
             mph_struct mph
+            double max_supersat = EnvRain.max_supersaturation
 
         if EnvVar.H.name != 'thetal':
             sys.exit('EDMF_Environment: rain source terms are only defined for thetal as model variable')
@@ -377,7 +378,7 @@ cdef class EnvironmentThermodynamics:
 
                             # condensation + autoconversion
                             sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], qt_hat, h_hat)
-                            mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], qt_hat, self.max_supersaturation, True)
+                            mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], qt_hat, max_supersat, True)
 
                             # environmental variables
                             inner_env[i_ql]    += mph.ql    * weights[m_h] * sqpi_inv
@@ -433,7 +434,7 @@ cdef class EnvironmentThermodynamics:
                 else:
                     # if variance and covaraiance are zero do the same as in SA_mean
                     sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.H.values[k])
-                    mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], self.max_supersaturation, True)
+                    mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], max_supersat, True)
 
                     self.update_EnvVar(k, EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                     if rain_model and mph.qr > 0.:
@@ -514,9 +515,9 @@ cdef class EnvironmentThermodynamics:
     cpdef satadjust(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model):#, TimeStepping TS):
 
         if EnvVar.EnvThermo_scheme == 'sa_mean':
-            self.eos_update_SA_mean(EnvVar, rain_model)
+            self.eos_update_SA_mean(EnvVar, EnvRain, rain_model)
         elif EnvVar.EnvThermo_scheme == 'sa_quadrature':
-            self.eos_update_SA_sgs(EnvVar, rain_model)#, TS)
+            self.eos_update_SA_sgs(EnvVar, EnvRain, rain_model)#, TS)
         elif EnvVar.EnvThermo_scheme == 'sommeria_deardorff':
             self.sommeria_deardorff(EnvVar)
         else:

@@ -16,8 +16,10 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         EDMF_Updrafts.UpdraftVariables UpdVar
         EDMF_Updrafts.UpdraftMicrophysics UpdMicro
         EDMF_Updrafts.UpdraftThermodynamics UpdThermo
+        EDMF_Updrafts.UpdraftRain UpdRain
         EDMF_Environment.EnvironmentVariables EnvVar
         EDMF_Environment.EnvironmentThermodynamics EnvThermo
+        EDMF_Environment.EnvironmentRain EnvRain
         entr_struct (*entr_detr_fp) (entr_in_struct entr_in) nogil
         bint use_local_micro
         bint similarity_diffusivity

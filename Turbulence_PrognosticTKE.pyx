@@ -128,11 +128,15 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         self.UpdThermo = EDMF_Updrafts.UpdraftThermodynamics(self.n_updrafts, Gr, Ref, self.UpdVar)
         # Create the class for updraft microphysics
         self.UpdMicro = EDMF_Updrafts.UpdraftMicrophysics(namelist, self.n_updrafts, Gr, Ref)
+        # Create the class for updraft rain
+        self.UpdRain  = EDMF_Updrafts.UpdraftRain(self.n_updrafts, namelist, paramlist, Gr)
 
         # Create the environment variable class (major diagnostic and prognostic variables)
         self.EnvVar = EDMF_Environment.EnvironmentVariables(namelist,Gr)
         # Create the class for environment thermodynamics
         self.EnvThermo = EDMF_Environment.EnvironmentThermodynamics(namelist, Gr, Ref, self.EnvVar)
+        # Create the class for environment rain
+        self.EnvRain = EDMF_Environment.EnvironmentRain(namelist, Gr)
 
         # Entrainment rates
         self.entr_sc = np.zeros((self.n_updrafts, Gr.nzg),dtype=np.double,order='c')
@@ -213,6 +217,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         self.UpdVar.initialize_io(Stats)
         self.EnvVar.initialize_io(Stats)
+        self.UpdRain.initialize_io(Stats)
+        self.EnvRain.initialize_io(Stats)
 
         Stats.add_profile('eddy_viscosity')
         Stats.add_profile('eddy_diffusivity')
@@ -274,6 +280,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         self.UpdVar.io(Stats)
         self.EnvVar.io(Stats)
+        self.UpdRain.io(Stats)
+        self.EnvRain.io(Stats)
 
         Stats.write_profile('eddy_viscosity', self.KM.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('eddy_diffusivity', self.KH.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
@@ -388,7 +396,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         #   - the buoyancy of updrafts and environment is updated such that
         #     the mean buoyancy with repect to reference state alpha_0 is zero.
         self.decompose_environment(GMV, 'mf_update')
-        self.EnvThermo.satadjust(self.EnvVar, self.rain_model)
+        self.EnvThermo.satadjust(self.EnvVar, self.EnvRain, self.rain_model)
         self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
 
         self.compute_eddy_diffusivities_tke(GMV, Case)
@@ -487,7 +495,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                                                      &self.UpdRain.RainArea.values[i,k], mph.qr, i, k)
 
         self.UpdVar.QT.set_bcs(self.Gr)
-        self.UpdVar.QR.set_bcs(self.Gr)
         self.UpdVar.H.set_bcs(self.Gr)
 
         # TODO - see comment (####)
@@ -548,7 +555,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                         self.UpdVar.Area.values[i,k] = 0.0
                         self.UpdVar.H.values[i,k] = GMV.H.values[k]
                         self.UpdVar.QT.values[i,k] = GMV.QT.values[k]
-                        self.UpdVar.QR.values[i,k] = GMV.QR.values[k]
                         #TODO wouldnt it be more consistent to have here?
                         #self.UpdVar.QL.values[i,k] = GMV.QL.values[k]
                         #self.UpdVar.T.values[i,k] = GMV.T.values[k]
@@ -705,6 +711,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         # first make sure the 'bulkvalues' of the updraft variables are updated
         self.UpdVar.set_means(GMV)
+        self.UpdRain.set_means(GMV)
 
         cdef:
             Py_ssize_t k, gw = self.Gr.gw
@@ -719,7 +726,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     self.EnvVar.EnvArea.values[k] = 1./val1
                     self.EnvVar.QT.values[k] = val1 * GMV.QT.values[k] - val2 * self.UpdVar.QT.bulkvalues[k]
                     self.EnvVar.H.values[k]  = val1 * GMV.H.values[k]  - val2 * self.UpdVar.H.bulkvalues[k]
-                    #self.EnvVar.QR.values[k] = val1 * GMV.QR.values[k] - val2 * self.UpdVar.QR.bulkvalues[k]
                     # Have to account for staggering of W--interpolate area fraction to the "full" grid points
                     # Assuming GMV.W = 0!
                     au_full = 0.5 * (self.UpdVar.Area.bulkvalues[k+1] + self.UpdVar.Area.bulkvalues[k])
@@ -748,7 +754,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
                     self.EnvVar.QT.values[k] = val1 * GMV.QT.mf_update[k] - val2 * self.UpdVar.QT.bulkvalues[k]
                     self.EnvVar.H.values[k]  = val1 * GMV.H.mf_update[k]  - val2 * self.UpdVar.H.bulkvalues[k]
-                    #self.EnvVar.QR.values[k] = val1 * GMV.QR.mf_update[k] - val2 * self.UpdVar.QR.bulkvalues[k]
                     # Have to account for staggering of W
                     # Assuming GMV.W = 0!
                     au_full = 0.5 * (self.UpdVar.Area.bulkvalues[k+1] + self.UpdVar.Area.bulkvalues[k])
@@ -1012,7 +1017,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             for i in xrange(self.n_updrafts):
                 self.UpdVar.H.new[i,gw] = self.h_surface_bc[i]
                 self.UpdVar.QT.new[i,gw] = self.qt_surface_bc[i]
-                self.UpdVar.QR.new[i,gw] = 0.0 #TODO
 
                 if self.use_local_micro:
                     # do saturation adjustment and autoconversion
@@ -1089,11 +1093,10 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             # Update updraft variables with microphysical source tendencies
             self.UpdMicro.update_column_UpdVar(self.UpdVar)
             if self.rain_model:
-                self.UpdMicro.update_column_UpdRain(self.UpdVar)
+                self.UpdMicro.update_column_UpdRain(self.UpdVar, self.UpdRain)
 
         self.UpdVar.H.set_bcs(self.Gr)
         self.UpdVar.QT.set_bcs(self.Gr)
-        self.UpdVar.QR.set_bcs(self.Gr)
         return
 
     # After updating the updraft variables themselves:
@@ -1479,20 +1482,20 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         with nogil:
             for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
-                GMV.QL.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.QL.bulkvalues[k]
+                GMV.QL.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.QL.bulkvalues[k] \
                                     + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.QL.values[k])
 
-                GMV.QR.values[k] = self.UpdRain.RainArea.bulkvalues[k] * self.UpdRain.QR.bulkvalues[k] +
-                                   self.EnvRain.RainArea.values[k]     * self.EnvRain.QR.values[k]
+                GMV.QR.values[k] = self.UpdRain.RainArea.bulkvalues[k] * self.UpdRain.QR.bulkvalues[k] \
+                                    + self.EnvRain.RainArea.values[k]     * self.EnvRain.QR.values[k]
 
-                GMV.T.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.T.bulkvalues[k]
+                GMV.T.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.T.bulkvalues[k] \
                                     + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.T.values[k])
                 qv = GMV.QT.values[k] - GMV.QL.values[k]
 
                 GMV.THL.values[k] = t_to_thetali_c(self.Ref.p0_half[k], GMV.T.values[k], GMV.QT.values[k],
                                                    GMV.QL.values[k], 0.0)
 
-                GMV.B.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.B.bulkvalues[k]
+                GMV.B.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.B.bulkvalues[k] \
                                     + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.B.values[k])
         return
 

@@ -67,7 +67,6 @@ cdef class ParameterizationBase:
             for k in xrange(gw,nzg-gw):
                 GMV.H.tendencies[k] += (GMV.H.new[k] - GMV.H.values[k]) * TS.dti
                 GMV.QT.tendencies[k] += (GMV.QT.new[k] - GMV.QT.values[k]) * TS.dti
-                GMV.QR.tendencies[k] += (GMV.QR.new[k] - GMV.QR.values[k]) * TS.dti
                 GMV.U.tendencies[k] += (GMV.U.new[k] - GMV.U.values[k]) * TS.dti
                 GMV.V.tendencies[k] += (GMV.V.new[k] - GMV.V.values[k]) * TS.dti
 

@@ -49,6 +49,7 @@ cdef class EnvironmentVariables:
 
 cdef class EnvironmentRain:
     cdef:
+        Grid Gr
         EnvironmentVariable QR
         EnvironmentVariable RainArea
 
