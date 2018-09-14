@@ -421,6 +421,9 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         self.UpdVar.set_new_with_values()
         self.UpdVar.set_old_with_values()
+        self.UpdRain.set_new_with_values()
+        self.UpdRain.set_old_with_values()
+
         self.set_updraft_surface_bc(GMV, Case)
         self.dt_upd = np.minimum(TS.dt, 0.5 * self.Gr.dz/fmax(np.max(self.UpdVar.W.values),1e-10))
         while time_elapsed < TS.dt:
@@ -428,6 +431,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             self.solve_updraft_velocity_area(GMV,TS)
             self.solve_updraft_scalars(GMV, Case, TS)
             self.UpdVar.set_values_with_new()
+            self.UpdRain.set_values_with_new()
             time_elapsed += self.dt_upd
             self.dt_upd = np.minimum(TS.dt-time_elapsed,  0.5 * self.Gr.dz/fmax(np.max(self.UpdVar.W.values),1e-10))
             # (####)
@@ -1024,6 +1028,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                              self.Ref.p0_half[gw], self.UpdVar.QT.new[i,gw], self.UpdVar.H.new[i,gw])
                     mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[gw], self.UpdVar.QT.new[i,gw],
                                        self.UpdMicro.max_supersaturation, True)
+
                     # update updraft variables
                     self.UpdMicro.update_UpdVar(&self.UpdVar.QT.new[i,gw], &self.UpdVar.QL.new[i,gw],
                                                 &self.UpdVar.H.new[i,gw],  &self.UpdVar.T.new[i,gw],
@@ -1062,12 +1067,15 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                         # do saturation adjustment and autoconversion
                         sa = eos(self.UpdThermo.t_to_prog_fp, self.UpdThermo.prog_to_t_fp,
                                  self.Ref.p0_half[k], self.UpdVar.QT.new[i,k], self.UpdVar.H.new[i,k])
+
                         mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], self.UpdVar.QT.new[i,k],
                                            self.UpdMicro.max_supersaturation, True)
+
                         # update updraft variables
                         self.UpdMicro.update_UpdVar(&self.UpdVar.QT.new[i,k], &self.UpdVar.QL.new[i,k],
                                                     &self.UpdVar.H.new[i, k], &self.UpdVar.T.new[i, k],
                                                     mph.qr, mph.thl_rain_src, mph.qt, mph.ql, mph.T, mph.thl, i, k)
+
                         if self.rain_model:
                             self.UpdMicro.update_UpdRain(&self.UpdVar.Area.new[i,k], &self.UpdRain.QR.new[i,k],
                                                          &self.UpdRain.RainArea.new[i,k], mph.qr, i, k)
@@ -1078,7 +1086,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                                  self.UpdVar.QT.new[i,k], self.UpdVar.H.new[i,k])
                         self.UpdVar.QL.new[i,k] = sa.ql
                         self.UpdVar.T.new[i,k] = sa.T
-
 
         if self.use_local_micro:
             # save the total source terms for H and QT due to precipitation

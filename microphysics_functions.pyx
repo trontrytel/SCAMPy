@@ -128,7 +128,6 @@ cdef rain_struct rain_area(double source_area, double source_qr, double current_
     cdef rain_struct _ret
 
     if current_area != 0.:
-
         if current_area >= source_area:
             a_big = current_area
             q_big = current_qr
@@ -148,4 +147,3 @@ cdef rain_struct rain_area(double source_area, double source_qr, double current_
         _ret.ar = source_area
 
     return _ret
-

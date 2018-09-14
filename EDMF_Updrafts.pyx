@@ -320,6 +320,31 @@ cdef class UpdraftRain:
                     self.QR.bulkvalues[k] = 0.0
         return
 
+    cpdef set_new_with_values(self):
+        with nogil:
+            for i in xrange(self.n_updrafts):
+                for k in xrange(self.Gr.nzg):
+                    self.RainArea.new[i,k] = self.RainArea.values[i,k]
+                    self.QR.new[i,k] = self.QR.values[i,k]
+        return
+
+    cpdef set_old_with_values(self):
+        with nogil:
+            for i in xrange(self.n_updrafts):
+                for k in xrange(self.Gr.nzg):
+                    self.RainArea.old[i,k] = self.RainArea.values[i,k]
+                    self.QR.old[i,k] = self.QR.values[i,k]
+        return
+
+    cpdef set_values_with_new(self):
+        with nogil:
+            for i in xrange(self.n_updrafts):
+                for k in xrange(self.Gr.nzg):
+                    self.RainArea.values[i,k] = self.RainArea.new[i,k]
+                    self.QR.values[i,k] = self.QR.new[i,k]
+        return
+
+
 cdef class UpdraftThermodynamics:
     def __init__(self, n_updraft, Grid.Grid Gr, ReferenceState.ReferenceState Ref, UpdraftVariables UpdVar):
         self.Gr = Gr

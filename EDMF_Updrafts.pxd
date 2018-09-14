@@ -58,6 +58,9 @@ cdef class UpdraftRain:
     cpdef io(self, NetCDFIO_Stats Stats)
 
     cpdef set_means(self, GridMeanVariables GMV)
+    cpdef set_new_with_values(self)
+    cpdef set_old_with_values(self)
+    cpdef set_values_with_new(self)
 
 cdef class UpdraftThermodynamics:
     cdef:

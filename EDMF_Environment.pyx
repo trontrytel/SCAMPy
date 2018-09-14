@@ -379,7 +379,6 @@ cdef class EnvironmentThermodynamics:
                             # condensation + autoconversion
                             sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], qt_hat, h_hat)
                             mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], qt_hat, max_supersat, True)
-
                             # environmental variables
                             inner_env[i_ql]    += mph.ql    * weights[m_h] * sqpi_inv
                             inner_env[i_qr]    += mph.qr    * weights[m_h] * sqpi_inv
@@ -415,7 +414,7 @@ cdef class EnvironmentThermodynamics:
                                        outer_env[i_qt_cld] + outer_env[i_qt_dry],\
                                        outer_env[i_ql], outer_env[i_alpha])
                     if rain_model and outer_env[i_qr] > 0.:
-                         self.update_EnvRain(k, EnvVar, EnvRain, outer_env[i_qr])
+                        self.update_EnvRain(k, EnvVar, EnvRain, outer_env[i_qr])
 
                     # update cloudy/dry variables for buoyancy in TKE
                     EnvVar.CF.values[k]  = outer_env[i_cf]
@@ -438,13 +437,12 @@ cdef class EnvironmentThermodynamics:
 
                     self.update_EnvVar(k, EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                     if rain_model and mph.qr > 0.:
-                         self.update_EnvRain(k, EnvVar, EnvRain, mph.qr)
+                        self.update_EnvRain(k, EnvVar, EnvRain, mph.qr)
                     self.update_cloud_dry(k, EnvVar, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
 
                     self.Hvar_rain_dt[k]   = 0.
                     self.QTvar_rain_dt[k]  = 0.
                     self.HQTcov_rain_dt[k] = 0.
-
         return
 
     cdef void sommeria_deardorff(self, EnvironmentVariables EnvVar):
