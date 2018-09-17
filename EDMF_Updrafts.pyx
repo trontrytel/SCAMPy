@@ -344,6 +344,10 @@ cdef class UpdraftRain:
                     self.QR.values[i,k] = self.QR.new[i,k]
         return
 
+    cpdef upstream_rain_fall(self, UpdraftVariables UpdVar):
+
+
+
 
 cdef class UpdraftThermodynamics:
     def __init__(self, n_updraft, Grid.Grid Gr, ReferenceState.ReferenceState Ref, UpdraftVariables UpdVar):
