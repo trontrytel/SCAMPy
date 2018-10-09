@@ -36,12 +36,16 @@ cdef double rain_source_to_thetal(double p0, double T, double qt, double ql, dou
 # the threshold is specified as axcess saturation
 # rain water is immediately removed from the domain
 # Tiedke:   TODO - add reference
-cdef double acnv_instant(double ql, double qt, double sat_treshold, double T, double p0) nogil :
+cdef double acnv_instant(double ql, double qt, double sat_treshold, double T, double p0, double ar) nogil :
 
     cdef double psat = pv_star(T)
     cdef double qsat = qv_star_c(p0, qt, psat)
 
-    return fmax(0.0, ql - sat_treshold * qsat)
+    if ar <= 0.:
+        _ret = 0.
+    else:
+        _ret = fmax(0.0, ql - sat_treshold * qsat)
+    return _ret
 
 # time-rate expressions for 1-moment microphysics
 # autoconversion:   Kessler 1969, see Table 1 in Wood 2005: https://doi.org/10.1175/JAS3530.1
@@ -56,9 +60,9 @@ cdef double acnv_instant(double ql, double qt, double sat_treshold, double T, do
 cdef double acnv_rate(double ql, double qt) nogil :
 
     cdef double rl = q2r(ql, qt)
+    cdef double  _ret
 
     return (1. - qt) * 1e-3 * fmax(0.0, rl - 5e-4)
-    #      dq/dr     * dr/dt
 
 cdef double accr_rate(double ql, double qr, double qt) nogil :
 
@@ -87,8 +91,7 @@ cdef double terminal_velocity(double rho, double rho0, double qr, double qt) nog
 
     return 14.34 * rho0**0.5 * rho**-0.3654 * rr**0.1346
 
-
-cdef mph_struct microphysics(double T, double ql, double p0, double qt,\
+cdef mph_struct microphysics(double T, double ql, double p0, double qt, double area,\
                              double max_supersat, bint rain) nogil:
     """
     do autoconversion
@@ -110,7 +113,7 @@ cdef mph_struct microphysics(double T, double ql, double p0, double qt,\
     _ret.thl_rain_src = 0.0
 
     if rain:
-        _ret.qr           = acnv_instant(ql, qt, max_supersat, T, p0)
+        _ret.qr           = acnv_instant(ql, qt, max_supersat, T, p0, area)
         _ret.thl_rain_src = rain_source_to_thetal(p0, T, qt, ql, 0.0, _ret.qr)
 
         _ret.qt  -= _ret.qr
@@ -124,26 +127,40 @@ cdef rain_struct rain_area(double source_area, double source_qr, double current_
     Source terams for rain and rain area
     """
 
-    cdef double a_big, q_big, a_sml, q_sml
+    #cdef double a_big, q_big, a_sml, q_sml
+    cdef double a_const = 0.2
+    cdef double eps     = 0.
+
     cdef rain_struct _ret
 
-    if current_area != 0.:
-        if current_area >= source_area:
-            a_big = current_area
-            q_big = current_qr
-            a_sml = source_area
-            q_sml = source_qr
-        else:
-            a_sml = current_area
-            q_sml = current_qr
-            a_big = source_area
-            q_big = source_qr
-
-        _ret.qr = q_big + a_sml / a_big * q_sml
-        _ret.ar = a_big
-
+    if source_qr <=  eps:
+        _ret.qr = current_qr
+        _ret.ar = current_area
     else:
-        _ret.qr = source_qr
-        _ret.ar = source_area
+        _ret.qr = current_qr + source_area / a_const * source_qr
+        _ret.ar = a_const
+
+    #if source_qr ==  0.:
+    #    _ret.qr = current_qr
+    #    _ret.ar = current_area
+    #else:
+    #    if current_area != 0.:
+    #        if current_area >= source_area:
+    #            a_big = current_area
+    #            q_big = current_qr
+    #            a_sml = source_area
+    #            q_sml = source_qr
+    #        else:
+    #            a_sml = current_area
+    #            q_sml = current_qr
+    #            a_big = source_area
+    #            q_big = source_qr
+
+    #        _ret.qr = q_big + a_sml / a_big * q_sml
+    #        _ret.ar = a_big
+
+    #    else:
+    #        _ret.qr = source_qr
+    #        _ret.ar = source_area
 
     return _ret

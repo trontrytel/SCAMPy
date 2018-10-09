@@ -52,6 +52,8 @@ cdef class UpdraftRain:
         UpdraftVariable QR
         UpdraftVariable RainArea
 
+        double puddle
+
         bint rain_model
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats)
@@ -88,6 +90,8 @@ cdef class UpdraftMicrophysics:
     cpdef compute_column_sources(self, UpdraftVariables UpdVar)
     cpdef update_column_UpdVar(self,   UpdraftVariables UpdVar)
     cpdef update_column_UpdRain(self,  UpdraftVariables UpdVar, UpdraftRain UpdRain)
+
+    cpdef cleanup_column_UpdRain(self, UpdraftRain UpdRain, double eps)
 
     cdef void update_UpdVar(self, double *qt, double *ql, double *h, double *T,
                             double qr_src, double th_src, double qt_new, double ql_new, double T_new, double thl_new,

@@ -2,12 +2,22 @@ from NetCDFIO cimport NetCDFIO_Stats
 from Grid cimport  Grid
 from ReferenceState cimport ReferenceState
 from Variables cimport VariableDiagnostic, GridMeanVariables
-#from TimeStepping cimport  TimeStepping
+from TimeStepping cimport TimeStepping
 
 cdef class EnvironmentVariable:
     cdef:
         double [:] values
         double [:] flux
+        str loc
+        str kind
+        str name
+        str units
+
+cdef class EnvironmentRainVariable:
+    cdef:
+        double [:] values
+        double [:] flux
+        double [:] new
         str loc
         str kind
         str name
@@ -50,15 +60,17 @@ cdef class EnvironmentVariables:
 cdef class EnvironmentRain:
     cdef:
         Grid Gr
-        EnvironmentVariable QR
-        EnvironmentVariable RainArea
+        EnvironmentRainVariable QR
+        EnvironmentRainVariable RainArea
 
+        double puddle
         double max_supersaturation
 
         bint rain_model
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats )
     cpdef io(self, NetCDFIO_Stats Stats)
+    cpdef set_values_with_new(self)
 
 cdef class EnvironmentThermodynamics:
     cdef:
@@ -88,5 +100,7 @@ cdef class EnvironmentThermodynamics:
         void eos_update_SA_mean(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model)
         void eos_update_SA_sgs(self,  EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model)#, TimeStepping TS)
         void sommeria_deardorff(self, EnvironmentVariables EnvVar)
+
+        void rain_fall(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, TimeStepping TS)
 
     cpdef satadjust(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model)#, TimeStepping TS)

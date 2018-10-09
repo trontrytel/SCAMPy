@@ -284,6 +284,7 @@ cdef class UpdraftRain:
 
         self.QR       = UpdraftVariable(nu, nzg, 'half', 'scalar', 'qr',        'kg/kg')
         self.RainArea = UpdraftVariable(nu, nzg, 'half', 'scalar', 'rain_area', 'rain_area_fraction [-]' )
+        self.puddle = 0.
 
         try:
             self.rain_model = namelist['microphysics']['rain_model']
@@ -297,11 +298,13 @@ cdef class UpdraftRain:
     cpdef initialize_io(self, NetCDFIO_Stats Stats):
         Stats.add_profile('updraft_qr')
         Stats.add_profile('updraft_rain_area')
+        Stats.add_ts('updraft_puddle')
         return
 
     cpdef io(self, NetCDFIO_Stats Stats):
         Stats.write_profile('updraft_qr',        self.QR.bulkvalues[self.Gr.gw       : self.Gr.nzg - self.Gr.gw])
         Stats.write_profile('updraft_rain_area', self.RainArea.bulkvalues[self.Gr.gw : self.Gr.nzg - self.Gr.gw])
+        Stats.write_ts('updraft_puddle',         self.puddle)
         return
 
     cpdef set_means(self, GridMeanVariables GMV):
@@ -343,10 +346,6 @@ cdef class UpdraftRain:
                     self.RainArea.values[i,k] = self.RainArea.new[i,k]
                     self.QR.values[i,k] = self.QR.new[i,k]
         return
-
-    cpdef upstream_rain_fall(self, UpdraftVariables UpdVar):
-
-
 
 
 cdef class UpdraftThermodynamics:
@@ -437,7 +436,7 @@ cdef class UpdraftMicrophysics:
             for i in xrange(self.n_updraft):
                 for k in xrange(self.Gr.nzg):
                     tmp_qr = acnv_instant(UpdVar.QL.values[i,k], UpdVar.QT.values[i,k], self.max_supersaturation,\
-                                          UpdVar.T.values[i,k], self.Ref.p0_half[k])
+                                          UpdVar.T.values[i,k], self.Ref.p0_half[k], UpdVar.Area.values[i,k])
                     self.prec_source_qt[i,k] = -tmp_qr
                     self.prec_source_h[i,k]  = rain_source_to_thetal(self.Ref.p0_half[k], UpdVar.T.values[i,k],\
                                                  UpdVar.QT.values[i,k], UpdVar.QL.values[i,k], 0.0, tmp_qr)
@@ -482,6 +481,22 @@ cdef class UpdraftMicrophysics:
                     UpdRain.RainArea.values[i,k] = rst.ar
         return
 
+    cpdef cleanup_column_UpdRain(self, UpdraftRain UpdRain, double eps):
+        """
+        TODO - tmp
+        remove rain if the qr values are smaller than some epsilon
+        """
+        cdef:
+            Py_ssize_t k, i
+
+        with nogil:
+            for i in xrange(self.n_updraft):
+                for k in xrange(self.Gr.nzg):
+                    if UpdRain.QR.values[i,k] < eps:
+                        UpdRain.QR.values[i,k] = 0.
+                        #UpdRain.RainArea.values[i,k] = 0.
+        return
+
     cdef void update_UpdVar(self, double *qt, double *ql, double *h, double *T,\
                             double qr_src, double th_src, double qt_new, double ql_new, double T_new, double thl_new,\
                             Py_ssize_t i, Py_ssize_t k) nogil :
@@ -507,6 +522,10 @@ cdef class UpdraftMicrophysics:
         """
         cdef rain_struct rst
         rst = rain_area(upd_area[0], qr_new, rain_Area[0], qr[0])
+
+        #with gil:
+        #    if rst.qr > 0.:
+        #        print i, k, ":", qr[0], "+", qr_new, "->", rst.qr, "|", upd_area[0], "+", rain_Area[0], "->", rst.ar
 
         qr[0]        = rst.qr
         rain_Area[0] = rst.ar

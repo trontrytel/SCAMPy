@@ -29,6 +29,21 @@ cdef class EnvironmentVariable:
         self.name = name
         self.units = units
 
+cdef class EnvironmentRainVariable:
+    def __init__(self, nz, loc, kind, name, units):
+        self.values = np.zeros((nz,),dtype=np.double, order='c')
+        self.flux   = np.zeros((nz,),dtype=np.double, order='c')
+        self.new    = np.zeros((nz,),dtype=np.double, order='c') # needed for prognostic updrafts
+
+        if loc != 'half' and loc != 'full':
+            print('Invalid location setting for variable! Must be half or full')
+        if kind != 'scalar' and kind != 'velocity':
+            print ('Invalid kind setting for variable! Must be scalar or velocity')
+
+        self.loc = loc
+        self.kind = kind
+        self.name = name
+        self.units = units
 
 cdef class EnvironmentVariables:
     def __init__(self,  namelist, Grid Gr  ):
@@ -157,8 +172,9 @@ cdef class EnvironmentRain:
         cdef Py_ssize_t nz = Gr.nzg
         self.Gr = Gr
 
-        self.QR       = EnvironmentVariable(nz, 'half', 'scalar', 'qr',       'kg/kg')
-        self.RainArea = EnvironmentVariable(nz, 'half', 'scalar', 'rain_area','rain_area_fraction [-]')
+        self.QR       = EnvironmentRainVariable(nz, 'half', 'scalar', 'qr',       'kg/kg')
+        self.RainArea = EnvironmentRainVariable(nz, 'half', 'scalar', 'rain_area','rain_area_fraction [-]')
+        self.puddle = 0.
 
         self.max_supersaturation = namelist['microphysics']['max_supersaturation']
 
@@ -174,11 +190,20 @@ cdef class EnvironmentRain:
     cpdef initialize_io(self, NetCDFIO_Stats Stats):
         Stats.add_profile('env_qr')
         Stats.add_profile('env_rain_area')
+        Stats.add_ts('env_puddle')
         return
 
     cpdef io(self, NetCDFIO_Stats Stats):
         Stats.write_profile('env_qr', self.QR.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_rain_area', self.RainArea.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        Stats.write_ts('env_puddle', self.puddle)
+        return
+
+    cpdef set_values_with_new(self):
+        with nogil:
+            for k in xrange(self.Gr.nzg):
+                self.RainArea.values[k] = self.RainArea.new[k]
+                self.QR.values[k] = self.QR.new[k]
         return
 
 cdef class EnvironmentThermodynamics:
@@ -245,6 +270,52 @@ cdef class EnvironmentThermodynamics:
             self.qt_dry[k]      = qt
         return
 
+    cdef void rain_fall(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, TimeStepping TS):
+        cdef:
+            Py_ssize_t k
+            Py_ssize_t gw  = self.Gr.gw
+            Py_ssize_t nzg = self.Gr.nzg
+
+            double dz = self.Gr.dz
+            double dt = TS.dt
+
+            double crt_k, crt_k1
+            double rho_frac, area_frac
+
+            double area_out, qr_out
+            double eps = 1e-5
+
+        # rain falling through the domain
+        for k in xrange(nzg - gw - 1, gw - 1, -1):
+
+            crt_k = dt / dz * terminal_velocity(self.Ref.rho0_half[k], self.Ref.rho0_half[gw],
+                                                EnvRain.QR.values[k],  EnvVar.QT.values[k])
+            if k == (nzg - gw - 1):
+                crt_k1 = 0.
+            else:
+                crt_k1 = dt / dz * terminal_velocity(self.Ref.rho0_half[k+1], self.Ref.rho0_half[gw],
+                                                     EnvRain.QR.values[k+1],  EnvVar.QT.values[k+1])
+
+            rho_frac = self.Ref.rho0_half[k+1] / self.Ref.rho0_half[k]
+
+            EnvRain.RainArea.new[k] = EnvRain.RainArea.values[k]   * (1 - crt_k) +\
+                                      EnvRain.RainArea.values[k+1] * crt_k1 * rho_frac
+
+            if EnvRain.RainArea.new[k] > eps:
+                area_frac = EnvRain.RainArea.values[k] / EnvRain.RainArea.new[k]
+
+                EnvRain.QR.new[k] = (EnvRain.QR.values[k] * (1 - crt_k) +\
+                                     EnvRain.QR.new[k+1]  * crt_k1 * rho_frac) * area_frac
+            else:
+                EnvRain.RainArea.new[k] = 0.
+                EnvRain.QR.new[k] = 0.
+
+        # collect the rain that falls through the domain edge into a puddle
+        rho_frac = self.Ref.rho0_half[gw] / self.Ref.rho0_half[gw-1]
+        EnvRain.puddle += EnvRain.QR.new[gw] * EnvRain.RainArea.new[gw] * crt_k * rho_frac
+
+        return
+
     cdef void eos_update_SA_smpl(self, EnvironmentVariables EnvVar):
 
         cdef:
@@ -256,7 +327,7 @@ cdef class EnvironmentThermodynamics:
         with nogil:
             for k in xrange(gw, self.Gr.nzg-gw):
                 sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.H.values[k])
-                mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], 0., False)
+                mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.EnvArea.values[k], 0., False)
 
                 self.update_EnvVar(k,    EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                 self.update_cloud_dry(k, EnvVar, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
@@ -279,7 +350,7 @@ cdef class EnvironmentThermodynamics:
             for k in xrange(gw,self.Gr.nzg-gw):
                 # condensation + autoconversion
                 sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.H.values[k])
-                mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], max_supersat, True)
+                mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.EnvArea.values[k], max_supersat, True)
 
                 self.update_EnvVar(k,    EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                 self.update_cloud_dry(k, EnvVar, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
@@ -378,7 +449,7 @@ cdef class EnvironmentThermodynamics:
 
                             # condensation + autoconversion
                             sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], qt_hat, h_hat)
-                            mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], qt_hat, max_supersat, True)
+                            mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], qt_hat, EnvVar.EnvArea.values[k], max_supersat, True)
                             # environmental variables
                             inner_env[i_ql]    += mph.ql    * weights[m_h] * sqpi_inv
                             inner_env[i_qr]    += mph.qr    * weights[m_h] * sqpi_inv
@@ -433,7 +504,7 @@ cdef class EnvironmentThermodynamics:
                 else:
                     # if variance and covaraiance are zero do the same as in SA_mean
                     sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.H.values[k])
-                    mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], max_supersat, True)
+                    mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.EnvArea.values[k], max_supersat, True)
 
                     self.update_EnvVar(k, EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                     if rain_model and mph.qr > 0.:
