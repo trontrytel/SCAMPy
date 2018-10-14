@@ -858,9 +858,9 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 ## Ignacio
                 input.n_up = self.n_updrafts
                 input.thv_e = theta_virt_c(self.Ref.p0_half[k], self.EnvVar.T.values[k], self.EnvVar.QT.values[k],
-                     self.EnvVar.QL.values[k], self.EnvVar.QR.values[k])
+                     self.EnvVar.QL.values[k], 0.) # TODO self.EnvRain.QR.values[k])
                 input.thv_u = theta_virt_c(self.Ref.p0_half[k], self.UpdVar.T.bulkvalues[k], self.UpdVar.QT.bulkvalues[k],
-                     self.UpdVar.QL.bulkvalues[k], self.UpdVar.QR.bulkvalues[k])
+                     self.UpdVar.QL.bulkvalues[k], 0.) # TODO self.UpdRain.QR.bulkvalues[k])
                 input.dwdz = (self.UpdVar.Area.values[i,k+1]*
                     interp2pt(self.UpdVar.W.values[i,k+1],self.UpdVar.W.values[i,k]) +
                     (1.0-self.UpdVar.Area.values[i,k+1])*self.EnvVar.W.values[k+1] -
