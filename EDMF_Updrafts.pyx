@@ -370,7 +370,6 @@ cdef class UpdraftThermodynamics:
 
         UpdVar.Area.bulkvalues = np.sum(UpdVar.Area.values,axis=0)
 
-
         if not extrap:
             with nogil:
                 for i in xrange(self.n_updraft):
@@ -398,6 +397,7 @@ cdef class UpdraftThermodynamics:
                             t = sa.T
                             alpha = alpha_c(self.Ref.p0_half[k], t, qt, qv)
                             UpdVar.B.values[i,k] = buoyancy_c(self.Ref.alpha0_half[k], alpha)
+
         with nogil:
             for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
                 GMV.B.values[k] = (1.0 - UpdVar.Area.bulkvalues[k]) * EnvVar.B.values[k]
