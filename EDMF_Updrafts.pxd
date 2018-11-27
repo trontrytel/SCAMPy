@@ -44,22 +44,35 @@ cdef class UpdraftVariables:
     cpdef set_values_with_new(self)
     cpdef get_cloud_base_top_cover(self)
 
+cdef class UpdraftRainVariable:
+    cdef:
+        double [:] values
+        double [:] new
+        double [:] old
+        double [:] tendencies
+        double [:] flux
+        str loc
+        str kind
+        str name
+        str units
+    cpdef set_bcs(self, Grid.Grid Gr)
+
 cdef class UpdraftRain:
     cdef:
         Grid.Grid Gr
-        Py_ssize_t n_updrafts
 
-        UpdraftVariable QR
-        UpdraftVariable RainArea
+        UpdraftRainVariable QR
+        UpdraftRainVariable RainArea
 
         double puddle
 
         bint rain_model
+        bint rain_const_area
+        double upd_rain_area_value
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats)
     cpdef io(self, NetCDFIO_Stats Stats)
 
-    cpdef set_means(self, GridMeanVariables GMV)
     cpdef set_new_with_values(self)
     cpdef set_old_with_values(self)
     cpdef set_values_with_new(self)
@@ -97,4 +110,4 @@ cdef class UpdraftMicrophysics:
                             double qr_src, double th_src, double qt_new, double ql_new, double T_new, double thl_new,
                             Py_ssize_t i, Py_ssize_t k) nogil
 
-    cdef void update_UpdRain(self, double *upd_area, double *qr, double *rain_Area, double qr_new, Py_ssize_t i, Py_ssize_t k) nogil
+    cdef void update_UpdRain(self, double *upd_area, double *qr, double *rain_Area, double qr_new, double a_const, Py_ssize_t i, Py_ssize_t k) nogil

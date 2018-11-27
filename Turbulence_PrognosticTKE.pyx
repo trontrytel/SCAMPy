@@ -137,7 +137,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         # Create the class for updraft microphysics
         self.UpdMicro = EDMF_Updrafts.UpdraftMicrophysics(namelist, self.n_updrafts, Gr, Ref)
         # Create the class for updraft rain
-        self.UpdRain  = EDMF_Updrafts.UpdraftRain(self.n_updrafts, namelist, paramlist, Gr)
+        self.UpdRain  = EDMF_Updrafts.UpdraftRain(namelist, paramlist, Gr)
 
         # Create the environment variable class (major diagnostic and prognostic variables)
         self.EnvVar = EDMF_Environment.EnvironmentVariables(namelist,Gr)
@@ -384,10 +384,10 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         #     the mean buoyancy with repect to reference state alpha_0 is zero.
         self.decompose_environment(GMV, 'mf_update')
         self.EnvThermo.satadjust(self.EnvVar, self.EnvRain, self.rain_model)
+        if self.rain_model:
+            self.EnvThermo.rain_fall(self.EnvVar, self.EnvRain, TS)
+            #self.EnvThermo.rain_evap(self.EnvVar, self.EnvRain, TS)
         self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
-        #if self.rain_model:
-        #    self.EnvThermo.rain_fall(self.EnvVar, self.EnvRain, TS)
-        #    self.EnvRain.set_values_with_new()
 
         self.compute_eddy_diffusivities_tke(GMV, Case)
 
@@ -417,13 +417,14 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             self.compute_entrainment_detrainment(GMV, Case)
             self.solve_updraft_velocity_area()
             self.solve_updraft_scalars(GMV)
-            #TODO - discuss with others the order of updates
             self.UpdVar.set_values_with_new()
             if self.rain_model:
+                # apply autoconversion source terms
                 self.UpdRain.set_values_with_new()
-                self.UpdMicro.cleanup_column_UpdRain(self.UpdRain, 1e-7)
+                # upstream for rain fall
                 self.solve_updraft_rain_fall(GMV)
-                self.UpdRain.set_values_with_new()
+                # rain evaporation
+                #self.solve_updraft_rain_evap()
             time_elapsed += self.dt_upd
             self.dt_upd = np.minimum(TS.dt-time_elapsed,  0.5 * self.Gr.dz/fmax(np.max(self.UpdVar.W.values),1e-10))
             # (####)
@@ -469,8 +470,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                                             &self.UpdVar.H.values[i, gw], &self.UpdVar.T.values[i, gw],
                                             mph.qr, mph.thl_rain_src, mph.qt, mph.ql, mph.T, mph.thl, i, gw)
                 if self.rain_model:
-                    self.UpdMicro.update_UpdRain(&self.UpdVar.Area.values[i,gw], &self.UpdRain.QR.values[i,gw],
-                                                 &self.UpdRain.RainArea.values[i,gw], mph.qr, i, gw)
+                    self.UpdMicro.update_UpdRain(&self.UpdVar.Area.values[i,gw], &self.UpdRain.QR.values[gw],
+                                                 &self.UpdRain.RainArea.values[gw], mph.qr, self.UpdRain.upd_rain_area_value, i, gw)
 
                 for k in xrange(gw+1, self.Gr.nzg-gw):
                     denom = 1.0 + self.entr_sc[i,k] * dz
@@ -487,8 +488,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                                        &self.UpdVar.H.values[i, k], &self.UpdVar.T.values[i, k],
                                        mph.qr, mph.thl_rain_src, mph.qt, mph.ql, mph.T, mph.thl, i, k)
                     if self.rain_model:
-                        self.UpdMicro.update_UpdRain(&self.UpdVar.Area.values[i,k], &self.UpdRain.QR.values[i,k],
-                                                     &self.UpdRain.RainArea.values[i,k], mph.qr, i, k)
+                        self.UpdMicro.update_UpdRain(&self.UpdVar.Area.values[i,k], &self.UpdRain.QR.values[k],
+                                                     &self.UpdRain.RainArea.values[k], mph.qr,self.UpdRain.upd_rain_area_value, i, k)
 
         self.UpdVar.QT.set_bcs(self.Gr)
         self.UpdVar.H.set_bcs(self.Gr)
@@ -676,7 +677,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         # first make sure the 'bulkvalues' of the updraft variables are updated
         self.UpdVar.set_means(GMV)
-        self.UpdRain.set_means(GMV)
 
         cdef:
             Py_ssize_t k, gw = self.Gr.gw
@@ -722,6 +722,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             if self.calc_tke:
                 self.get_GMV_CoVar(self.UpdVar.Area,self.UpdVar.W, self.UpdVar.W, self.EnvVar.W, self.EnvVar.W, self.EnvVar.TKE,
                                  &GMV.W.values[0],&GMV.W.values[0], &GMV.TKE.values[0])
+
             if self.calc_scalar_var:
                 self.get_GMV_CoVar(self.UpdVar.Area,self.UpdVar.H, self.UpdVar.H, self.EnvVar.H, self.EnvVar.H, self.EnvVar.Hvar,
                                  &GMV.H.values[0],&GMV.H.values[0], &GMV.Hvar.values[0])
@@ -1013,8 +1014,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                                                 &self.UpdVar.H.new[i,gw],  &self.UpdVar.T.new[i,gw],
                                                 mph.qr, mph.thl_rain_src, mph.qt, mph.ql, mph.T, mph.thl, i, gw)
                     if self.rain_model:
-                        self.UpdMicro.update_UpdRain(&self.UpdVar.Area.new[i,gw], &self.UpdRain.QR.new[i,gw],
-                                                     &self.UpdRain.RainArea.new[i,gw], mph.qr, i, gw)
+                        self.UpdMicro.update_UpdRain(&self.UpdVar.Area.new[i,gw], &self.UpdRain.QR.new[gw],
+                                                     &self.UpdRain.RainArea.new[gw], mph.qr,self.UpdRain.upd_rain_area_value, i, gw)
 
                 # starting from the bottom do entrainment at each level
                 for k in xrange(gw+1, self.Gr.nzg-gw):
@@ -1055,15 +1056,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                             if self.rain_model:
                                 #TODO - after adding rain evaporation think on the correct order of updates
                                 #       and on the correct source terms for QT and H
-                                self.UpdMicro.update_UpdRain(&self.UpdVar.Area.new[i,k], &self.UpdRain.QR.new[i,k],
-                                                             &self.UpdRain.RainArea.new[i,k], mph.qr, i, k)
-                                #with gil:
-                                #    if mph.qr == 0. and self.UpdRain.QR.new[i,k] > 0.:
-                                #        print "[",i,",",k,"] :", mph.qr," -> ",self.UpdRain.QR.new[i,k]," | U.A.n, R.A.n", self.UpdVar.Area.new[i,k], self.UpdRain.RainArea.new[i,k], " | ", self.UpdVar.QL.new[i,k]
-
-                                #    if mph.qr > 0.:
-                                ##        print "[",i,",",k,"] :", mph.qr," -> ",self.UpdRain.QR.new[i,k]," | U.A.n, R.A.n", self.UpdVar.Area.new[i,k], self.UpdRain.RainArea.new[i,k], " | ", self.UpdVar.QL.new[i,k]
-
+                                self.UpdMicro.update_UpdRain(&self.UpdVar.Area.new[i,k], &self.UpdRain.QR.new[k],
+                                                             &self.UpdRain.RainArea.new[k], mph.qr, self.UpdRain.upd_rain_area_value, i, k)
 
                         else:
                             # do saturation adjustment
@@ -1075,16 +1069,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     else:
                         self.UpdVar.H.new[i,k]  = GMV.H.values[k]
                         self.UpdVar.QT.new[i,k] = GMV.QT.values[k]
-                        self.UpdVar.QL.new[i,k] = GMV.QL.values[k] #TODO
-
-                        self.UpdRain.QR.new[i,k]   = self.UpdRain.QR.values[i,k] * self.UpdRain.RainArea.values[i,k] / 0.2 #TODO
-                        with gil:
-                            if self.UpdRain.QR.new[i,k] > 0.:
-                                self.UpdRain.RainArea.new[i,k] = .2 #TODO
-                            else:
-                                self.UpdRain.RainArea.new[i,k] = 0. #TODO
-                        #with gil:
-                        #    print "[",i,",",k,"]", self.UpdVar.Area.new[i,k], "<", self.minimum_area, "else: ", self.UpdVar.QL.new[i,k], "|", self.UpdRain.QR.new[i,k], self.UpdRain.RainArea.new[i,k]
+                        self.UpdVar.QL.new[i,k] = GMV.QL.values[k]
 
         if self.use_local_micro:
             # save the total source terms for H and QT due to precipitation
@@ -1107,75 +1092,106 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
     cpdef solve_updraft_rain_fall(self, GridMeanVariables GMV):
         cdef:
-            Py_ssize_t k, i
+            Py_ssize_t k
             Py_ssize_t gw  = self.Gr.gw
             Py_ssize_t nzg = self.Gr.nzg
 
             double dz = self.Gr.dz
-            double dt = self.dt_upd
+            double dt_upd = self.dt_upd
 
             double crt_k, crt_k1
             double rho_frac, area_frac
 
-            double area_out, qr_out
-            double eps = 0.
+            double [:] term_vel = np.zeros((nzg,), dtype=np.double, order='c')
+            double dt_rain
+            double t_elapsed = 0.
+
+        # helper to calculate the rain velocity (terminal velocity - updraft velocity)
+        # TODO assumes that updraft velocity is always positive!
+        # TODO - I'm multiplying by 0.5 in the stability criterium
+        # TODO - duplicated in env rain
+        for k in xrange(nzg - gw - 1, gw - 1, -1):
+            term_vel[k] = terminal_velocity(
+                self.Ref.rho0_half[k], self.Ref.rho0_half[gw],\
+                self.UpdRain.QR.values[k], self.UpdVar.QT.bulkvalues[k])#\
+                # - \
+                #0.5 * (self.UpdVar.W.bulkvalues[k] + self.UpdVar.W.bulkvalues[k-1])
+        # calculate the allowed timestep (0.5 dz/v/dt <=1)
+        dt_rain = np.minimum(dt_upd, 0.5 * self.Gr.dz / max(1e-10, max(term_vel[:])))
 
         # rain falling through the domain
-        for i in xrange(self.n_updrafts):
-            #print " "
+        while t_elapsed < dt_upd:
             for k in xrange(nzg - gw - 1, gw - 1, -1):
 
-                # TODO - tmp
-                if self.UpdVar.QT.values[i,k] != 0.:
-                    crt_k = dt / dz * terminal_velocity(self.Ref.rho0_half[k], self.Ref.rho0_half[gw], self.UpdRain.QR.values[i,k], self.UpdVar.QT.values[i,k])
-                    #crt_k = 0.4
-                else:
-                    crt_k = dt / dz * terminal_velocity(self.Ref.rho0_half[k], self.Ref.rho0_half[gw], self.UpdRain.QR.values[i,k], GMV.QT.values[k])
-                    #crt_k = 0.4
+                crt_k = dt_rain / dz * term_vel[k]
 
                 if k == (nzg - gw - 1):
                     crt_k1 = 0.
-                elif self.UpdVar.QT.values[i,k+1] != 0.:
-                    crt_k1 = dt / dz * terminal_velocity(self.Ref.rho0_half[k+1], self.Ref.rho0_half[gw], self.UpdRain.QR.values[i,k+1], self.UpdVar.QT.values[i,k+1])
-                    #crt_k1 = 0.4
                 else:
-                    crt_k1 = dt / dz * terminal_velocity(self.Ref.rho0_half[k+1], self.Ref.rho0_half[gw], self.UpdRain.QR.values[i,k+1], GMV.QT.values[k+1])
-                    #crt_k1 = 0.4
+                    crt_k1 = dt_rain / dz * term_vel[k+1]
 
                 if crt_k > 1.:
-                    print "                                                                 !!!!!!!!!!!!!!!!!!!!!! crr_k = ", crt_k
+                    print " !!!!!!!!!!!!!!!!!!!!!! Upd: crr_k = ", crt_k
                 if crt_k1 > 1.:
-                    print "                                                                 !!!!!!!!!!!!!!!!!!!!!! crr_k = ", crt_k1
+                    print " !!!!!!!!!!!!!!!!!!!!!! Upd: crr_k = ", crt_k1
 
                 rho_frac = self.Ref.rho0_half[k+1] / self.Ref.rho0_half[k]
 
-                self.UpdRain.RainArea.new[i,k] = self.UpdRain.RainArea.values[i,k]   * (1 - crt_k) +\
-                                                 self.UpdRain.RainArea.values[i,k+1] * crt_k1 * rho_frac
+                #self.UpdRain.RainArea.new[i,k] = self.UpdRain.RainArea.values[k]   * (1 - crt_k) +\
+                #                                 self.UpdRain.RainArea.values[k+1] * crt_k1 * rho_frac
 
-                #if self.UpdRain.RainArea.values[i,k] != 0.:
-                #    if self.UpdRain.RainArea.values[i,k] < 0.:
-                #        print "!!!!!!!!"
-                #    print "[",i,",",k,"] U.QT, U.QR, c, dt, dz: ",   self.UpdVar.QT.values[i,k],  "  ",  self.UpdRain.QR.values[i,k],   " | ", crt_k, " ", dt, " ", dz
-                #    print "[",i,",",k+1,"] U.QT, U.QR, c, dt, dz: ", self.UpdVar.QT.values[i,k+1],"  ",  self.UpdRain.QR.values[i,k+1], " | ", crt_k1," ", dt, " ", dz
-                #    print "                                                                   ", self.UpdRain.RainArea.values[i,k], self.UpdRain.RainArea.values[i,k+1],  " -> ", self.UpdRain.RainArea.new[i,k]
-                #    if self.UpdRain.RainArea.values[i,k] < 0.:
-                #        print "!!!!!!!!"
+                area_frac = 1. # self.UpdRain.RainArea.values[k] / self.UpdRain.RainArea.new[k]
+                self.UpdRain.QR.new[k] = (self.UpdRain.QR.values[k] * (1 - crt_k) +\
+                                          self.UpdRain.QR.new[k+1]  * crt_k1 * rho_frac) * area_frac
 
-                if self.UpdRain.RainArea.new[i,k] > eps:
-                    area_frac = self.UpdRain.RainArea.values[i,k] / self.UpdRain.RainArea.new[i,k]
+                term_vel[k] = terminal_velocity(
+                    self.Ref.rho0_half[k], self.Ref.rho0_half[gw],\
+                    self.UpdRain.QR.new[k], self.UpdVar.QT.bulkvalues[k])#\
+                    #- \
+                    #0.5 * (self.UpdVar.W.bulkvalues[k] + self.UpdVar.W.bulkvalues[k-1])
 
-                    self.UpdRain.QR.new[i,k] = (self.UpdRain.QR.values[i,k] * (1 - crt_k) +\
-                                                self.UpdRain.QR.new[i,k+1]  * crt_k1 * rho_frac) * area_frac
-                else:
-                    self.UpdRain.RainArea.new[i,k] = self.UpdRain.RainArea.values[i,k]
-                    self.UpdRain.QR.new[i,k] = self.UpdRain.QR.values[i,k]
+                self.UpdRain.QR.values[k] = self.UpdRain.QR.new[k]
+                if self.UpdRain.QR.values[k] != 0.:
+                    self.UpdRain.RainArea.values[k] = self.UpdRain.upd_rain_area_value
 
+            t_elapsed += dt_rain
+            dt_rain = np.minimum(dt_upd - t_elapsed, 0.5 * self.Gr.dz / max(1e-10, max(term_vel[:])))
 
-        # collect the rain that falls through the domain edge into a puddle
-        rho_frac = self.Ref.rho0_half[gw] / self.Ref.rho0_half[gw-1]
-        self.UpdRain.puddle += self.UpdRain.QR.new[i,gw] * self.UpdRain.RainArea.new[i,gw] * crt_k * rho_frac
+            # collect the rain that falls through the domain edge into a puddle
+            rho_frac = self.Ref.rho0_half[gw] / self.Ref.rho0_half[gw-1]
+            self.UpdRain.puddle += self.UpdRain.QR.values[gw] * self.UpdRain.RainArea.values[gw]  * crt_k * rho_frac
 
         return
+
+    #cpdef solve_updraft_rain_evap(self, GridMeanVariables GMV):
+    #    cdef:
+    #        Py_ssize_t k
+    #        Py_ssize_t gw  = self.Gr.gw
+    #        Py_ssize_t nzg = self.Gr.nzg
+
+    #        double dz = self.Gr.dz
+    #        double dt_upd = self.dt_upd
+
+    #        double tmp_evap
+
+    #        double [:] updr_rain_evap_qt_source = np.zeros((nzg,), dtype=np.double, order='c')
+    #        double [:] updr_rain_evap_h_source  = np.zeros((nzg,), dtype=np.double, order='c')
+
+    #    for k in xrange(gw, nzg - gw):
+
+    #        tmp_evap = evap_rate(self.Ref.rho0[k], self.UpdVar.QV.bulkvalues[k],
+    #                             self.UpdRain.QR.values[k], self.UpdVar.QT.bulkvalues[k],
+    #                             self.UpdVar.T.bulkvalues[k], self.Ref.p0_half[k]) * dt_upd
+
+    #        if tmp_evap > self.UpdRain.QR.values[k]:
+
+    #            updr_rain_evap_qt_source[k] += self.UpdRain.QR.values[k] * self.UpdRain.RainArea.values[k]
+
+    #            self.UpdRain.QR.values[k] = 0.
+    #            self.UpdRain.RainArea.values[k] = 0.
+
+
+    #    return
 
     # After updating the updraft variables themselves:
     # 1. compute the mass fluxes (currently not stored as class members, probably will want to do this
@@ -1423,8 +1439,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 GMV.QL.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.QL.bulkvalues[k] \
                                     + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.QL.values[k])
 
-                GMV.QR.values[k] = self.UpdRain.RainArea.bulkvalues[k] * self.UpdRain.QR.bulkvalues[k] \
-                                    + self.EnvRain.RainArea.values[k]     * self.EnvRain.QR.values[k]
+                GMV.QR.values[k] = self.UpdRain.RainArea.values[k] * self.UpdRain.QR.values[k] \
+                                 + self.EnvRain.RainArea.values[k] * self.EnvRain.QR.values[k]
 
                 GMV.T.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.T.bulkvalues[k] \
                                     + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.T.values[k])

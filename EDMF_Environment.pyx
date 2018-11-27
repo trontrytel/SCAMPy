@@ -203,6 +203,18 @@ cdef class EnvironmentRain:
         except:
             self.rain_model = False
 
+        if self.rain_model:
+            try:
+                self.rain_const_area = namelist['microphysics']['rain_const_area']
+            except:
+                self.rain_const_area = False
+
+            if self.rain_const_area:
+                try:
+                    self.env_rain_area_value = namelist['microphysics']['env_rain_area_value']
+                except:
+                    print "EDMF_Environment: assuming constant environment rain area fraction = 1"
+                    self.env_rain_area_value = 1.
         return
 
     #cpdef initialize(self, GridMeanVariables GMV): - TODO what should be the boundary conditions and the initial values?
@@ -269,7 +281,7 @@ cdef class EnvironmentThermodynamics:
         # TODO - replace with pointers ?
         cdef rain_struct rst
 
-        rst = rain_area(EnvVar.EnvArea.values[k], qr, EnvRain.RainArea.values[k], EnvRain.QR.values[k])
+        rst = rain_area(EnvVar.EnvArea.values[k], qr, EnvRain.RainArea.values[k], EnvRain.QR.values[k], EnvRain.env_rain_area_value, 1e-5)
 
         EnvRain.QR.values[k] = rst.qr
         EnvRain.RainArea.values[k] = rst.ar
@@ -297,42 +309,70 @@ cdef class EnvironmentThermodynamics:
             Py_ssize_t nzg = self.Gr.nzg
 
             double dz = self.Gr.dz
-            double dt = TS.dt
+            double dt_model = TS.dt
 
             double crt_k, crt_k1
             double rho_frac, area_frac
 
-            double area_out, qr_out
-            double eps = 1e-5
+            double [:] term_vel = np.zeros((nzg,), dtype=np.double, order='c')
+            double dt_rain
+            double t_elapsed = 0.
+
+        # helper to calculate the rain velocity (terminal velocity + environmental velocity)
+        # TODO assumes that environmental velocity is always negative!
+        # TODO - I'm using GMV qt values to calculate between q_r and r_r
+        # TODO - I'm multiplying by 0.5 in the stability criterium
+        # TODO - duplicated in updraft rain
+        for k in xrange(nzg - gw - 1, gw - 1, -1):
+            term_vel[k] = terminal_velocity(
+                self.Ref.rho0_half[k], self.Ref.rho0_half[gw],\
+                EnvRain.QR.values[k], EnvVar.QT.values[k])#\
+                # + \
+                #0.5 * (self.EnvVar.W.values[k] + self.EnvVar.W.values[k-1])
+        # calculate the allowed timestep (0.5 dz/v/dt <=1) TODO why half?
+        dt_rain = np.minimum(dt_model, 0.5 * self.Gr.dz / max(1e-10, max(term_vel[:])))
 
         # rain falling through the domain
-        for k in xrange(nzg - gw - 1, gw - 1, -1):
+        while t_elapsed < dt_model:
+            for k in xrange(nzg - gw - 1, gw - 1, -1):
 
-            crt_k = dt / dz * terminal_velocity(self.Ref.rho0_half[k], self.Ref.rho0_half[gw],
-                                                EnvRain.QR.values[k],  EnvVar.QT.values[k])
-            if k == (nzg - gw - 1):
-                crt_k1 = 0.
-            else:
-                crt_k1 = dt / dz * terminal_velocity(self.Ref.rho0_half[k+1], self.Ref.rho0_half[gw],
-                                                     EnvRain.QR.values[k+1],  EnvVar.QT.values[k+1])
+                crt_k = dt_rain / dz * term_vel[k]
 
-            rho_frac = self.Ref.rho0_half[k+1] / self.Ref.rho0_half[k]
+                if k == (nzg - gw - 1):
+                    crt_k1 = 0.
+                else:
+                    crt_k1 = dt_rain / dz * term_vel[k+1]
 
-            EnvRain.RainArea.new[k] = EnvRain.RainArea.values[k]   * (1 - crt_k) +\
-                                      EnvRain.RainArea.values[k+1] * crt_k1 * rho_frac
+                if crt_k > 1.:
+                    print " !!!!!!!!!!!!!!!!!!!!!! Env crr_k = ", crt_k
+                if crt_k1 > 1.:
+                    print " !!!!!!!!!!!!!!!!!!!!!! Env crr_k = ", crt_k1
 
-            if EnvRain.RainArea.new[k] > eps:
-                area_frac = EnvRain.RainArea.values[k] / EnvRain.RainArea.new[k]
+                rho_frac = self.Ref.rho0_half[k+1] / self.Ref.rho0_half[k]
 
+                #EnvRain.RainArea.new[k] = EnvRain.RainArea.values[k]   * (1 - crt_k) +\
+                #                          EnvRain.RainArea.values[k+1] * crt_k1 * rho_frac
+
+                area_frac = 1.
                 EnvRain.QR.new[k] = (EnvRain.QR.values[k] * (1 - crt_k) +\
                                      EnvRain.QR.new[k+1]  * crt_k1 * rho_frac) * area_frac
-            else:
-                EnvRain.RainArea.new[k] = 0.
-                EnvRain.QR.new[k] = 0.
 
-        # collect the rain that falls through the domain edge into a puddle
-        rho_frac = self.Ref.rho0_half[gw] / self.Ref.rho0_half[gw-1]
-        EnvRain.puddle += EnvRain.QR.new[gw] * EnvRain.RainArea.new[gw] * crt_k * rho_frac
+                term_vel[k] = terminal_velocity(
+                    self.Ref.rho0_half[k], self.Ref.rho0_half[gw],\
+                    EnvRain.QR.new[k], EnvVar.QT.values[k])#\
+                    #+ \
+                    #0.5 * (self.UpdVar.W.bulkvalues[k] + self.UpdVar.W.bulkvalues[k-1])
+
+                EnvRain.QR.values[k] = EnvRain.QR.new[k]
+                if EnvRain.QR.values[k] != 0.:
+                    EnvRain.RainArea.values[k] = EnvRain.env_rain_area_value
+
+            t_elapsed += dt_rain
+            dt_rain = np.minimum(dt_model - t_elapsed, 0.5 * self.Gr.dz / max(1e-10, max(term_vel[:])))
+
+            # collect the rain that falls through the domain edge into a puddle
+            rho_frac = self.Ref.rho0_half[gw] / self.Ref.rho0_half[gw-1]
+            EnvRain.puddle += EnvRain.QR.new[gw] * EnvRain.RainArea.values[gw]  * crt_k * rho_frac
 
         return
 
@@ -444,6 +484,9 @@ cdef class EnvironmentThermodynamics:
 
                     # limit sd_q to prevent negative qt_hat
                     sd_q_lim = (1e-10 - EnvVar.QT.values[k])/(sqrt2 * abscissas[0])
+                    # walking backwards to assure your q_t will not be smaller than 1e-10
+                    # TODO - check
+                    # TODO - change 1e-13 and 1e-10 to some epislon
                     sd_q = fmin(sd_q, sd_q_lim)
                     qt_var = sd_q * sd_q
                     sigma_h_star = sqrt(fmax(1.0-corr*corr,0.0)) * sd_h

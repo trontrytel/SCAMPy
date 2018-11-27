@@ -82,6 +82,8 @@ cdef class EnvironmentRain:
         double max_supersaturation
 
         bint rain_model
+        bint rain_const_area
+        double env_rain_area_value
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats )
     cpdef io(self, NetCDFIO_Stats Stats)

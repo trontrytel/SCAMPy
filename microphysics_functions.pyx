@@ -122,14 +122,10 @@ cdef mph_struct microphysics(double T, double ql, double p0, double qt, double a
 
     return _ret
 
-cdef rain_struct rain_area(double source_area, double source_qr, double current_area, double current_qr) nogil:
+cdef rain_struct rain_area(double source_area, double source_qr, double current_area, double current_qr, double a_const, double eps) nogil:
     """
     Source terams for rain and rain area
     """
-
-    #cdef double a_big, q_big, a_sml, q_sml
-    cdef double a_const = 0.2
-    cdef double eps     = 0.
 
     cdef rain_struct _ret
 
@@ -139,6 +135,10 @@ cdef rain_struct rain_area(double source_area, double source_qr, double current_
     else:
         _ret.qr = current_qr + source_area / a_const * source_qr
         _ret.ar = a_const
+
+    #cdef double a_big, q_big, a_sml, q_sml
+    #cdef double a_const = 0.2
+    #cdef double eps     = 1e-5
 
     #if source_qr ==  0.:
     #    _ret.qr = current_qr
