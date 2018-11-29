@@ -11,6 +11,7 @@ from microphysics_functions cimport  *
 import cython
 cimport Grid
 cimport ReferenceState
+cimport EDMF_Rain
 from Variables cimport GridMeanVariables
 from NetCDFIO cimport NetCDFIO_Stats
 from EDMF_Environment cimport EnvironmentVariables
@@ -273,101 +274,6 @@ cdef class UpdraftVariables:
                     self.cloud_cover[i] = fmax(self.cloud_cover[i], self.Area.values[i,k])
         return
 
-cdef class UpdraftRainVariable:
-
-    def __init__(self, nz, name, units):
-        self.values     = np.zeros((nz,), dtype=np.double, order='c')
-        self.old        = np.zeros((nz,), dtype=np.double, order='c')
-        self.new        = np.zeros((nz,), dtype=np.double, order='c')
-        self.tendencies = np.zeros((nz,), dtype=np.double, order='c')
-        self.flux       = np.zeros((nz,), dtype=np.double, order='c')
-
-        self.loc  = 'half'
-        self.kind = 'scalar'
-
-        self.name  = name
-        self.units = units
-
-    cpdef set_bcs(self, Grid.Grid Gr):
-        cdef:
-            Py_ssize_t k
-
-        # TODO - check if those values are used
-        for k in xrange(Gr.gw):
-            self.values[Gr.nzg - Gr.gw + k] = self.values[Gr.nzg - Gr.gw - 1 - k]
-            self.values[Gr.gw - 1 - k]      = self.values[Gr.gw + k]
-
-        return
-
-cdef class UpdraftRain:
-    def __init__(self, namelist, paramlist, Grid.Grid Gr):
-        self.Gr = Gr
-        cdef:
-            Py_ssize_t nzg = Gr.nzg
-            Py_ssize_t k
-
-        self.QR       = UpdraftRainVariable(nzg, 'qr',        'kg/kg')
-        self.RainArea = UpdraftRainVariable(nzg, 'rain_area', 'rain_area_fraction [-]' )
-        self.puddle = 0.
-
-        try:
-            self.rain_model = namelist['microphysics']['rain_model']
-        except:
-            self.rain_model = False
-
-        if self.rain_model:
-            try:
-                self.rain_const_area = namelist['microphysics']['rain_const_area']
-            except:
-                self.rain_const_area = False
-
-            if self.rain_const_area:
-                try:
-                    self.upd_rain_area_value = namelist['microphysics']['upd_rain_area_value']
-                except:
-                    print "EDMF_Updrafts: assuming constant updraft rain area fraction = 1"
-                    self.upd_rain_area_value = 1.
-                    # TODO - add const upd rain area option
-                    # TODO - upd bulk area rain value should be const
-                    # TODO - for each upd area should be const / n
-        return
-
-    #cpdef initialize(self, GridMeanVariables GMV): - TODO what should be the boundary conditions and the initial values?
-
-    cpdef initialize_io(self, NetCDFIO_Stats Stats):
-        Stats.add_profile('updraft_qr')
-        Stats.add_profile('updraft_rain_area')
-        Stats.add_ts('updraft_puddle')
-        return
-
-    cpdef io(self, NetCDFIO_Stats Stats):
-        Stats.write_profile('updraft_qr',        self.QR.values[self.Gr.gw       : self.Gr.nzg - self.Gr.gw])
-        Stats.write_profile('updraft_rain_area', self.RainArea.values[self.Gr.gw : self.Gr.nzg - self.Gr.gw])
-        Stats.write_ts('updraft_puddle',         self.puddle)
-        return
-
-    cpdef set_new_with_values(self):
-        with nogil:
-            for k in xrange(self.Gr.nzg):
-                self.RainArea.new[k] = self.RainArea.values[k]
-                self.QR.new[k] = self.QR.values[k]
-        return
-
-    cpdef set_old_with_values(self):
-        with nogil:
-            for k in xrange(self.Gr.nzg):
-                self.RainArea.old[k] = self.RainArea.values[k]
-                self.QR.old[k] = self.QR.values[k]
-        return
-
-    cpdef set_values_with_new(self):
-        with nogil:
-            for k in xrange(self.Gr.nzg):
-                self.RainArea.values[k] = self.RainArea.new[k]
-                self.QR.values[k] = self.QR.new[k]
-        return
-
-
 cdef class UpdraftThermodynamics:
     def __init__(self, n_updraft, Grid.Grid Gr, ReferenceState.ReferenceState Ref, UpdraftVariables UpdVar):
         self.Gr = Gr
@@ -432,11 +338,11 @@ cdef class UpdraftThermodynamics:
 
 #Implements a simple "microphysics" that clips excess humidity above a user-specified level
 cdef class UpdraftMicrophysics:
-    def __init__(self, namelist, n_updraft, Grid.Grid Gr, ReferenceState.ReferenceState Ref):
+    def __init__(self, namelist, n_updraft, Grid.Grid Gr, ReferenceState.ReferenceState Ref, RainVariables Rain):
         self.Gr = Gr
         self.Ref = Ref
         self.n_updraft = n_updraft
-        self.max_supersaturation = namelist['microphysics']['max_supersaturation']
+        self.max_supersaturation = Rain.max_supersaturation
         self.prec_source_h = np.zeros((n_updraft, Gr.nzg), dtype=np.double, order='c')
         self.prec_source_qt = np.zeros((n_updraft, Gr.nzg), dtype=np.double, order='c')
         self.prec_source_h_tot = np.zeros((Gr.nzg,), dtype=np.double, order='c')
@@ -482,7 +388,7 @@ cdef class UpdraftMicrophysics:
                     UpdVar.H.values[i,k] += self.prec_source_h[i,k]
         return
 
-    cpdef update_column_UpdRain(self, UpdraftVariables UpdVar, UpdraftRain UpdRain):
+    cpdef update_column_UpdRain(self, UpdraftVariables UpdVar, RainVariables Rain):
     #cpdef update_updraftvars(self, UpdraftVariables UpdVar, bint rain_model):
         """
         Apply precipitation source terms to rain variables
@@ -495,26 +401,11 @@ cdef class UpdraftMicrophysics:
             for i in xrange(self.n_updraft):
                 for k in xrange(self.Gr.nzg):
                     rst = rain_area(UpdVar.Area.values[i,k], -self.prec_source_qt[i,k],\
-                                    UpdRain.RainArea.values[k], UpdRain.QR.values[k],
-                                    UpdRain.upd_rain_area_value, 1e-5)
+                                    Rain.Upd_RainArea.values[k], Rain.Upd_QR.values[k],
+                                    Rain.rain_area_value)
 
-                    UpdRain.QR.values[k] = rst.qr
-                    UpdRain.RainArea.values[k] = rst.ar
-        return
-
-    cpdef cleanup_column_UpdRain(self, UpdraftRain UpdRain, double eps):
-        """
-        TODO - tmp
-        remove rain if the qr values are smaller than some epsilon
-        """
-        cdef:
-            Py_ssize_t k
-
-        with nogil:
-            for k in xrange(self.Gr.nzg):
-                if UpdRain.QR.values[k] < eps:
-                    UpdRain.QR.values[k] = 0.
-                    #UpdRain.RainArea.values[i,k] = 0.
+                    Rain.Upd_QR.values[k] = rst.qr
+                    Rain.Upd_RainArea.values[k] = rst.ar
         return
 
     cdef void update_UpdVar(self, double *qt, double *ql, double *h, double *T,\
@@ -536,13 +427,15 @@ cdef class UpdraftMicrophysics:
 
         return
 
-    cdef void update_UpdRain(self, double *upd_area, double *qr, double *rain_Area, double qr_new, double a_const, Py_ssize_t i, Py_ssize_t k) nogil:
+    cdef void update_UpdRain(self, double *upd_area, double *qr,
+                             double *rain_Area, double qr_new,
+                             double a_const, Py_ssize_t i, Py_ssize_t k) nogil:
         """
         update rain variables
         """
         cdef rain_struct rst
 
-        rst = rain_area(upd_area[0], qr_new, rain_Area[0], qr[0], a_const, 1e-13)
+        rst = rain_area(upd_area[0], qr_new, rain_Area[0], qr[0], a_const)
 
         #with gil:
         #    if rst.qr > 0.:

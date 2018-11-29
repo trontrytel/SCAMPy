@@ -8,6 +8,7 @@ import numpy as np
 import sys
 include "parameters.pxi"
 import cython
+cimport EDMF_Rain
 from Grid cimport  Grid
 from TimeStepping cimport TimeStepping
 from ReferenceState cimport ReferenceState
@@ -25,22 +26,6 @@ cdef class EnvironmentVariable:
         self.loc = loc
         if kind != 'scalar' and kind != 'velocity':
             print ('Invalid kind setting for variable! Must be scalar or velocity')
-        self.kind = kind
-        self.name = name
-        self.units = units
-
-cdef class EnvironmentRainVariable:
-    def __init__(self, nz, loc, kind, name, units):
-        self.values = np.zeros((nz,),dtype=np.double, order='c')
-        self.flux   = np.zeros((nz,),dtype=np.double, order='c')
-        self.new    = np.zeros((nz,),dtype=np.double, order='c') # needed for prognostic updrafts
-
-        if loc != 'half' and loc != 'full':
-            print('Invalid location setting for variable! Must be half or full')
-        if kind != 'scalar' and kind != 'velocity':
-            print ('Invalid kind setting for variable! Must be scalar or velocity')
-
-        self.loc = loc
         self.kind = kind
         self.name = name
         self.units = units
@@ -187,59 +172,8 @@ cdef class EnvironmentVariables:
         # Add the same with respect to the grid mean
         return
 
-cdef class EnvironmentRain:
-    def __init__(self,  namelist, Grid Gr  ):
-        cdef Py_ssize_t nz = Gr.nzg
-        self.Gr = Gr
-
-        self.QR       = EnvironmentRainVariable(nz, 'half', 'scalar', 'qr',       'kg/kg')
-        self.RainArea = EnvironmentRainVariable(nz, 'half', 'scalar', 'rain_area','rain_area_fraction [-]')
-        self.puddle = 0.
-
-        self.max_supersaturation = namelist['microphysics']['max_supersaturation']
-
-        try:
-            self.rain_model = namelist['microphysics']['rain_model']
-        except:
-            self.rain_model = False
-
-        if self.rain_model:
-            try:
-                self.rain_const_area = namelist['microphysics']['rain_const_area']
-            except:
-                self.rain_const_area = False
-
-            if self.rain_const_area:
-                try:
-                    self.env_rain_area_value = namelist['microphysics']['env_rain_area_value']
-                except:
-                    print "EDMF_Environment: assuming constant environment rain area fraction = 1"
-                    self.env_rain_area_value = 1.
-        return
-
-    #cpdef initialize(self, GridMeanVariables GMV): - TODO what should be the boundary conditions and the initial values?
-
-    cpdef initialize_io(self, NetCDFIO_Stats Stats):
-        Stats.add_profile('env_qr')
-        Stats.add_profile('env_rain_area')
-        Stats.add_ts('env_puddle')
-        return
-
-    cpdef io(self, NetCDFIO_Stats Stats):
-        Stats.write_profile('env_qr', self.QR.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
-        Stats.write_profile('env_rain_area', self.RainArea.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
-        Stats.write_ts('env_puddle', self.puddle)
-        return
-
-    cpdef set_values_with_new(self):
-        with nogil:
-            for k in xrange(self.Gr.nzg):
-                self.RainArea.values[k] = self.RainArea.new[k]
-                self.QR.values[k] = self.QR.new[k]
-        return
-
 cdef class EnvironmentThermodynamics:
-    def __init__(self, namelist, Grid Gr, ReferenceState Ref, EnvironmentVariables EnvVar):
+    def __init__(self, namelist, Grid Gr, ReferenceState Ref, EnvironmentVariables EnvVar, RainVariables Rain):
         self.Gr = Gr
         self.Ref = Ref
         try:
@@ -252,6 +186,8 @@ cdef class EnvironmentThermodynamics:
         elif EnvVar.H.name == 'thetal':
             self.t_to_prog_fp = t_to_thetali_c
             self.prog_to_t_fp = eos_first_guess_thetal
+
+        self.max_supersaturation = Rain.max_supersaturation
 
         self.qt_dry = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
         self.th_dry = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
@@ -277,14 +213,16 @@ cdef class EnvironmentThermodynamics:
         EnvVar.B.values[k]   = buoyancy_c(self.Ref.alpha0_half[k], alpha)
         return
 
-    cdef void update_EnvRain(self, Py_ssize_t k, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, double qr) nogil:
+    cdef void update_EnvRain(self, Py_ssize_t k, EnvironmentVariables EnvVar, RainVariables Rain, double qr) nogil:
         # TODO - replace with pointers ?
         cdef rain_struct rst
 
-        rst = rain_area(EnvVar.EnvArea.values[k], qr, EnvRain.RainArea.values[k], EnvRain.QR.values[k], EnvRain.env_rain_area_value, 1e-5)
+        rst = rain_area(EnvVar.EnvArea.values[k],    qr,
+                        Rain.Env_RainArea.values[k], Rain.Env_QR.values[k],
+                        Rain.rain_area_value)
 
-        EnvRain.QR.values[k] = rst.qr
-        EnvRain.RainArea.values[k] = rst.ar
+        Rain.Env_QR.values[k] = rst.qr
+        Rain.Env_RainArea.values[k] = rst.ar
 
         return
 
@@ -300,80 +238,6 @@ cdef class EnvironmentThermodynamics:
             EnvVar.CF.values[k] = 0.
             self.th_dry[k]      = th
             self.qt_dry[k]      = qt
-        return
-
-    cdef void rain_fall(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, TimeStepping TS):
-        cdef:
-            Py_ssize_t k
-            Py_ssize_t gw  = self.Gr.gw
-            Py_ssize_t nzg = self.Gr.nzg
-
-            double dz = self.Gr.dz
-            double dt_model = TS.dt
-
-            double crt_k, crt_k1
-            double rho_frac, area_frac
-
-            double [:] term_vel = np.zeros((nzg,), dtype=np.double, order='c')
-            double dt_rain
-            double t_elapsed = 0.
-
-        # helper to calculate the rain velocity (terminal velocity + environmental velocity)
-        # TODO assumes that environmental velocity is always negative!
-        # TODO - I'm using GMV qt values to calculate between q_r and r_r
-        # TODO - I'm multiplying by 0.5 in the stability criterium
-        # TODO - duplicated in updraft rain
-        for k in xrange(nzg - gw - 1, gw - 1, -1):
-            term_vel[k] = terminal_velocity(
-                self.Ref.rho0_half[k], self.Ref.rho0_half[gw],\
-                EnvRain.QR.values[k], EnvVar.QT.values[k])#\
-                # + \
-                #0.5 * (self.EnvVar.W.values[k] + self.EnvVar.W.values[k-1])
-        # calculate the allowed timestep (0.5 dz/v/dt <=1) TODO why half?
-        dt_rain = np.minimum(dt_model, 0.5 * self.Gr.dz / max(1e-10, max(term_vel[:])))
-
-        # rain falling through the domain
-        while t_elapsed < dt_model:
-            for k in xrange(nzg - gw - 1, gw - 1, -1):
-
-                crt_k = dt_rain / dz * term_vel[k]
-
-                if k == (nzg - gw - 1):
-                    crt_k1 = 0.
-                else:
-                    crt_k1 = dt_rain / dz * term_vel[k+1]
-
-                if crt_k > 1.:
-                    print " !!!!!!!!!!!!!!!!!!!!!! Env crr_k = ", crt_k
-                if crt_k1 > 1.:
-                    print " !!!!!!!!!!!!!!!!!!!!!! Env crr_k = ", crt_k1
-
-                rho_frac = self.Ref.rho0_half[k+1] / self.Ref.rho0_half[k]
-
-                #EnvRain.RainArea.new[k] = EnvRain.RainArea.values[k]   * (1 - crt_k) +\
-                #                          EnvRain.RainArea.values[k+1] * crt_k1 * rho_frac
-
-                area_frac = 1.
-                EnvRain.QR.new[k] = (EnvRain.QR.values[k] * (1 - crt_k) +\
-                                     EnvRain.QR.new[k+1]  * crt_k1 * rho_frac) * area_frac
-
-                term_vel[k] = terminal_velocity(
-                    self.Ref.rho0_half[k], self.Ref.rho0_half[gw],\
-                    EnvRain.QR.new[k], EnvVar.QT.values[k])#\
-                    #+ \
-                    #0.5 * (self.UpdVar.W.bulkvalues[k] + self.UpdVar.W.bulkvalues[k-1])
-
-                EnvRain.QR.values[k] = EnvRain.QR.new[k]
-                if EnvRain.QR.values[k] != 0.:
-                    EnvRain.RainArea.values[k] = EnvRain.env_rain_area_value
-
-            t_elapsed += dt_rain
-            dt_rain = np.minimum(dt_model - t_elapsed, 0.5 * self.Gr.dz / max(1e-10, max(term_vel[:])))
-
-            # collect the rain that falls through the domain edge into a puddle
-            rho_frac = self.Ref.rho0_half[gw] / self.Ref.rho0_half[gw-1]
-            EnvRain.puddle += EnvRain.QR.new[gw] * EnvRain.RainArea.values[gw]  * crt_k * rho_frac
-
         return
 
     cdef void eos_update_SA_smpl(self, EnvironmentVariables EnvVar):
@@ -394,14 +258,14 @@ cdef class EnvironmentThermodynamics:
         return
 
 
-    cdef void eos_update_SA_mean(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model):
+    cdef void eos_update_SA_mean(self, EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model):
 
         cdef:
             Py_ssize_t k
             Py_ssize_t gw = self.Gr.gw
             eos_struct sa
             mph_struct mph
-            double max_supersat = EnvRain.max_supersaturation
+            double max_supersat = self.max_supersaturation
 
         if EnvVar.H.name != 'thetal':
             sys.exit('EDMF_Environment: rain source terms are defined for thetal as model variable')
@@ -415,10 +279,10 @@ cdef class EnvironmentThermodynamics:
                 self.update_EnvVar(k,    EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                 self.update_cloud_dry(k, EnvVar, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
                 if rain_model and mph.qr > 0.:
-                    self.update_EnvRain(k, EnvVar, EnvRain, mph.qr)
+                    self.update_EnvRain(k, EnvVar, Rain, mph.qr)
         return
 
-    cdef void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model):
+    cdef void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model):
         a, w = np.polynomial.hermite.hermgauss(self.quadrature_order)
 
         #TODO - remember you output source terms multipierd by dt (bec. of instanteneous autoconcv)
@@ -446,7 +310,7 @@ cdef class EnvironmentThermodynamics:
             double sd_q_lim
             eos_struct sa
             mph_struct mph
-            double max_supersat = EnvRain.max_supersaturation
+            double max_supersat = self.max_supersaturation
 
         if EnvVar.H.name != 'thetal':
             sys.exit('EDMF_Environment: rain source terms are only defined for thetal as model variable')
@@ -548,7 +412,7 @@ cdef class EnvironmentThermodynamics:
                                        outer_env[i_qt_cld] + outer_env[i_qt_dry],\
                                        outer_env[i_ql], outer_env[i_alpha])
                     if rain_model and outer_env[i_qr] > 0.:
-                        self.update_EnvRain(k, EnvVar, EnvRain, outer_env[i_qr])
+                        self.update_EnvRain(k, EnvVar, Rain, outer_env[i_qr])
 
                     # update cloudy/dry variables for buoyancy in TKE
                     EnvVar.CF.values[k]  = outer_env[i_cf]
@@ -571,7 +435,7 @@ cdef class EnvironmentThermodynamics:
 
                     self.update_EnvVar(k, EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                     if rain_model and mph.qr > 0.:
-                        self.update_EnvRain(k, EnvVar, EnvRain, mph.qr)
+                        self.update_EnvRain(k, EnvVar, Rain, mph.qr)
                     self.update_cloud_dry(k, EnvVar, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
 
                     self.Hvar_rain_dt[k]   = 0.
@@ -644,12 +508,12 @@ cdef class EnvironmentThermodynamics:
             sys.exit('EDMF_Environment: Sommeria Deardorff is not defined for using entropy as thermodyanmic variable')
         return
 
-    cpdef satadjust(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model):#, TimeStepping TS):
+    cpdef satadjust(self, EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model):#, TimeStepping TS):
 
         if EnvVar.EnvThermo_scheme == 'sa_mean':
-            self.eos_update_SA_mean(EnvVar, EnvRain, rain_model)
+            self.eos_update_SA_mean(EnvVar, Rain, rain_model)
         elif EnvVar.EnvThermo_scheme == 'sa_quadrature':
-            self.eos_update_SA_sgs(EnvVar, EnvRain, rain_model)#, TS)
+            self.eos_update_SA_sgs(EnvVar, Rain, rain_model)#, TS)
         elif EnvVar.EnvThermo_scheme == 'sommeria_deardorff':
             self.sommeria_deardorff(EnvVar)
         else:

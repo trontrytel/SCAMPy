@@ -8,9 +8,10 @@ import numpy as np
 include "parameters.pxi"
 import cython
 import sys
-cimport  EDMF_Updrafts
 from Grid cimport Grid
+cimport EDMF_Updrafts
 cimport EDMF_Environment
+cimport EDMF_Rain
 from Variables cimport VariablePrognostic, VariableDiagnostic, GridMeanVariables
 from Surface cimport SurfaceBase
 from Cases cimport  CasesBase
@@ -130,21 +131,21 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         # Need to code up as paramlist option?
         self.minimum_area = 1e-3
 
+        # Create the class for rain
+        self.Rain = EDMF_Rain.RainVariables(namelist, Gr)
+        self.RainPhysics = EDMF_Rain.RainPhysics(Gr, Ref)
+
         # Create the updraft variable class (major diagnostic and prognostic variables)
         self.UpdVar = EDMF_Updrafts.UpdraftVariables(self.n_updrafts, namelist,paramlist, Gr)
         # Create the class for updraft thermodynamics
         self.UpdThermo = EDMF_Updrafts.UpdraftThermodynamics(self.n_updrafts, Gr, Ref, self.UpdVar)
         # Create the class for updraft microphysics
-        self.UpdMicro = EDMF_Updrafts.UpdraftMicrophysics(namelist, self.n_updrafts, Gr, Ref)
-        # Create the class for updraft rain
-        self.UpdRain  = EDMF_Updrafts.UpdraftRain(namelist, paramlist, Gr)
+        self.UpdMicro = EDMF_Updrafts.UpdraftMicrophysics(namelist, self.n_updrafts, Gr, Ref, self.Rain)
 
         # Create the environment variable class (major diagnostic and prognostic variables)
         self.EnvVar = EDMF_Environment.EnvironmentVariables(namelist,Gr)
         # Create the class for environment thermodynamics
-        self.EnvThermo = EDMF_Environment.EnvironmentThermodynamics(namelist, Gr, Ref, self.EnvVar)
-        # Create the class for environment rain
-        self.EnvRain = EDMF_Environment.EnvironmentRain(namelist, Gr)
+        self.EnvThermo = EDMF_Environment.EnvironmentThermodynamics(namelist, Gr, Ref, self.EnvVar, self.Rain)
 
         # Entrainment rates
         self.entr_sc = np.zeros((self.n_updrafts, Gr.nzg),dtype=np.double,order='c')
@@ -198,8 +199,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         self.UpdVar.initialize_io(Stats)
         self.EnvVar.initialize_io(Stats)
-        self.UpdRain.initialize_io(Stats)
-        self.EnvRain.initialize_io(Stats)
+        self.Rain.initialize_io(Stats)
 
         Stats.add_profile('eddy_viscosity')
         Stats.add_profile('eddy_diffusivity')
@@ -248,8 +248,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             Stats.add_profile('Hvar_interdomain')
             Stats.add_profile('QTvar_interdomain')
             Stats.add_profile('HQTcov_interdomain')
-
-
         return
 
     cpdef io(self, NetCDFIO_Stats Stats):
@@ -265,8 +263,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         self.UpdVar.io(Stats)
         self.EnvVar.io(Stats)
-        self.UpdRain.io(Stats)
-        self.EnvRain.io(Stats)
+        self.Rain.io(Stats)
 
         Stats.write_profile('eddy_viscosity', self.KM.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('eddy_diffusivity', self.KH.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
@@ -335,15 +332,10 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             Stats.write_profile('Hvar_interdomain', self.EnvVar.Hvar.interdomain[kmin:kmax])
             Stats.write_profile('QTvar_interdomain', self.EnvVar.QTvar.interdomain[kmin:kmax])
             Stats.write_profile('HQTcov_interdomain', self.EnvVar.HQTcov.interdomain[kmin:kmax])
-
-
         return
 
-
-
     # Perform the update of the scheme
-
-    cpdef update(self,GridMeanVariables GMV, CasesBase Case, TimeStepping TS):
+    cpdef update(self, GridMeanVariables GMV, CasesBase Case, TimeStepping TS):
         cdef:
             Py_ssize_t k
             Py_ssize_t kmin = self.Gr.gw
@@ -383,16 +375,22 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         #   - the buoyancy of updrafts and environment is updated such that
         #     the mean buoyancy with repect to reference state alpha_0 is zero.
         self.decompose_environment(GMV, 'mf_update')
-        self.EnvThermo.satadjust(self.EnvVar, self.EnvRain, self.rain_model)
-        if self.rain_model:
-            self.EnvThermo.rain_fall(self.EnvVar, self.EnvRain, TS)
-            #self.EnvThermo.rain_evap(self.EnvVar, self.EnvRain, TS)
+        self.EnvThermo.satadjust(self.EnvVar, self.Rain, self.rain_model)
         self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
 
         self.compute_eddy_diffusivities_tke(GMV, Case)
-
         self.update_GMV_ED(GMV, Case, TS)
         self.compute_covariance(GMV, Case, TS)
+
+        if self.rain_model:
+            # apply autoconversion source terms
+            self.Rain.set_values_with_new()
+            # upstream for rain fall
+            self.RainPhysics.solve_rain_fall(GMV, TS, self.Rain.QR,     self.Rain.RainArea,     self.Rain.rain_area_value)
+            self.RainPhysics.solve_rain_fall(GMV, TS, self.Rain.Upd_QR, self.Rain.Upd_RainArea, self.Rain.rain_area_value)
+            self.RainPhysics.solve_rain_fall(GMV, TS, self.Rain.Env_QR, self.Rain.Env_RainArea, self.Rain.rain_area_value)
+            # rain evaporation
+            #self.solve_updraft_rain_evap()
 
         # Back out the tendencies of the grid mean variables for the whole timestep by differencing GMV.new and
         # GMV.values
@@ -408,8 +406,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         self.UpdVar.set_new_with_values()
         self.UpdVar.set_old_with_values()
-        self.UpdRain.set_new_with_values()
-        self.UpdRain.set_old_with_values()
 
         self.set_updraft_surface_bc(GMV, Case)
         self.dt_upd = np.minimum(TS.dt, 0.5 * self.Gr.dz/fmax(np.max(self.UpdVar.W.values),1e-10))
@@ -418,13 +414,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             self.solve_updraft_velocity_area()
             self.solve_updraft_scalars(GMV)
             self.UpdVar.set_values_with_new()
-            if self.rain_model:
-                # apply autoconversion source terms
-                self.UpdRain.set_values_with_new()
-                # upstream for rain fall
-                self.solve_updraft_rain_fall(GMV)
-                # rain evaporation
-                #self.solve_updraft_rain_evap()
             time_elapsed += self.dt_upd
             self.dt_upd = np.minimum(TS.dt-time_elapsed,  0.5 * self.Gr.dz/fmax(np.max(self.UpdVar.W.values),1e-10))
             # (####)
@@ -450,7 +439,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             entr_in_struct input
             double a,b,c, w, w_km,  w_mid, w_low, denom, arg
             double entr_w, detr_w, B_k, area_k, w2
-            #double max_supersat = self.max_supersaturation
+            double max_supersaturation = self.Rain.max_supersaturation
 
         self.set_updraft_surface_bc(GMV, Case)
         self.compute_entrainment_detrainment(GMV, Case)
@@ -464,14 +453,14 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 sa = eos(self.UpdThermo.t_to_prog_fp,self.UpdThermo.prog_to_t_fp, self.Ref.p0_half[gw],
                          self.UpdVar.QT.values[i,gw], self.UpdVar.H.values[i,gw])
                 mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[gw], self.UpdVar.QT.values[i,gw], self.UpdVar.Area.values[i,gw],\
-                                   self.UpdMicro.max_supersaturation, True)
+                                   max_supersaturation, True)
                 # update updraft variables
                 self.UpdMicro.update_UpdVar(&self.UpdVar.QT.values[i,gw], &self.UpdVar.QL.values[i,gw],
                                             &self.UpdVar.H.values[i, gw], &self.UpdVar.T.values[i, gw],
                                             mph.qr, mph.thl_rain_src, mph.qt, mph.ql, mph.T, mph.thl, i, gw)
                 if self.rain_model:
-                    self.UpdMicro.update_UpdRain(&self.UpdVar.Area.values[i,gw], &self.UpdRain.QR.values[gw],
-                                                 &self.UpdRain.RainArea.values[gw], mph.qr, self.UpdRain.upd_rain_area_value, i, gw)
+                    self.UpdMicro.update_UpdRain(&self.UpdVar.Area.values[i,gw], &self.Rain.Upd_QR.values[gw],
+                                                 &self.Rain.Upd_RainArea.values[gw], mph.qr, self.Rain.rain_area_value, i, gw)
 
                 for k in xrange(gw+1, self.Gr.nzg-gw):
                     denom = 1.0 + self.entr_sc[i,k] * dz
@@ -482,14 +471,14 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     sa = eos(self.UpdThermo.t_to_prog_fp, self.UpdThermo.prog_to_t_fp,
                              self.Ref.p0_half[k], self.UpdVar.QT.values[i,k], self.UpdVar.H.values[i,k])
                     mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], self.UpdVar.QT.values[i,k], self.UpdVar.Area.values[i,k],\
-                                       self.UpdMicro.max_supersaturation, True)
+                                       max_supersaturation, True)
                     # update updraft variables
                     self.UpdMicro.update_UpdVar(&self.UpdVar.QT.values[i,k], &self.UpdVar.QL.values[i,k],
                                        &self.UpdVar.H.values[i, k], &self.UpdVar.T.values[i, k],
                                        mph.qr, mph.thl_rain_src, mph.qt, mph.ql, mph.T, mph.thl, i, k)
                     if self.rain_model:
-                        self.UpdMicro.update_UpdRain(&self.UpdVar.Area.values[i,k], &self.UpdRain.QR.values[k],
-                                                     &self.UpdRain.RainArea.values[k], mph.qr,self.UpdRain.upd_rain_area_value, i, k)
+                        self.UpdMicro.update_UpdRain(&self.UpdVar.Area.values[i,k], &self.Rain.Upd_QR.values[k],
+                                                     &self.Rain.Upd_RainArea.values[k], mph.qr,self.Rain.rain_area_value, i, k)
 
         self.UpdVar.QT.set_bcs(self.Gr)
         self.UpdVar.H.set_bcs(self.Gr)
@@ -996,6 +985,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             double c1, c2, c3, c4
             eos_struct sa
             mph_struct mph
+            double max_supersaturation = self.Rain.max_supersaturation
 
         with nogil:
             for i in xrange(self.n_updrafts):
@@ -1007,15 +997,16 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     sa = eos(self.UpdThermo.t_to_prog_fp, self.UpdThermo.prog_to_t_fp,
                              self.Ref.p0_half[gw], self.UpdVar.QT.new[i,gw], self.UpdVar.H.new[i,gw])
                     mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[gw], self.UpdVar.QT.new[i,gw], self.UpdVar.Area.new[i,gw],\
-                                       self.UpdMicro.max_supersaturation, True)
+                                       max_supersaturation, True)
 
                     # update updraft variables
                     self.UpdMicro.update_UpdVar(&self.UpdVar.QT.new[i,gw], &self.UpdVar.QL.new[i,gw],
                                                 &self.UpdVar.H.new[i,gw],  &self.UpdVar.T.new[i,gw],
                                                 mph.qr, mph.thl_rain_src, mph.qt, mph.ql, mph.T, mph.thl, i, gw)
                     if self.rain_model:
-                        self.UpdMicro.update_UpdRain(&self.UpdVar.Area.new[i,gw], &self.UpdRain.QR.new[gw],
-                                                     &self.UpdRain.RainArea.new[gw], mph.qr,self.UpdRain.upd_rain_area_value, i, gw)
+                        self.UpdMicro.update_UpdRain(&self.UpdVar.Area.new[i,gw],     &self.Rain.Upd_QR.new[gw],
+                                                     &self.Rain.Upd_RainArea.new[gw], mph.qr,
+                                                     self.Rain.rain_area_value, i, gw)
 
                 # starting from the bottom do entrainment at each level
                 for k in xrange(gw+1, self.Gr.nzg-gw):
@@ -1046,7 +1037,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                                      self.Ref.p0_half[k], self.UpdVar.QT.new[i,k], self.UpdVar.H.new[i,k])
 
                             mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], self.UpdVar.QT.new[i,k], self.UpdVar.Area.new[i,k],\
-                                               self.UpdMicro.max_supersaturation, True)
+                                               max_supersaturation, True)
 
                             # update updraft variables
                             self.UpdMicro.update_UpdVar(&self.UpdVar.QT.new[i,k], &self.UpdVar.QL.new[i,k],
@@ -1056,8 +1047,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                             if self.rain_model:
                                 #TODO - after adding rain evaporation think on the correct order of updates
                                 #       and on the correct source terms for QT and H
-                                self.UpdMicro.update_UpdRain(&self.UpdVar.Area.new[i,k], &self.UpdRain.QR.new[k],
-                                                             &self.UpdRain.RainArea.new[k], mph.qr, self.UpdRain.upd_rain_area_value, i, k)
+                                self.UpdMicro.update_UpdRain(&self.UpdVar.Area.new[i,k], &self.Rain.Upd_QR.new[k],
+                                                             &self.Rain.Upd_RainArea.new[k], mph.qr, self.Rain.rain_area_value, i, k)
 
                         else:
                             # do saturation adjustment
@@ -1084,114 +1075,11 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             # Update updraft variables with microphysical source tendencies
             self.UpdMicro.update_column_UpdVar(self.UpdVar)
             if self.rain_model:
-                self.UpdMicro.update_column_UpdRain(self.UpdVar, self.UpdRain)
+                self.UpdMicro.update_column_UpdRain(self.UpdVar, self.Rain)
 
         self.UpdVar.H.set_bcs(self.Gr)
         self.UpdVar.QT.set_bcs(self.Gr)
         return
-
-    cpdef solve_updraft_rain_fall(self, GridMeanVariables GMV):
-        cdef:
-            Py_ssize_t k
-            Py_ssize_t gw  = self.Gr.gw
-            Py_ssize_t nzg = self.Gr.nzg
-
-            double dz = self.Gr.dz
-            double dt_upd = self.dt_upd
-
-            double crt_k, crt_k1
-            double rho_frac, area_frac
-
-            double [:] term_vel = np.zeros((nzg,), dtype=np.double, order='c')
-            double dt_rain
-            double t_elapsed = 0.
-
-        # helper to calculate the rain velocity (terminal velocity - updraft velocity)
-        # TODO assumes that updraft velocity is always positive!
-        # TODO - I'm multiplying by 0.5 in the stability criterium
-        # TODO - duplicated in env rain
-        for k in xrange(nzg - gw - 1, gw - 1, -1):
-            term_vel[k] = terminal_velocity(
-                self.Ref.rho0_half[k], self.Ref.rho0_half[gw],\
-                self.UpdRain.QR.values[k], self.UpdVar.QT.bulkvalues[k])#\
-                # - \
-                #0.5 * (self.UpdVar.W.bulkvalues[k] + self.UpdVar.W.bulkvalues[k-1])
-        # calculate the allowed timestep (0.5 dz/v/dt <=1)
-        dt_rain = np.minimum(dt_upd, 0.5 * self.Gr.dz / max(1e-10, max(term_vel[:])))
-
-        # rain falling through the domain
-        while t_elapsed < dt_upd:
-            for k in xrange(nzg - gw - 1, gw - 1, -1):
-
-                crt_k = dt_rain / dz * term_vel[k]
-
-                if k == (nzg - gw - 1):
-                    crt_k1 = 0.
-                else:
-                    crt_k1 = dt_rain / dz * term_vel[k+1]
-
-                if crt_k > 1.:
-                    print " !!!!!!!!!!!!!!!!!!!!!! Upd: crr_k = ", crt_k
-                if crt_k1 > 1.:
-                    print " !!!!!!!!!!!!!!!!!!!!!! Upd: crr_k = ", crt_k1
-
-                rho_frac = self.Ref.rho0_half[k+1] / self.Ref.rho0_half[k]
-
-                #self.UpdRain.RainArea.new[i,k] = self.UpdRain.RainArea.values[k]   * (1 - crt_k) +\
-                #                                 self.UpdRain.RainArea.values[k+1] * crt_k1 * rho_frac
-
-                area_frac = 1. # self.UpdRain.RainArea.values[k] / self.UpdRain.RainArea.new[k]
-                self.UpdRain.QR.new[k] = (self.UpdRain.QR.values[k] * (1 - crt_k) +\
-                                          self.UpdRain.QR.new[k+1]  * crt_k1 * rho_frac) * area_frac
-
-                term_vel[k] = terminal_velocity(
-                    self.Ref.rho0_half[k], self.Ref.rho0_half[gw],\
-                    self.UpdRain.QR.new[k], self.UpdVar.QT.bulkvalues[k])#\
-                    #- \
-                    #0.5 * (self.UpdVar.W.bulkvalues[k] + self.UpdVar.W.bulkvalues[k-1])
-
-                self.UpdRain.QR.values[k] = self.UpdRain.QR.new[k]
-                if self.UpdRain.QR.values[k] != 0.:
-                    self.UpdRain.RainArea.values[k] = self.UpdRain.upd_rain_area_value
-
-            t_elapsed += dt_rain
-            dt_rain = np.minimum(dt_upd - t_elapsed, 0.5 * self.Gr.dz / max(1e-10, max(term_vel[:])))
-
-            # collect the rain that falls through the domain edge into a puddle
-            rho_frac = self.Ref.rho0_half[gw] / self.Ref.rho0_half[gw-1]
-            self.UpdRain.puddle += self.UpdRain.QR.values[gw] * self.UpdRain.RainArea.values[gw]  * crt_k * rho_frac
-
-        return
-
-    #cpdef solve_updraft_rain_evap(self, GridMeanVariables GMV):
-    #    cdef:
-    #        Py_ssize_t k
-    #        Py_ssize_t gw  = self.Gr.gw
-    #        Py_ssize_t nzg = self.Gr.nzg
-
-    #        double dz = self.Gr.dz
-    #        double dt_upd = self.dt_upd
-
-    #        double tmp_evap
-
-    #        double [:] updr_rain_evap_qt_source = np.zeros((nzg,), dtype=np.double, order='c')
-    #        double [:] updr_rain_evap_h_source  = np.zeros((nzg,), dtype=np.double, order='c')
-
-    #    for k in xrange(gw, nzg - gw):
-
-    #        tmp_evap = evap_rate(self.Ref.rho0[k], self.UpdVar.QV.bulkvalues[k],
-    #                             self.UpdRain.QR.values[k], self.UpdVar.QT.bulkvalues[k],
-    #                             self.UpdVar.T.bulkvalues[k], self.Ref.p0_half[k]) * dt_upd
-
-    #        if tmp_evap > self.UpdRain.QR.values[k]:
-
-    #            updr_rain_evap_qt_source[k] += self.UpdRain.QR.values[k] * self.UpdRain.RainArea.values[k]
-
-    #            self.UpdRain.QR.values[k] = 0.
-    #            self.UpdRain.RainArea.values[k] = 0.
-
-
-    #    return
 
     # After updating the updraft variables themselves:
     # 1. compute the mass fluxes (currently not stored as class members, probably will want to do this
@@ -1439,8 +1327,9 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 GMV.QL.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.QL.bulkvalues[k] \
                                     + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.QL.values[k])
 
-                GMV.QR.values[k] = self.UpdRain.RainArea.values[k] * self.UpdRain.QR.values[k] \
-                                 + self.EnvRain.RainArea.values[k] * self.EnvRain.QR.values[k]
+                #GMV.QR.values[k] = self.UpdRain.RainArea.values[k] * self.UpdRain.QR.values[k] \
+                #                 + self.EnvRain.RainArea.values[k] * self.EnvRain.QR.values[k]
+                GMV.QR.values[k]  = self.Rain.QR.values[k] * self.Rain.RainArea.values[k]
 
                 GMV.T.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.T.bulkvalues[k] \
                                     + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.T.values[k])

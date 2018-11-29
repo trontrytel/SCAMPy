@@ -3,6 +3,7 @@ cimport ReferenceState
 from Variables cimport GridMeanVariables
 from NetCDFIO cimport NetCDFIO_Stats
 from EDMF_Environment cimport EnvironmentVariables
+from EDMF_Rain cimport RainVariables
 
 cdef class UpdraftVariable:
     cdef:
@@ -44,39 +45,6 @@ cdef class UpdraftVariables:
     cpdef set_values_with_new(self)
     cpdef get_cloud_base_top_cover(self)
 
-cdef class UpdraftRainVariable:
-    cdef:
-        double [:] values
-        double [:] new
-        double [:] old
-        double [:] tendencies
-        double [:] flux
-        str loc
-        str kind
-        str name
-        str units
-    cpdef set_bcs(self, Grid.Grid Gr)
-
-cdef class UpdraftRain:
-    cdef:
-        Grid.Grid Gr
-
-        UpdraftRainVariable QR
-        UpdraftRainVariable RainArea
-
-        double puddle
-
-        bint rain_model
-        bint rain_const_area
-        double upd_rain_area_value
-
-    cpdef initialize_io(self, NetCDFIO_Stats Stats)
-    cpdef io(self, NetCDFIO_Stats Stats)
-
-    cpdef set_new_with_values(self)
-    cpdef set_old_with_values(self)
-    cpdef set_values_with_new(self)
-
 cdef class UpdraftThermodynamics:
     cdef:
         double (*t_to_prog_fp)(double p0, double T,  double qt, double ql, double qi)   nogil
@@ -102,9 +70,7 @@ cdef class UpdraftMicrophysics:
 
     cpdef compute_column_sources(self, UpdraftVariables UpdVar)
     cpdef update_column_UpdVar(self,   UpdraftVariables UpdVar)
-    cpdef update_column_UpdRain(self,  UpdraftVariables UpdVar, UpdraftRain UpdRain)
-
-    cpdef cleanup_column_UpdRain(self, UpdraftRain UpdRain, double eps)
+    cpdef update_column_UpdRain(self,  UpdraftVariables UpdVar, RainVariables Rain)
 
     cdef void update_UpdVar(self, double *qt, double *ql, double *h, double *T,
                             double qr_src, double th_src, double qt_new, double ql_new, double T_new, double thl_new,

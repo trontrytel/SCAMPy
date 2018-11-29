@@ -1,5 +1,7 @@
 cimport EDMF_Updrafts
 cimport EDMF_Environment
+cimport EDMF_Rain
+
 from Grid cimport Grid
 from Variables cimport VariablePrognostic, VariableDiagnostic, GridMeanVariables
 from Surface cimport  SurfaceBase
@@ -13,13 +15,17 @@ from Turbulence cimport ParameterizationBase
 cdef class EDMF_PrognosticTKE(ParameterizationBase):
     cdef:
         Py_ssize_t n_updrafts
+
         EDMF_Updrafts.UpdraftVariables UpdVar
-        EDMF_Updrafts.UpdraftMicrophysics UpdMicro
         EDMF_Updrafts.UpdraftThermodynamics UpdThermo
-        EDMF_Updrafts.UpdraftRain UpdRain
+        EDMF_Updrafts.UpdraftMicrophysics UpdMicro
+
         EDMF_Environment.EnvironmentVariables EnvVar
         EDMF_Environment.EnvironmentThermodynamics EnvThermo
-        EDMF_Environment.EnvironmentRain EnvRain
+
+        EDMF_Rain.RainVariables Rain
+        EDMF_Rain.RainPhysics RainPhysics
+
         entr_struct (*entr_detr_fp) (entr_in_struct entr_in) nogil
         bint use_local_micro
         bint similarity_diffusivity
@@ -86,7 +92,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         double [:] QTvar_rain
         double [:] HQTcov_rain
 
-
         double [:] mls
         double [:] ml_ratio
         str mixing_scheme
@@ -106,7 +111,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
     cpdef compute_entrainment_detrainment(self, GridMeanVariables GMV, CasesBase Case)
     cpdef solve_updraft_velocity_area(self)
     cpdef solve_updraft_scalars(self, GridMeanVariables GMV)
-    cpdef solve_updraft_rain_fall(self, GridMeanVariables GMV)
     cpdef update_GMV_MF(self, GridMeanVariables GMV, TimeStepping TS)
     cpdef update_GMV_ED(self, GridMeanVariables GMV, CasesBase Case, TimeStepping TS)
     cpdef compute_covariance(self, GridMeanVariables GMV, CasesBase Case, TimeStepping TS)

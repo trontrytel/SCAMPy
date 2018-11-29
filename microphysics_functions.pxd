@@ -24,4 +24,4 @@ cdef double evap_rate(double rho, double qv, double qr, double qt, double T, dou
 cdef double terminal_velocity(double rho, double rho0, double qr, double qt) nogil
 cdef mph_struct microphysics(double T, double ql, double p0, double qt, double ar, \
                              double max_supersat, bint in_Env) nogil
-cdef rain_struct rain_area(double source_area, double source_qr, double current_area, double current_qr, double a_const, double eps) nogil
+cdef rain_struct rain_area(double source_area, double source_qr, double current_area, double current_qr, double a_const) nogil

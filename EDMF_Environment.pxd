@@ -3,6 +3,7 @@ from Grid cimport  Grid
 from ReferenceState cimport ReferenceState
 from Variables cimport VariableDiagnostic, GridMeanVariables
 from TimeStepping cimport TimeStepping
+from EDMF_Rain cimport RainVariables
 
 cdef class EnvironmentVariable:
     cdef:
@@ -24,16 +25,6 @@ cdef class EnvironmentVariable_2m:
         double [:] buoy
         double [:] interdomain
         double [:] rain_src
-        str loc
-        str kind
-        str name
-        str units
-
-cdef class EnvironmentRainVariable:
-    cdef:
-        double [:] values
-        double [:] flux
-        double [:] new
         str loc
         str kind
         str name
@@ -72,28 +63,13 @@ cdef class EnvironmentVariables:
     cpdef initialize_io(self, NetCDFIO_Stats Stats )
     cpdef io(self, NetCDFIO_Stats Stats)
 
-cdef class EnvironmentRain:
-    cdef:
-        Grid Gr
-        EnvironmentRainVariable QR
-        EnvironmentRainVariable RainArea
-
-        double puddle
-        double max_supersaturation
-
-        bint rain_model
-        bint rain_const_area
-        double env_rain_area_value
-
-    cpdef initialize_io(self, NetCDFIO_Stats Stats )
-    cpdef io(self, NetCDFIO_Stats Stats)
-    cpdef set_values_with_new(self)
-
 cdef class EnvironmentThermodynamics:
     cdef:
         Grid Gr
         ReferenceState Ref
         Py_ssize_t quadrature_order
+
+        double max_supersaturation
 
         double (*t_to_prog_fp)(double p0, double T,  double qt, double ql, double qi)   nogil
         double (*prog_to_t_fp)(double H, double pd, double pv, double qt ) nogil
@@ -110,14 +86,12 @@ cdef class EnvironmentThermodynamics:
         double [:] HQTcov_rain_dt
 
         void update_EnvVar(self,    Py_ssize_t k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double alpha) nogil
-        void update_EnvRain(self,   Py_ssize_t k, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, double qr) nogil
+        void update_EnvRain(self,   Py_ssize_t k, EnvironmentVariables EnvVar, RainVariables Rain, double qr) nogil
         void update_cloud_dry(self, Py_ssize_t k, EnvironmentVariables EnvVar, double T, double H, double qt, double ql, double qv) nogil
 
         void eos_update_SA_smpl(self, EnvironmentVariables EnvVar)
-        void eos_update_SA_mean(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model)
-        void eos_update_SA_sgs(self,  EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model)#, TimeStepping TS)
+        void eos_update_SA_mean(self, EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model)
+        void eos_update_SA_sgs(self,  EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model)#, TimeStepping TS)
         void sommeria_deardorff(self, EnvironmentVariables EnvVar)
 
-        void rain_fall(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, TimeStepping TS)
-
-    cpdef satadjust(self, EnvironmentVariables EnvVar, EnvironmentRain EnvRain, bint rain_model)#, TimeStepping TS)
+    cpdef satadjust(self, EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model)#, TimeStepping TS)
