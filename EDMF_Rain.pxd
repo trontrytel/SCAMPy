@@ -38,6 +38,7 @@ cdef class RainVariables:
     cpdef initialize_io(self, NetCDFIO_Stats Stats)
     cpdef io(self, NetCDFIO_Stats)
     cpdef set_values_with_new(self)
+    cpdef update_bulk_rain(self)
 
 cdef class RainPhysics:
     cdef :

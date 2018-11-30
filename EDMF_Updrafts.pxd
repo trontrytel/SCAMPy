@@ -68,12 +68,15 @@ cdef class UpdraftMicrophysics:
         double [:] prec_source_qt_tot
         double max_supersaturation
 
-    cpdef compute_column_sources(self, UpdraftVariables UpdVar)
-    cpdef update_column_UpdVar(self,   UpdraftVariables UpdVar)
-    cpdef update_column_UpdRain(self,  UpdraftVariables UpdVar, RainVariables Rain)
+    cpdef clear_precip_sources(self)
+    cpdef update_total_precip_sources(self)
 
-    cdef void update_UpdVar(self, double *qt, double *ql, double *h, double *T,
+    #cpdef compute_column_sources(self, UpdraftVariables UpdVar)
+    #cpdef update_column_UpdVar(self,   UpdraftVariables UpdVar)
+    cpdef update_column_UpdVar_UpdRain(self,  UpdraftVariables UpdVar, RainVariables Rain)
+
+    cdef void update_UpdVar(self, double *qt, double *ql, double *h, double *T, double *area,
                             double qr_src, double th_src, double qt_new, double ql_new, double T_new, double thl_new,
                             Py_ssize_t i, Py_ssize_t k) nogil
 
-    cdef void update_UpdRain(self, double *upd_area, double *qr, double *rain_Area, double qr_new, double a_const, Py_ssize_t i, Py_ssize_t k) nogil
+    cdef void update_UpdRain(self, double *upd_area, double *qr, double *rain_area, double qr_new, double a_const, Py_ssize_t i, Py_ssize_t k) nogil

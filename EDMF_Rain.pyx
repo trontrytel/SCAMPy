@@ -6,16 +6,11 @@
 
 import numpy as np
 include "parameters.pxi"
-#from thermodynamic_functions cimport  *
 from microphysics_functions cimport  *
 import cython
 cimport Grid
 cimport ReferenceState
 from Variables cimport GridMeanVariables
-#from NetCDFIO cimport NetCDFIO_Stats
-#from EDMF_Environment cimport EnvironmentVariables
-#from libc.math cimport fmax, fmin
-#import pylab as plt
 
 cdef class RainVariable:
     def __init__(self, nz, name, units):
@@ -37,7 +32,7 @@ cdef class RainVariable:
 
         # TODO - check if those values are used
         for k in xrange(Gr.gw):
-            self.values[Gr.nzg - Gr.gw + k] = self.values[Gr.nzg - Gr.gw - 1 - k]
+            self.values[Gr.nzg - Gr.gw + k] = self.values[Gr.nzg-Gr.gw - 1 - k]
             self.values[Gr.gw - 1 - k]      = self.values[Gr.gw + k]
 
         return
@@ -127,16 +122,24 @@ cdef class RainVariables:
                 self.Upd_QR.values[k]       = self.Upd_QR.new[k]
         return
 
+    cpdef update_bulk_rain(self):
+        with nogil:
+            for k in xrange(self.Gr.nzg):
+                #TODO tmp (I'm assuming that both the Upd and Env rain area fractions are 1)
+                self.RainArea.values[k] = max(self.Upd_RainArea.new[k], self.Env_RainArea.values[k])
+                self.QR.values[k]       = self.Upd_QR.new[k] + self.Env_QR.values[k]
+        return
+
 cdef class RainPhysics:
     def __init__(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref):
         self.Gr = Gr
         self.Ref = Ref
         return
 
-    cpdef solve_rain_fall(self, GridMeanVariables GMV, TimeStepping TS,
-                          RainVariable QR,
-                          RainVariable RainArea,
-                          double rain_area_value):
+    cpdef solve_rain_fall(
+        self, GridMeanVariables GMV, TimeStepping TS,
+        RainVariable QR, RainVariable RainArea, double rain_area_value):
+
         cdef:
             Py_ssize_t k
             Py_ssize_t gw  = self.Gr.gw
@@ -152,11 +155,14 @@ cdef class RainPhysics:
             double dt_rain
             double t_elapsed = 0.
 
-        # helper to calculate the rain velocity (terminal velocity - updraft velocity)
+        # helper to calculate the rain velocity
         # TODO - I'm multiplying by 0.5 in the stability criterium
-        # TODO - assumes that the GMV.W = 0 and therefore the rain is always falling down
+        # TODO - assumes GMV.W = 0 and therefore rain is always falling down
         for k in xrange(nzg - gw - 1, gw - 1, -1):
-            term_vel[k] = terminal_velocity(self.Ref.rho0_half[k], self.Ref.rho0_half[gw], QR.values[k], GMV.QT.values[k])
+            term_vel[k] = terminal_velocity(
+                              self.Ref.rho0_half[k], self.Ref.rho0_half[gw],
+                              QR.values[k], GMV.QT.values[k]
+                           )
         # calculate the allowed timestep (0.5 dz/v/dt <=1)
         dt_rain = np.minimum(dt_model, 0.5 * self.Gr.dz / max(1e-10, max(term_vel[:])))
 
@@ -178,14 +184,13 @@ cdef class RainPhysics:
 
                 rho_frac = self.Ref.rho0_half[k+1] / self.Ref.rho0_half[k]
 
-                #self.Rain.RainArea.new[i,k] = self.Rain.RainArea.values[k]   * (1 - crt_k) +\
-                #                              self.Rain.RainArea.values[k+1] * crt_k1 * rho_frac
-
                 area_frac = 1. # self.UpdRain.RainArea.values[k] / self.UpdRain.RainArea.new[k]
                 QR.new[k] = (QR.values[k] * (1 - crt_k) +\
                              QR.new[k+1]  * crt_k1 * rho_frac) * area_frac
 
-                term_vel[k] = terminal_velocity(self.Ref.rho0_half[k], self.Ref.rho0_half[gw], QR.new[k], GMV.QT.values[k])
+                term_vel[k] = terminal_velocity(
+                                  self.Ref.rho0_half[k], self.Ref.rho0_half[gw],
+                                  QR.new[k], GMV.QT.values[k])
 
                 QR.values[k] = QR.new[k]
                 if QR.values[k] != 0.:

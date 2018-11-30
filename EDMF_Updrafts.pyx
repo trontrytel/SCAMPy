@@ -274,6 +274,7 @@ cdef class UpdraftVariables:
                     self.cloud_cover[i] = fmax(self.cloud_cover[i], self.Area.values[i,k])
         return
 
+
 cdef class UpdraftThermodynamics:
     def __init__(self, n_updraft, Grid.Grid Gr, ReferenceState.ReferenceState Ref, UpdraftVariables UpdVar):
         self.Gr = Gr
@@ -349,74 +350,78 @@ cdef class UpdraftMicrophysics:
         self.prec_source_qt_tot = np.zeros((Gr.nzg,), dtype=np.double, order='c')
         return
 
-    cpdef compute_column_sources(self, UpdraftVariables UpdVar):
+    cpdef clear_precip_sources(self):
+        """
+        clear precipitation source terms for QT and H
+        """
+        self.prec_source_qt[:,:] = 0.
+        self.prec_source_h[:,:]  = 0.
+        return
+
+    cpdef update_total_precip_sources(self):
+        """
+        sum precipitation source terms for QT and H from all sub-timesteps
+        """
+        self.prec_source_h_tot  = np.sum(self.prec_source_h,  axis=0)
+        self.prec_source_qt_tot = np.sum(self.prec_source_qt, axis=0)
+        return
+
+    cpdef update_column_UpdVar_UpdRain(self, UpdraftVariables UpdVar, RainVariables Rain):
+    #cpdef update_column_UpdRain(self, UpdraftVariables UpdVar, RainVariables Rain):
+    #cpdef update_updraftvars(self, UpdraftVariables UpdVar, bint rain_model):
     #cpdef compute_sources(self, UpdraftVariables UpdVar):
+
+    #TODO - I changed values to new here. Not sure if thats in the spirit of !local_micro?
         """
-        Compute precipitation source terms for QT, QR and H
+        compute and apply precipitation source terms
         """
         cdef:
             Py_ssize_t k, i
-            double tmp_qr
-
-        with nogil:
-            for i in xrange(self.n_updraft):
-                for k in xrange(self.Gr.nzg):
-                    tmp_qr = acnv_instant(UpdVar.QL.values[i,k], UpdVar.QT.values[i,k], self.max_supersaturation,\
-                                          UpdVar.T.values[i,k], self.Ref.p0_half[k], UpdVar.Area.values[i,k])
-                    self.prec_source_qt[i,k] = -tmp_qr
-                    self.prec_source_h[i,k]  = rain_source_to_thetal(self.Ref.p0_half[k], UpdVar.T.values[i,k],\
-                                                 UpdVar.QT.values[i,k], UpdVar.QL.values[i,k], 0.0, tmp_qr)
-                                                                                              #TODO assumes no ice
-        self.prec_source_h_tot  = np.sum(np.multiply(self.prec_source_h,  UpdVar.Area.values), axis=0)
-        self.prec_source_qt_tot = np.sum(np.multiply(self.prec_source_qt, UpdVar.Area.values), axis=0)
-
-        return
-
-    cpdef update_column_UpdVar(self, UpdraftVariables UpdVar):
-    #cpdef update_updraftvars(self, UpdraftVariables UpdVar, bint rain_model):
-        """
-        Apply precipitation source terms to QL, H
-        """
-        cdef:
-            Py_ssize_t k, i
-
-        with nogil:
-            for i in xrange(self.n_updraft):
-                for k in xrange(self.Gr.nzg):
-                    UpdVar.QT.values[i,k] += self.prec_source_qt[i,k]
-                    UpdVar.QL.values[i,k] += self.prec_source_qt[i,k]
-                    UpdVar.H.values[i,k] += self.prec_source_h[i,k]
-        return
-
-    cpdef update_column_UpdRain(self, UpdraftVariables UpdVar, RainVariables Rain):
-    #cpdef update_updraftvars(self, UpdraftVariables UpdVar, bint rain_model):
-        """
-        Apply precipitation source terms to rain variables
-        """
-        cdef:
-            Py_ssize_t k, i
+            double tmp_qr, tmp_th
             rain_struct rst
 
         with nogil:
             for i in xrange(self.n_updraft):
                 for k in xrange(self.Gr.nzg):
-                    rst = rain_area(UpdVar.Area.values[i,k], -self.prec_source_qt[i,k],\
-                                    Rain.Upd_RainArea.values[k], Rain.Upd_QR.values[k],
-                                    Rain.rain_area_value)
+                    tmp_qr = acnv_instant(
+                        UpdVar.QL.new[i,k], UpdVar.QT.new[i,k],
+                        self.max_supersaturation, UpdVar.T.new[i,k],
+                        self.Ref.p0_half[k], UpdVar.Area.new[i,k]
+                    )
+                    tmp_th = rain_source_to_thetal(
+                        self.Ref.p0_half[k], UpdVar.T.new[i,k],
+                        UpdVar.QT.new[i,k], UpdVar.QL.new[i,k], 0.0, tmp_qr
+                    )                                          #TODO assumes no ice
 
-                    Rain.Upd_QR.values[k] = rst.qr
-                    Rain.Upd_RainArea.values[k] = rst.ar
+                    UpdVar.QT.new[i,k] -= tmp_qr
+                    UpdVar.QL.new[i,k] -= tmp_qr
+                    UpdVar.H.new[i,k]  += tmp_th
+
+                    self.prec_source_qt[i,k] -= tmp_qr * UpdVar.Area.new[i,k]
+                    self.prec_source_h[i,k]  += tmp_th * UpdVar.Area.new[i,k]
+
+                    if Rain.rain_model:
+                        rst = rain_area(
+                            UpdVar.Area.new[i,k], tmp_qr,
+                            Rain.Upd_RainArea.new[k], Rain.Upd_QR.new[k],
+                            Rain.rain_area_value
+                        )
+                        Rain.Upd_QR.new[k]       = rst.qr
+                        Rain.Upd_RainArea.new[k] = rst.ar
         return
 
-    cdef void update_UpdVar(self, double *qt, double *ql, double *h, double *T,\
-                            double qr_src, double th_src, double qt_new, double ql_new, double T_new, double thl_new,\
+    cdef void update_UpdVar(self, double *qt, double *ql, double *h, double *T, double *area,
+                            double qr_src, double th_src, double qt_new,
+                            double ql_new, double T_new, double thl_new,
                             Py_ssize_t i, Py_ssize_t k) nogil :
     #cdef void compute_update_combined_local_thetal(self, double p0, double T, double *qt, double *ql,  double *h,
         """
         update updraft variables after saturation adjustment and rain
         """
-        self.prec_source_qt[i,k] = -qr_src
-        self.prec_source_h[i,k]  = th_src
+        #self.prec_source_qt[i,k] -= qr_src * area[0]
+        #self.prec_source_h[i,k]  += th_src * area[0]
+        self.prec_source_qt[i,k] = -qr_src * area[0]
+        self.prec_source_h[i,k]  = th_src * area[0]
 
         # Language note: array indexing must be used to dereference pointers in Cython.
         # * notation (C-style dereferencing) is reserved for packing tuples
@@ -434,12 +439,7 @@ cdef class UpdraftMicrophysics:
         update rain variables
         """
         cdef rain_struct rst
-
         rst = rain_area(upd_area[0], qr_new, rain_Area[0], qr[0], a_const)
-
-        #with gil:
-        #    if rst.qr > 0.:
-        #        print i, k, ":", qr[0], "+", qr_new, "->", rst.qr, "|", upd_area[0], "+", rain_Area[0], "->", rst.ar
 
         qr[0]        = rst.qr
         rain_Area[0] = rst.ar
