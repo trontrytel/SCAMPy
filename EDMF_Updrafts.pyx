@@ -16,7 +16,6 @@ from Variables cimport GridMeanVariables
 from NetCDFIO cimport NetCDFIO_Stats
 from EDMF_Environment cimport EnvironmentVariables
 from libc.math cimport fmax, fmin
-import pylab as plt
 
 
 cdef class UpdraftVariable:
@@ -276,16 +275,25 @@ cdef class UpdraftVariables:
 
 
 cdef class UpdraftThermodynamics:
-    def __init__(self, n_updraft, Grid.Grid Gr, ReferenceState.ReferenceState Ref, UpdraftVariables UpdVar):
+    def __init__(self, n_updraft, Grid.Grid Gr,
+                 ReferenceState.ReferenceState Ref, UpdraftVariables UpdVar,
+                 RainVariables Rain):
         self.Gr = Gr
         self.Ref = Ref
         self.n_updraft = n_updraft
+
         if UpdVar.H.name == 's':
             self.t_to_prog_fp = t_to_entropy_c
             self.prog_to_t_fp = eos_first_guess_entropy
         elif UpdVar.H.name == 'thetal':
             self.t_to_prog_fp = t_to_thetali_c
             self.prog_to_t_fp = eos_first_guess_thetal
+
+        self.prec_source_h  = np.zeros((n_updraft, Gr.nzg), dtype=np.double, order='c')
+        self.prec_source_qt = np.zeros((n_updraft, Gr.nzg), dtype=np.double, order='c')
+
+        self.prec_source_h_tot  = np.zeros((Gr.nzg,), dtype=np.double, order='c')
+        self.prec_source_qt_tot = np.zeros((Gr.nzg,), dtype=np.double, order='c')
 
         return
 
@@ -336,20 +344,6 @@ cdef class UpdraftThermodynamics:
 
         return
 
-
-#Implements a simple "microphysics" that clips excess humidity above a user-specified level
-cdef class UpdraftMicrophysics:
-    def __init__(self, namelist, n_updraft, Grid.Grid Gr, ReferenceState.ReferenceState Ref, RainVariables Rain):
-        self.Gr = Gr
-        self.Ref = Ref
-        self.n_updraft = n_updraft
-        self.max_supersaturation = Rain.max_supersaturation
-        self.prec_source_h = np.zeros((n_updraft, Gr.nzg), dtype=np.double, order='c')
-        self.prec_source_qt = np.zeros((n_updraft, Gr.nzg), dtype=np.double, order='c')
-        self.prec_source_h_tot = np.zeros((Gr.nzg,), dtype=np.double, order='c')
-        self.prec_source_qt_tot = np.zeros((Gr.nzg,), dtype=np.double, order='c')
-        return
-
     cpdef clear_precip_sources(self):
         """
         clear precipitation source terms for QT and H
@@ -367,10 +361,6 @@ cdef class UpdraftMicrophysics:
         return
 
     cpdef update_column_UpdVar_UpdRain(self, UpdraftVariables UpdVar, RainVariables Rain):
-    #cpdef update_column_UpdRain(self, UpdraftVariables UpdVar, RainVariables Rain):
-    #cpdef update_updraftvars(self, UpdraftVariables UpdVar, bint rain_model):
-    #cpdef compute_sources(self, UpdraftVariables UpdVar):
-
     #TODO - I changed values to new here. Not sure if thats in the spirit of !local_micro?
         """
         compute and apply precipitation source terms
@@ -385,7 +375,7 @@ cdef class UpdraftMicrophysics:
                 for k in xrange(self.Gr.nzg):
                     tmp_qr = acnv_instant(
                         UpdVar.QL.new[i,k], UpdVar.QT.new[i,k],
-                        self.max_supersaturation, UpdVar.T.new[i,k],
+                        Rain.max_supersaturation, UpdVar.T.new[i,k],
                         self.Ref.p0_half[k], UpdVar.Area.new[i,k]
                     )
                     tmp_th = rain_source_to_thetal(
@@ -414,14 +404,14 @@ cdef class UpdraftMicrophysics:
                             double qr_src, double th_src, double qt_new,
                             double ql_new, double T_new, double thl_new,
                             Py_ssize_t i, Py_ssize_t k) nogil :
-    #cdef void compute_update_combined_local_thetal(self, double p0, double T, double *qt, double *ql,  double *h,
         """
         update updraft variables after saturation adjustment and rain
         """
-        #self.prec_source_qt[i,k] -= qr_src * area[0]
-        #self.prec_source_h[i,k]  += th_src * area[0]
-        self.prec_source_qt[i,k] = -qr_src * area[0]
-        self.prec_source_h[i,k]  = th_src * area[0]
+        self.prec_source_qt[i,k] -= qr_src * area[0]
+        self.prec_source_h[i,k]  += th_src * area[0]
+        # TODO
+        #self.prec_source_qt[i,k] = -qr_src * area[0]
+        #self.prec_source_h[i,k]  = th_src * area[0]
 
         # Language note: array indexing must be used to dereference pointers in Cython.
         # * notation (C-style dereferencing) is reserved for packing tuples

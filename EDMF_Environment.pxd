@@ -1,8 +1,6 @@
 from NetCDFIO cimport NetCDFIO_Stats
 from Grid cimport  Grid
 from ReferenceState cimport ReferenceState
-from Variables cimport VariableDiagnostic, GridMeanVariables
-from TimeStepping cimport TimeStepping
 from EDMF_Rain cimport RainVariables
 
 cdef class EnvironmentVariable:
@@ -69,9 +67,7 @@ cdef class EnvironmentThermodynamics:
         ReferenceState Ref
         Py_ssize_t quadrature_order
 
-        double max_supersaturation
-
-        double (*t_to_prog_fp)(double p0, double T,  double qt, double ql, double qi)   nogil
+        double (*t_to_prog_fp)(double p0, double T, double qt, double ql, double qi) nogil
         double (*prog_to_t_fp)(double H, double pd, double pv, double qt ) nogil
 
         double [:] qt_dry
@@ -91,7 +87,7 @@ cdef class EnvironmentThermodynamics:
 
         void eos_update_SA_smpl(self, EnvironmentVariables EnvVar)
         void eos_update_SA_mean(self, EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model)
-        void eos_update_SA_sgs(self,  EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model)#, TimeStepping TS)
+        void eos_update_SA_sgs(self,  EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model)
         void sommeria_deardorff(self, EnvironmentVariables EnvVar)
 
-    cpdef satadjust(self, EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model)#, TimeStepping TS)
+    cpdef satadjust(self, EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model)

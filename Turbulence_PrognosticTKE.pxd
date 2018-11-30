@@ -18,7 +18,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         EDMF_Updrafts.UpdraftVariables UpdVar
         EDMF_Updrafts.UpdraftThermodynamics UpdThermo
-        EDMF_Updrafts.UpdraftMicrophysics UpdMicro
 
         EDMF_Environment.EnvironmentVariables EnvVar
         EDMF_Environment.EnvironmentThermodynamics EnvThermo

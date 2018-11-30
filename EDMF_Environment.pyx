@@ -187,8 +187,6 @@ cdef class EnvironmentThermodynamics:
             self.t_to_prog_fp = t_to_thetali_c
             self.prog_to_t_fp = eos_first_guess_thetal
 
-        self.max_supersaturation = Rain.max_supersaturation
-
         self.qt_dry = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
         self.th_dry = np.zeros(self.Gr.nzg, dtype=np.double, order='c')
 
@@ -265,7 +263,6 @@ cdef class EnvironmentThermodynamics:
             Py_ssize_t gw = self.Gr.gw
             eos_struct sa
             mph_struct mph
-            double max_supersat = self.max_supersaturation
 
         if EnvVar.H.name != 'thetal':
             sys.exit('EDMF_Environment: rain source terms are defined for thetal as model variable')
@@ -273,8 +270,14 @@ cdef class EnvironmentThermodynamics:
         with nogil:
             for k in xrange(gw,self.Gr.nzg-gw):
                 # condensation + autoconversion
-                sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.H.values[k])
-                mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.EnvArea.values[k], max_supersat, True)
+                sa  = eos(
+                    self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k],
+                    EnvVar.QT.values[k], EnvVar.H.values[k]
+                )
+                mph = microphysics(
+                    sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k],
+                    EnvVar.EnvArea.values[k], Rain.max_supersaturation, True
+                )
 
                 self.update_EnvVar(k,    EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                 self.update_cloud_dry(k, EnvVar, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
@@ -310,7 +313,6 @@ cdef class EnvironmentThermodynamics:
             double sd_q_lim
             eos_struct sa
             mph_struct mph
-            double max_supersat = self.max_supersaturation
 
         if EnvVar.H.name != 'thetal':
             sys.exit('EDMF_Environment: rain source terms are only defined for thetal as model variable')
@@ -375,8 +377,15 @@ cdef class EnvironmentThermodynamics:
                             h_hat = sqrt2 * sigma_h_star * abscissas[m_h] + mu_h_star
 
                             # condensation + autoconversion
-                            sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], qt_hat, h_hat)
-                            mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], qt_hat, EnvVar.EnvArea.values[k], max_supersat, True)
+                            sa  = eos(
+                                self.t_to_prog_fp, self.prog_to_t_fp,
+                                self.Ref.p0_half[k], qt_hat, h_hat
+                            )
+                            mph = microphysics(
+                                sa.T, sa.ql, self.Ref.p0_half[k], qt_hat,
+                                EnvVar.EnvArea.values[k],
+                                Rain.max_supersaturation, True
+                            )
                             # environmental variables
                             inner_env[i_ql]    += mph.ql    * weights[m_h] * sqpi_inv
                             inner_env[i_qr]    += mph.qr    * weights[m_h] * sqpi_inv
@@ -430,8 +439,15 @@ cdef class EnvironmentThermodynamics:
 
                 else:
                     # if variance and covaraiance are zero do the same as in SA_mean
-                    sa  = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.H.values[k])
-                    mph = microphysics(sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k], EnvVar.EnvArea.values[k], max_supersat, True)
+                    sa  = eos(
+                        self.t_to_prog_fp, self.prog_to_t_fp,
+                        self.Ref.p0_half[k], EnvVar.QT.values[k],
+                        EnvVar.H.values[k]
+                    )
+                    mph = microphysics(
+                        sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k],
+                        EnvVar.EnvArea.values[k], Rain.max_supersaturation, True
+                    )
 
                     self.update_EnvVar(k, EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                     if rain_model and mph.qr > 0.:
