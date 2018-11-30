@@ -6,9 +6,11 @@
 
 import numpy as np
 import sys
-include "parameters.pxi"
 import cython
-cimport EDMF_Rain
+
+include "parameters.pxi"
+
+from EDMF_Rain cimport RainVariables
 from Grid cimport  Grid
 from TimeStepping cimport TimeStepping
 from ReferenceState cimport ReferenceState
@@ -524,15 +526,14 @@ cdef class EnvironmentThermodynamics:
             sys.exit('EDMF_Environment: Sommeria Deardorff is not defined for using entropy as thermodyanmic variable')
         return
 
-    cpdef satadjust(self, EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model):#, TimeStepping TS):
+    cpdef satadjust(self, EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model):
 
         if EnvVar.EnvThermo_scheme == 'sa_mean':
             self.eos_update_SA_mean(EnvVar, Rain, rain_model)
         elif EnvVar.EnvThermo_scheme == 'sa_quadrature':
-            self.eos_update_SA_sgs(EnvVar, Rain, rain_model)#, TS)
+            self.eos_update_SA_sgs(EnvVar, Rain, rain_model)
         elif EnvVar.EnvThermo_scheme == 'sommeria_deardorff':
             self.sommeria_deardorff(EnvVar)
         else:
             sys.exit('EDMF_Environment: Unrecognized EnvThermo_scheme. Possible options: sa_mean, sa_quadrature, sommeria_deardorff')
-
         return
