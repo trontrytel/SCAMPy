@@ -258,7 +258,7 @@ cdef class EnvironmentThermodynamics:
         return
 
 
-    cdef void eos_update_SA_mean(self, EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model):
+    cdef void eos_update_SA_mean(self, EnvironmentVariables EnvVar, RainVariables Rain):
 
         cdef:
             Py_ssize_t k
@@ -283,11 +283,11 @@ cdef class EnvironmentThermodynamics:
 
                 self.update_EnvVar(k,    EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
                 self.update_cloud_dry(k, EnvVar, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
-                if rain_model and mph.qr > 0.:
+                if Rain.rain_model and mph.qr > 0.:
                     self.update_EnvRain(k, EnvVar, Rain, mph.qr)
         return
 
-    cdef void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model):
+    cdef void eos_update_SA_sgs(self, EnvironmentVariables EnvVar, RainVariables Rain):
         a, w = np.polynomial.hermite.hermgauss(self.quadrature_order)
 
         #TODO - remember you output source terms multipierd by dt (bec. of instanteneous autoconcv)
@@ -422,7 +422,7 @@ cdef class EnvironmentThermodynamics:
                     self.update_EnvVar(k, EnvVar, outer_env[i_T], outer_env[i_thl],\
                                        outer_env[i_qt_cld] + outer_env[i_qt_dry],\
                                        outer_env[i_ql], outer_env[i_alpha])
-                    if rain_model and outer_env[i_qr] > 0.:
+                    if Rain.rain_model and outer_env[i_qr] > 0.:
                         self.update_EnvRain(k, EnvVar, Rain, outer_env[i_qr])
 
                     # update cloudy/dry variables for buoyancy in TKE
@@ -452,7 +452,7 @@ cdef class EnvironmentThermodynamics:
                     )
 
                     self.update_EnvVar(k, EnvVar, mph.T, mph.thl, mph.qt, mph.ql, mph.alpha)
-                    if rain_model and mph.qr > 0.:
+                    if Rain.rain_model and mph.qr > 0.:
                         self.update_EnvRain(k, EnvVar, Rain, mph.qr)
                     self.update_cloud_dry(k, EnvVar, mph.T, mph.th,  mph.qt, mph.ql, mph.qv)
 
@@ -526,12 +526,12 @@ cdef class EnvironmentThermodynamics:
             sys.exit('EDMF_Environment: Sommeria Deardorff is not defined for using entropy as thermodyanmic variable')
         return
 
-    cpdef satadjust(self, EnvironmentVariables EnvVar, RainVariables Rain, bint rain_model):
+    cpdef satadjust(self, EnvironmentVariables EnvVar, RainVariables Rain):
 
         if EnvVar.EnvThermo_scheme == 'sa_mean':
-            self.eos_update_SA_mean(EnvVar, Rain, rain_model)
+            self.eos_update_SA_mean(EnvVar, Rain)
         elif EnvVar.EnvThermo_scheme == 'sa_quadrature':
-            self.eos_update_SA_sgs(EnvVar, Rain, rain_model)
+            self.eos_update_SA_sgs(EnvVar, Rain)
         elif EnvVar.EnvThermo_scheme == 'sommeria_deardorff':
             self.sommeria_deardorff(EnvVar)
         else:

@@ -48,11 +48,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             print('Turbulence--EDMF_PrognosticTKE: defaulting to local (level-by-level) microphysics')
 
         try:
-            self.rain_model = namelist['microphysics']['rain_model']
-        except:
-            self.rain_model = False
-
-        try:
             self.calc_tke = namelist['turbulence']['EDMF_PrognosticTKE']['calculate_tke']
         except:
             self.calc_tke = True
@@ -373,14 +368,14 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         #   - the buoyancy of updrafts and environment is updated such that
         #     the mean buoyancy with repect to reference state alpha_0 is zero.
         self.decompose_environment(GMV, 'mf_update')
-        self.EnvThermo.satadjust(self.EnvVar, self.Rain, self.rain_model)
+        self.EnvThermo.satadjust(self.EnvVar, self.Rain)
         self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
 
         self.compute_eddy_diffusivities_tke(GMV, Case)
         self.update_GMV_ED(GMV, Case, TS)
         self.compute_covariance(GMV, Case, TS)
 
-        if self.rain_model:
+        if self.Rain.rain_model:
             # apply autoconversion source terms
             self.Rain.set_values_with_new()
             self.Rain.update_bulk_rain()
@@ -412,7 +407,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         self.dt_upd = np.minimum(TS.dt, 0.5 * self.Gr.dz/fmax(np.max(self.UpdVar.W.values),1e-10))
         self.UpdThermo.clear_precip_sources()
         while time_elapsed < TS.dt:
-            # TODO
             self.compute_entrainment_detrainment(GMV, Case)
             self.solve_updraft_velocity_area()
             self.solve_updraft_scalars(GMV)
@@ -471,7 +465,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     &self.UpdVar.Area.values[i,gw], mph.qr, mph.thl_rain_src,
                     mph.qt, mph.ql, mph.T, mph.thl, i, gw
                 )
-                if self.rain_model:
+                if self.Rain.rain_model:
                     self.UpdThermo.update_UpdRain(
                         &self.UpdVar.Area.values[i,gw],
                         &self.Rain.Upd_QR.values[gw],
@@ -500,7 +494,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                                        &self.UpdVar.H.values[i, k], &self.UpdVar.T.values[i, k],
                                        &self.UpdVar.Area.values[i, k],
                                        mph.qr, mph.thl_rain_src, mph.qt, mph.ql, mph.T, mph.thl, i, k)
-                    if self.rain_model:
+                    if self.Rain.rain_model:
                         self.UpdThermo.update_UpdRain(&self.UpdVar.Area.values[i,k], &self.Rain.Upd_QR.values[k],
                                                      &self.Rain.Upd_RainArea.values[k], mph.qr,self.Rain.rain_area_value, i, k)
 
@@ -1032,7 +1026,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                         &self.UpdVar.Area.new[i, gw], mph.qr, mph.thl_rain_src,
                         mph.qt, mph.ql, mph.T, mph.thl, i, gw
                     )
-                    if self.rain_model:
+                    if self.Rain.rain_model:
                         self.UpdThermo.update_UpdRain(
                             &self.UpdVar.Area.new[i,gw], &self.Rain.Upd_QR.new[gw],
                             &self.Rain.Upd_RainArea.new[gw], mph.qr,
@@ -1087,7 +1081,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                                 mph.T, mph.thl, i, k
                             )
 
-                            if self.rain_model:
+                            if self.Rain.rain_model:
                                 #TODO - after adding rain evaporation think on the correct order of updates
                                 #       and on the correct source terms for QT and H
                                 self.UpdThermo.update_UpdRain(

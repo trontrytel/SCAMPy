@@ -128,7 +128,7 @@ cdef rain_struct rain_area(double source_area,  double source_qr,
     """
     Source terams for rain and rain area
     """
-    cdef double eps = 1e-7 #TODO
+    cdef double eps = 0. #TODO
 
     cdef rain_struct _ret
 
