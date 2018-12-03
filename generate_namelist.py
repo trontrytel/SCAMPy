@@ -205,6 +205,7 @@ def Rico():
 
     namelist['microphysics'] = {}
     namelist['microphysics']['max_supersaturation'] = 0.1
+    namelist['microphysics']['rain_model'] = False
 
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 20.0
@@ -251,6 +252,10 @@ def TRMM_LBA(): # yair
     namelist['thermodynamics']['saturation'] = 'sa_mean'
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
 
+    namelist['microphysics'] = {}
+    namelist['microphysics']['max_supersaturation'] = 0.1
+    namelist['microphysics']['rain_model'] = False
+
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 30.0
     namelist['time_stepping']['t_max'] = 21590.0
@@ -295,6 +300,10 @@ def ARM_SGP():
     namelist['thermodynamics'] = {}
     namelist['thermodynamics']['saturation'] = 'sa_mean'
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
+
+    namelist['microphysics'] = {}
+    namelist['microphysics']['max_supersaturation'] = 0.1
+    namelist['microphysics']['rain_model'] = False
 
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 10.0
@@ -341,6 +350,10 @@ def GATE_III(): # yair
     namelist['thermodynamics'] = {}
     namelist['thermodynamics']['saturation'] = 'sa_mean'
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
+
+    namelist['microphysics'] = {}
+    namelist['microphysics']['max_supersaturation'] = 0.1
+    namelist['microphysics']['rain_model'] = False
 
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 5.0
@@ -434,6 +447,10 @@ def GABLS():
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
     namelist['thermodynamics']['saturation'] = 'sa_mean'
 
+    namelist['microphysics'] = {}
+    namelist['microphysics']['max_supersaturation'] = 0.1
+    namelist['microphysics']['rain_model'] = False
+
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 0.4
     namelist['time_stepping']['t_max'] = 9 * 3600.0
@@ -480,6 +497,10 @@ def SP():
     namelist['thermodynamics'] = {}
     namelist['thermodynamics']['thermal_variable'] = 'thetal'
     namelist['thermodynamics']['saturation'] = 'sa_mean'
+
+    namelist['microphysics'] = {}
+    namelist['microphysics']['max_supersaturation'] = 0.1
+    namelist['microphysics']['rain_model'] = False
 
     namelist['time_stepping'] = {}
     namelist['time_stepping']['dt'] = 5.0
