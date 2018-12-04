@@ -22,15 +22,25 @@ cdef double q2r(double q_, double qt) nogil :
     """
     return q_ / (1. - qt)
 
-cdef double rain_source_to_thetal(double p0, double T, double qt, double ql, double qi, double qr) nogil :
+cdef double rain_source_to_thetal(double p0, double T, double qr) nogil :
     """
-    Source term for thetal because of ql turning to qr and disappearing from the working fluid
+    Source term for thetal because of qr transitioning between the working fluid and rain
+    (simple version to avoid exponents)
     """
-    thetali_old = t_to_thetali_c(p0, T, qt, ql, qi)
-    thetali_new = t_to_thetali_c(p0, T, qt - qr, ql - qr, qi)
+    return latent_heat(T) * qr / exner_c(p0) / cpd
 
-    #TODO - check: Before it was qr / exner_c(p0) * latent_heat(T) / cpd
-    return thetali_new - thetali_old
+cdef double rain_source_to_thetal_detailed(double p0, double T, double qt, double ql, double qr) nogil :
+    """
+    Source term for thetal because of qr transitioning between the working fluid and rain
+    (more detailed version, but still ignoring dqt/dqr)
+    """
+    cdef double L = latent_heat(T)
+
+    old_source = L * qr / exner_c(p0) / cpd
+
+    new_source = old_source / (1.-qt) * exp(-L * ql / T / cpd / (1.-qt))
+
+    return new_source
 
 # instantly convert all cloud water exceeding a threshold to rain water
 # the threshold is specified as axcess saturation
@@ -114,7 +124,7 @@ cdef mph_struct microphysics(double T, double ql, double p0, double qt, double a
 
     if rain:
         _ret.qr           = acnv_instant(ql, qt, max_supersat, T, p0, area)
-        _ret.thl_rain_src = rain_source_to_thetal(p0, T, qt, ql, 0.0, _ret.qr)
+        _ret.thl_rain_src = rain_source_to_thetal(p0, T, _ret.qr)
 
         _ret.qt  -= _ret.qr
         _ret.ql  -= _ret.qr

@@ -379,9 +379,8 @@ cdef class UpdraftThermodynamics:
                         self.Ref.p0_half[k], UpdVar.Area.new[i,k]
                     )
                     tmp_th = rain_source_to_thetal(
-                        self.Ref.p0_half[k], UpdVar.T.new[i,k],
-                        UpdVar.QT.new[i,k], UpdVar.QL.new[i,k], 0.0, tmp_qr
-                    )                                          #TODO assumes no ice
+                        self.Ref.p0_half[k], UpdVar.T.new[i,k], tmp_qr
+                    )
 
                     UpdVar.QT.new[i,k] -= tmp_qr
                     UpdVar.QL.new[i,k] -= tmp_qr

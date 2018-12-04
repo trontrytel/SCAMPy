@@ -138,8 +138,8 @@ cdef class RainPhysics:
 
     cpdef solve_rain_fall(
         self, GridMeanVariables GMV, TimeStepping TS,
-        RainVariable QR, RainVariable RainArea, double rain_area_value):
-
+        RainVariable QR, RainVariable RainArea, double rain_area_value
+    ):
         cdef:
             Py_ssize_t k
             Py_ssize_t gw  = self.Gr.gw
@@ -205,32 +205,44 @@ cdef class RainPhysics:
 
         return
 
-    #cpdef solve_updraft_rain_evap(self, GridMeanVariables GMV):
+    #cpdef solve_rain_evap(
+    #    self, GridMeanVariables GMV, TimeStepping TS,
+    #    RainVariable QR, RainVariable RainArea, bint GMV_flag
+    #):
     #    cdef:
     #        Py_ssize_t k
     #        Py_ssize_t gw  = self.Gr.gw
     #        Py_ssize_t nzg = self.Gr.nzg
 
     #        double dz = self.Gr.dz
-    #        double dt_upd = self.dt_upd
+    #        double dt_model = TS.dt
 
     #        double tmp_evap
 
-    #        double [:] updr_rain_evap_qt_source = np.zeros((nzg,), dtype=np.double, order='c')
-    #        double [:] updr_rain_evap_h_source  = np.zeros((nzg,), dtype=np.double, order='c')
+    #        double [:] rain_evap_qt_source = np.zeros((nzg,), dtype=np.double, order='c')
+    #        double [:] rain_evap_h_source  = np.zeros((nzg,), dtype=np.double, order='c')
 
     #    for k in xrange(gw, nzg - gw):
 
-    #        tmp_evap = evap_rate(self.Ref.rho0[k], self.UpdVar.QV.bulkvalues[k],
-    #                             self.UpdRain.QR.values[k], self.UpdVar.QT.bulkvalues[k],
-    #                             self.UpdVar.T.bulkvalues[k], self.Ref.p0_half[k]) * dt_upd
+    #        tmp_evap = evap_rate(
+    #            self.Ref.rho0[k], GMV.QV.values[k], QR.values[k],
+    #            GMV.QT.values[k], GMV.T.values[k],  self.Ref.p0_half[k]
+    #        ) * dt_model
 
     #        if tmp_evap > self.UpdRain.QR.values[k]:
 
-    #            updr_rain_evap_qt_source[k] += self.UpdRain.QR.values[k] * self.UpdRain.RainArea.values[k]
+    #            if GMV_flag:
+    #                updr_rain_evap_qt_source[k] = QR.values[k] * RainArea.values[k]
+    #                # TODO updr_rain_evap_h_source[k]  = QR.values[k] * RainArea.values[k]
 
     #            self.UpdRain.QR.values[k] = 0.
     #            self.UpdRain.RainArea.values[k] = 0.
 
-
+    #        else:
+    #            #TODO - assuming rain evaporation doesnt change rain area fraction
+    #            #       (should brobably be changed if we move into prognostic rain area fractions)
+    #            if GMV_flag:
+    #                updr_rain_evap_qt_source[k] = QR.values[k] * RainArea.values[k]
+    #                # TODO updr_rain_evap_h_source[k]  = QR.values[k] * RainArea.values[k]
+    #            self.UpdRain.QR.values[k] -= tmp_evap
     #    return
