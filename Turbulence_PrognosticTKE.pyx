@@ -1349,11 +1349,13 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                         z = self.Gr.z_half[k]
                         GMV.TKE.values[k] = ws * 1.3 * cbrt((us*us*us)/(ws*ws*ws) + 0.6 * z/zs) * sqrt(fmax(1.0-z/zs,0.0))
         if self.calc_scalar_var:
-            for k in xrange(self.Gr.nzg):
-                z = self.Gr.z_half[k]
-                GMV.Hvar.values[k]   = GMV.Hvar.values[self.Gr.gw]   * GMV.TKE.values[k] / GMV.TKE.values[self.Gr.gw]
-                GMV.QTvar.values[k]  = GMV.QTvar.values[self.Gr.gw]  * GMV.TKE.values[k] / GMV.TKE.values[self.Gr.gw]
-                GMV.HQTcov.values[k] = GMV.HQTcov.values[self.Gr.gw] * GMV.TKE.values[k] / GMV.TKE.values[self.Gr.gw]
+            if ws > 0.0:
+                with nogil:
+                    for k in xrange(self.Gr.nzg):
+                        z = self.Gr.z_half[k]
+                        GMV.Hvar.values[k]   = GMV.Hvar.values[self.Gr.gw]   * GMV.TKE.values[k] / GMV.TKE.values[self.Gr.gw]
+                        GMV.QTvar.values[k]  = GMV.QTvar.values[self.Gr.gw]  * GMV.TKE.values[k] / GMV.TKE.values[self.Gr.gw]
+                        GMV.HQTcov.values[k] = GMV.HQTcov.values[self.Gr.gw] * GMV.TKE.values[k] / GMV.TKE.values[self.Gr.gw]
             self.compute_mixing_length(Case.Sur.obukhov_length)
         return
 
