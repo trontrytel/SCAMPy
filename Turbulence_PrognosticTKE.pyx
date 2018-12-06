@@ -384,9 +384,17 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             self.RainPhysics.solve_rain_fall(GMV, TS, self.Rain.Upd_QR, self.Rain.Upd_RainArea, self.Rain.rain_area_value)
             self.RainPhysics.solve_rain_fall(GMV, TS, self.Rain.Env_QR, self.Rain.Env_RainArea, self.Rain.rain_area_value)
             # rain evaporation
-            #self.solve_updraft_rain_evap()
-            # apply rain evaporation source terms to the grid mean
-            #self.apply_rain_evaporation(GMV)
+            self.RainPhysics.solve_rain_evap(GMV, TS, self.Rain.QR,     self.Rain.RainArea,     True)
+            self.RainPhysics.solve_rain_evap(GMV, TS, self.Rain.Upd_QR, self.Rain.Upd_RainArea, True)
+            self.RainPhysics.solve_rain_evap(GMV, TS, self.Rain.Env_QR, self.Rain.Env_RainArea, True)
+            # update GMV_new with rain evaporation source terms
+            self.update_GMV_Rain(GMV)
+            # dump rain evaporation source terms into the environment,
+            # update environment and buoyancy for nice output
+            #TODO - maybe we dont want that - we want the last eos in the environment to be the quadrature run
+            #self.decompose_environment(GMV, 'new')
+            #self.EnvThermo.eos_update_SA_smpl(self.EnvVar)
+            #self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
 
         # Back out the tendencies of the grid mean variables for the whole timestep by differencing GMV.new and
         # GMV.values
@@ -679,62 +687,59 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
     # or GMV.SomeVar.mf_update (GMV value following massflux substep)
     cpdef decompose_environment(self, GridMeanVariables GMV, whichvals):
 
-        # first make sure the 'bulkvalues' of the updraft variables are updated
-        self.UpdVar.set_means(GMV)
-
         cdef:
             Py_ssize_t k, gw = self.Gr.gw
             double val1, val2, au_full
+
+        # first make sure the 'bulkvalues' of the updraft variables are updated
+        self.UpdVar.set_means(GMV)
+
         if whichvals == 'values':
-
-            with nogil:
-                for k in xrange(self.Gr.nzg-1):
-                    val1 = 1.0/(1.0-self.UpdVar.Area.bulkvalues[k])
-                    val2 = self.UpdVar.Area.bulkvalues[k] * val1
-                    self.EnvVar.EnvArea.values[k] = 1./val1
-                    self.EnvVar.QT.values[k] = val1 * GMV.QT.values[k] - val2 * self.UpdVar.QT.bulkvalues[k]
-                    self.EnvVar.H.values[k]  = val1 * GMV.H.values[k]  - val2 * self.UpdVar.H.bulkvalues[k]
-                    # Have to account for staggering of W--interpolate area fraction to the "full" grid points
-                    # Assuming GMV.W = 0!
-                    au_full = 0.5 * (self.UpdVar.Area.bulkvalues[k+1] + self.UpdVar.Area.bulkvalues[k])
-                    self.EnvVar.W.values[k] = -au_full/(1.0-au_full) * self.UpdVar.W.bulkvalues[k]
-
-            if self.calc_tke:
-                self.get_GMV_CoVar(self.UpdVar.Area,self.UpdVar.W, self.UpdVar.W, self.EnvVar.W, self.EnvVar.W, self.EnvVar.TKE, &GMV.W.values[0],&GMV.W.values[0], &GMV.TKE.values[0])
-            if self.calc_scalar_var:
-                self.get_GMV_CoVar(self.UpdVar.Area,self.UpdVar.H, self.UpdVar.H, self.EnvVar.H, self.EnvVar.H, self.EnvVar.Hvar, &GMV.H.values[0],&GMV.H.values[0], &GMV.Hvar.values[0])
-                self.get_GMV_CoVar(self.UpdVar.Area,self.UpdVar.QT,self.UpdVar.QT,self.EnvVar.QT,self.EnvVar.QT,self.EnvVar.QTvar, &GMV.QT.values[0],&GMV.QT.values[0], &GMV.QTvar.values[0])
-                self.get_GMV_CoVar(self.UpdVar.Area,self.UpdVar.H, self.UpdVar.QT,self.EnvVar.H, self.EnvVar.QT,self.EnvVar.HQTcov, &GMV.H.values[0],&GMV.QT.values[0], &GMV.HQTcov.values[0])
-
-
-
+            self.EnvVar.QT.values[:] = GMV.QT.values[:]
+            self.EnvVar.H.values[:]  = GMV.H.values[:]
         elif whichvals == 'mf_update':
-            # same as above but replace GMV.SomeVar.values with GMV.SomeVar.mf_update
+            self.EnvVar.QT.values[:] = GMV.QT.mf_update[:]
+            self.EnvVar.H.values[:]  = GMV.H.mf_update[:]
+        elif whichvals == 'new':
+            self.EnvVar.QT.values[:] = GMV.QT.new[:]
+            self.EnvVar.H.values[:]  = GMV.H.new[:]
 
-            with nogil:
-                for k in xrange(self.Gr.nzg-1):
-                    val1 = 1.0/(1.0-self.UpdVar.Area.bulkvalues[k])
-                    val2 = self.UpdVar.Area.bulkvalues[k] * val1
+        with nogil:
+            for k in xrange(self.Gr.nzg-1):
+                val1 = 1.0/(1.0-self.UpdVar.Area.bulkvalues[k])
+                val2 = self.UpdVar.Area.bulkvalues[k] * val1
+                self.EnvVar.EnvArea.values[k] = 1./val1
 
-                    self.EnvVar.QT.values[k] = val1 * GMV.QT.mf_update[k] - val2 * self.UpdVar.QT.bulkvalues[k]
-                    self.EnvVar.H.values[k]  = val1 * GMV.H.mf_update[k]  - val2 * self.UpdVar.H.bulkvalues[k]
-                    # Have to account for staggering of W
-                    # Assuming GMV.W = 0!
-                    au_full = 0.5 * (self.UpdVar.Area.bulkvalues[k+1] + self.UpdVar.Area.bulkvalues[k])
-                    self.EnvVar.W.values[k] = -au_full/(1.0-au_full) * self.UpdVar.W.bulkvalues[k]
+                self.EnvVar.QT.values[k] = val1 * self.EnvVar.QT.values[k] - val2 * self.UpdVar.QT.bulkvalues[k]
+                self.EnvVar.H.values[k]  = val1 * self.EnvVar.H.values[k]  - val2 * self.UpdVar.H.bulkvalues[k]
 
-            if self.calc_tke:
-                self.get_GMV_CoVar(self.UpdVar.Area,self.UpdVar.W, self.UpdVar.W, self.EnvVar.W, self.EnvVar.W, self.EnvVar.TKE,
-                                 &GMV.W.values[0],&GMV.W.values[0], &GMV.TKE.values[0])
+                # Have to account for staggering of W--interpolate area fraction to the "full" grid points
+                # Assuming GMV.W = 0!
+                au_full = 0.5 * (self.UpdVar.Area.bulkvalues[k+1] + self.UpdVar.Area.bulkvalues[k])
+                self.EnvVar.W.values[k] = -au_full/(1.0-au_full) * self.UpdVar.W.bulkvalues[k]
 
-            if self.calc_scalar_var:
-                self.get_GMV_CoVar(self.UpdVar.Area,self.UpdVar.H, self.UpdVar.H, self.EnvVar.H, self.EnvVar.H, self.EnvVar.Hvar,
-                                 &GMV.H.values[0],&GMV.H.values[0], &GMV.Hvar.values[0])
-                self.get_GMV_CoVar(self.UpdVar.Area,self.UpdVar.QT, self.UpdVar.QT, self.EnvVar.QT, self.EnvVar.QT, self.EnvVar.QTvar,
-                                 &GMV.QT.values[0],&GMV.QT.values[0], &GMV.QTvar.values[0])
-                self.get_GMV_CoVar(self.UpdVar.Area,self.UpdVar.H, self.UpdVar.QT, self.EnvVar.H, self.EnvVar.QT, self.EnvVar.HQTcov,
-                                 &GMV.H.values[0], &GMV.QT.values[0], &GMV.HQTcov.values[0])
-
+        if self.calc_tke:
+            self.get_GMV_CoVar(
+                self.UpdVar.Area, self.UpdVar.W, self.UpdVar.W,
+                self.EnvVar.W, self.EnvVar.W, self.EnvVar.TKE,
+                &GMV.W.values[0],  &GMV.W.values[0],  &GMV.TKE.values[0]
+            )
+        if self.calc_scalar_var:
+            self.get_GMV_CoVar(
+                self.UpdVar.Area, self.UpdVar.H, self.UpdVar.H,
+                self.EnvVar.H, self.EnvVar.H, self.EnvVar.Hvar,
+                &GMV.H.values[0],  &GMV.H.values[0],  &GMV.Hvar.values[0]
+            )
+            self.get_GMV_CoVar(
+                self.UpdVar.Area, self.UpdVar.QT, self.UpdVar.QT,
+                self.EnvVar.QT, self.EnvVar.QT, self.EnvVar.QTvar,
+                &GMV.QT.values[0], &GMV.QT.values[0], &GMV.QTvar.values[0]
+            )
+            self.get_GMV_CoVar(
+                self.UpdVar.Area, self.UpdVar.H, self.UpdVar.QT,
+                self.EnvVar.H, self.EnvVar.QT, self.EnvVar.HQTcov,
+                &GMV.H.values[0], &GMV.QT.values[0], &GMV.HQTcov.values[0]
+            )
 
         return
 
@@ -1282,6 +1287,16 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         GMV.U.set_bcs(self.Gr)
         GMV.V.set_bcs(self.Gr)
 
+        return
+
+    cpdef update_GMV_Rain(self, GridMeanVariables GMV):
+        cdef:
+            Py_ssize_t k
+
+        with nogil:
+            for k in xrange(self.Gr.gw, self.Gr.nzg):
+                GMV.H.new[k] += self.RainPhysics.rain_evap_source_h[k]
+                GMV.QT.new[k] += self.RainPhysics.rain_evap_source_qt[k]
         return
 
     cpdef compute_tke_buoy(self, GridMeanVariables GMV):

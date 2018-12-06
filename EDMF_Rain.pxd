@@ -45,6 +45,15 @@ cdef class RainPhysics:
         Grid.Grid Gr
         ReferenceState.ReferenceState Ref
 
-    cpdef solve_rain_fall(self, GridMeanVariables GMV, TimeStepping TS,
-                          RainVariable QR, RainVariable RainArea,
-                          double rain_area_value)
+        double [:] rain_evap_source_h
+        double [:] rain_evap_source_qt
+
+    cpdef solve_rain_fall(
+        self, GridMeanVariables GMV, TimeStepping TS, RainVariable QR,
+        RainVariable RainArea, double rain_area_value
+    )
+
+    cpdef solve_rain_evap(
+        self, GridMeanVariables GMV, TimeStepping TS, RainVariable QR,
+        RainVariable RainArea, bint GMV_flag
+    )
