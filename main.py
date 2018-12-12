@@ -17,8 +17,8 @@ def main():
     paramlist = json.loads(file_paramlist)
     del file_paramlist
 
-    #main1d(namelist, paramlist)
-    scampify()
+    main1d(namelist, paramlist)
+    #scampify()
 
     return
 

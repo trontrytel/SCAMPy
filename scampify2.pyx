@@ -5,6 +5,7 @@ from Grid cimport Grid
 from ReferenceState cimport ReferenceState
 cimport EDMF_Updrafts
 cimport EDMF_Environment
+cimport EDMF_Rain
 
 from thermodynamic_functions cimport  *
 from microphysics_functions cimport  *
@@ -135,14 +136,20 @@ cdef class Scampify1d:
             print "wrong casename"
             assert(False)
 
+        # init Rain
+        self.rain_var = EDMF_Rain.RainVariables(namelist, self.Gr)
+        self.rain_phs = EDMF_Rain.RainPhysics(self.Gr, self.ref_state)
 
+        # init Environment
         self.env_var = EDMF_Environment.EnvironmentVariables(namelist, self.Gr)
         self.env_var.QT.values = p_dict['env_qt'][time,:]
         self.env_var.H.values  = p_dict['env_thetali'][time,:]
         self.env_var.Hvar.values   = v_dict['Hvar'][time,:]
         self.env_var.QTvar.values  = v_dict['QTvar'][time,:]
         self.env_var.HQTcov.values = v_dict['HQTcov'][time,:]
+        self.env_thr  = EDMF_Environment.EnvironmentThermodynamics(namelist, self.Gr, self.ref_state, self.env_var, self.rain_var)
 
+        # init Updrafts
         self.upd_var = EDMF_Updrafts.UpdraftVariables(1, namelist, paramlist, self.Gr)
         # cant assign nupy array to memory view slice
         # https://mail.python.org/pipermail/cython-devel/2014-December/004288.html
@@ -153,10 +160,7 @@ cdef class Scampify1d:
         self.upd_var.H.values[0,:]    = tmp_thetali
         self.upd_var.Area.values[0,:] = tmp_area
         self.upd_var.QR.values[0,:]   = 0.0   #TODO
-
-        self.env_thr = EDMF_Environment.EnvironmentThermodynamics(namelist, paramlist, self.Gr, self.ref_state, self.env_var)
-        self.upd_thr = EDMF_Updrafts.UpdraftThermodynamics(1, self.Gr, self.ref_state, self.upd_var)
-        self.upd_mcr = EDMF_Updrafts.UpdraftMicrophysics(paramlist, 1, self.Gr, self.ref_state)
+        self.upd_thr  = EDMF_Updrafts.UpdraftThermodynamics(1, self.Gr, self.ref_state, self.upd_var, self.rain_var)
 
     def do_environment(self):
 
@@ -182,16 +186,17 @@ cdef class Scampify1d:
                 self.upd_var.QL.values[0,k] = sa.ql
                 self.upd_var.T.values[0,k] = sa.T
 
-                self.upd_mcr.compute_update_combined_local_thetal(
-                    self.ref_state.p0_half[k],
-                    self.upd_var.T.values[0,k],
-                    &self.upd_var.QT.values[0,k],
-                    &self.upd_var.QL.values[0,k],
-                    &self.upd_var.QR.values[0,k],
-                    &self.upd_var.H.values[0,k],
-                    0,
-                    k
-                )
+                # TODO
+                #self.upd_thr.compute_update_combined_local_thetal(
+                #    self.ref_state.p0_half[k],
+                #    self.upd_var.T.values[0,k],
+                #    &self.upd_var.QT.values[0,k],
+                #    &self.upd_var.QL.values[0,k],
+                #    &self.upd_var.QR.values[0,k],
+                #    &self.upd_var.H.values[0,k],
+                #    0,
+                #    k
+                #)
 
     def plot_all(self):
 
