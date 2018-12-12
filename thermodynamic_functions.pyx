@@ -22,30 +22,19 @@ cdef double exner_c(double p0, double kappa = kappa) nogil  :
 cdef  double theta_c(double p0, double T) nogil :
     return T / exner_c(p0)
 
-                                                                             # TODO - L is not used here
+
 cdef  double thetali_c(double p0, double T, double qt, double ql, double qi, double L) nogil  :
     # Liquid ice potential temperature consistent with Triopoli and Cotton (1981)
-    return theta_c(p0, T) * exp(-latent_heat(T) * (ql / (1.0 - qt) + qi / (1.0 - qt)) / (T*cpd))
+    return theta_c(p0, T) * exp(-latent_heat(T)*(ql/(1.0 - qt) + qi/(1.0 -qt))/(T*cpd))
 
 cdef  double theta_virt_c( double p0, double T, double qt, double ql, double qr) nogil :
     # Virtual potential temperature, mixing ratios are approximated by specific humidities.
     return theta_c(p0, T) * (1.0 + 0.61 * (qr) - ql);
 
 cdef  double pd_c(double p0, double qt, double qv)  nogil :
-    """
-    Dry air partial pressure
-    See assumptions for pv_c below
-    """
     return p0*(1.0-qt)/(1.0 - qt + eps_vi * qv)
 
 cdef  double pv_c(double p0, double qt, double qv) nogil  :
-    """
-    Water vapor partial pressure
-    Calculated assuming:
-        p0 = pd + pv
-        qt = qv + ql + qi
-        qd = 1 - qt
-    """
     return p0 * eps_vi * qv /(1.0 - qt + eps_vi * qv)
 
 
@@ -124,23 +113,18 @@ cdef double eos_first_guess_entropy(double H, double pd, double pv, double qt ) 
     return (T_tilde *exp((H - qd*(sd_tilde - Rd *log(pd/p_tilde))
                               - qt * (sv_tilde - Rv * log(pv/p_tilde)))/((qd*cpd + qt * cpv))))
 
+
+
+
+
+
 cdef eos_struct eos( double (*t_to_prog)(double, double,double,double, double) nogil,
                      double (*prog_to_t)(double,double, double, double) nogil,
                      double p0, double qt, double prog) nogil:
-    """
-    Saturation adjustment
-        arguments: method to calculate prognostic variable (thetal or entropy) from temperature
-                   method to calculate first guess of temperature from prognostic variable (assuming no liquid water or ice)
-                   total pressure
-                   total specific humidity
-                   prognostic variable (thetal or entropy)
-          returns: new temperature and liquid water specific humidity (as two fields of _ret structure)
-    """
-
-    cdef eos_struct _ret
-
     cdef double qv = qt
     cdef double ql = 0.0
+
+    cdef eos_struct _ret
 
     cdef double pv_1 = pv_c(p0,qt,qt )
     cdef double pd_1 = p0 - pv_1
@@ -150,39 +134,34 @@ cdef eos_struct eos( double (*t_to_prog)(double, double,double,double, double) n
 
     cdef double ql_1, prog_1, f_1, T_2, delta_T
     cdef double qv_star_2, ql_2=0.0, pv_star_2, pv_2, pd_2, prog_2, f_2
-
-    if prog == 0.0:
-        _ret.T  = 0.0
+    # If not saturated
+    if(qt <= qv_star_1):
+        _ret.T = T_1
         _ret.ql = 0.0
-    else:
-        # If not saturated
-        if(qt <= qv_star_1):
-            _ret.T = T_1
-            _ret.ql = 0.0
 
-        else:
-            ql_1 = qt - qv_star_1
-            prog_1 = t_to_prog(p0, T_1, qt, ql_1, 0.0)
-            f_1 = prog - prog_1
-            T_2 = T_1 + ql_1 * latent_heat(T_1) /((1.0 - qt)*cpd + qv_star_1 * cpv)
+    else:
+        ql_1 = qt - qv_star_1
+        prog_1 = t_to_prog(p0, T_1, qt, ql_1, 0.0)
+        f_1 = prog - prog_1
+        T_2 = T_1 + ql_1 * latent_heat(T_1) /((1.0 - qt)*cpd + qv_star_1 * cpv)
+        delta_T  = fabs(T_2 - T_1)
+
+        while delta_T > 1.0e-3 or ql_2 < 0.0:
+            pv_star_2 = pv_star(T_2)
+            qv_star_2 = qv_star_c(p0,qt,pv_star_2)
+            pv_2 = pv_c(p0, qt, qv_star_2)
+            pd_2 = p0 - pv_2
+            ql_2 = qt - qv_star_2
+            prog_2 =  t_to_prog(p0,T_2,qt, ql_2, 0.0   )
+            f_2 = prog - prog_2
+            T_n = T_2 - f_2*(T_2 - T_1)/(f_2 - f_1)
+            T_1 = T_2
+            T_2 = T_n
+            f_1 = f_2
             delta_T  = fabs(T_2 - T_1)
 
-            while delta_T > 1.0e-3 or ql_2 < 0.0:
-                pv_star_2 = pv_star(T_2)
-                qv_star_2 = qv_star_c(p0,qt,pv_star_2)
-                pv_2 = pv_c(p0, qt, qv_star_2)
-                pd_2 = p0 - pv_2
-                ql_2 = qt - qv_star_2
-                prog_2 =  t_to_prog(p0,T_2,qt, ql_2, 0.0   )
-                f_2 = prog - prog_2
-                T_n = T_2 - f_2*(T_2 - T_1)/(f_2 - f_1)
-                T_1 = T_2
-                T_2 = T_n
-                f_1 = f_2
-                delta_T  = fabs(T_2 - T_1)
-
-            _ret.T  = T_2
-            qv = qv_star_2
-            _ret.ql = ql_2
+        _ret.T  = T_2
+        qv = qv_star_2
+        _ret.ql = ql_2
 
     return _ret
