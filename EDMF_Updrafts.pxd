@@ -30,20 +30,27 @@ cdef class UpdraftVariables:
         UpdraftVariable THL
         UpdraftVariable T
         UpdraftVariable B
+
         Py_ssize_t n_updrafts
         bint prognostic
         double updraft_fraction
-        double [:] cloud_base
-        double [:] cloud_top
-        double [:] cloud_cover
+
+        double [:] upd_cloud_base
+        double [:] upd_cloud_top
+        double [:] upd_cloud_cover
+
+        double [:] upd_cloud_fraction
+
+        double upd_lwp
+
     cpdef initialize(self, GridMeanVariables GMV)
     cpdef initialize_io(self, NetCDFIO_Stats Stats)
-    cpdef io(self, NetCDFIO_Stats Stats)
+    cpdef io(self, NetCDFIO_Stats Stats, ReferenceState.ReferenceState Ref)
     cpdef set_means(self, GridMeanVariables GMV)
     cpdef set_new_with_values(self)
     cpdef set_old_with_values(self)
     cpdef set_values_with_new(self)
-    cpdef get_cloud_base_top_cover(self)
+    cpdef upd_cloud_diagnostics(self, ReferenceState.ReferenceState Ref)
 
 cdef class UpdraftThermodynamics:
     cdef:

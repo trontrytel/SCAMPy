@@ -145,9 +145,16 @@ cdef class EnvironmentVariables:
             Stats.add_profile('env_HQTcov')
         if self.EnvThermo_scheme == 'sommeria_deardorff':
             Stats.add_profile('env_THVvar')
+
+        Stats.add_profile('env_cloud_fraction')
+
+        Stats.add_ts('env_cloud_base')
+        Stats.add_ts('env_cloud_top')
+        Stats.add_ts('env_cloud_cover')
+        Stats.add_ts('env_lwp')
         return
 
-    cpdef io(self, NetCDFIO_Stats Stats):
+    cpdef io(self, NetCDFIO_Stats Stats, ReferenceState Ref):
         Stats.write_profile('env_w', self.W.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_qt', self.QT.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_ql', self.QL.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
@@ -168,10 +175,30 @@ cdef class EnvironmentVariables:
         if self.EnvThermo_scheme  == 'sommeria_deardorff':
             Stats.write_profile('env_THVvar', self.THVvar.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
 
-        #ToDo [suggested by CK for AJ ;]
-        # Add output of environmental cloud fraction, cloud base, cloud top (while the latter can be gleaned from ql profiles
-        # it is more convenient to simply have them in the stats files!
-        # Add the same with respect to the grid mean
+        Stats.write_profile('env_cloud_fraction', self.CF.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+
+        self.env_cloud_diagnostics(Ref)
+        # Assuming amximum overlap in environmental clouds
+        Stats.write_ts('env_cloud_cover', self.env_cloud_cover)
+        Stats.write_ts('env_cloud_base',  self.env_cloud_base)
+        Stats.write_ts('env_cloud_top',   self.env_cloud_top)
+        Stats.write_ts('env_lwp',         self.env_lwp)
+        return
+
+    cpdef env_cloud_diagnostics(self, ReferenceState Ref):
+        cdef Py_ssize_t k
+        self.env_cloud_top   = 0.
+        self.env_cloud_base  = self.Gr.z_half[self.Gr.nzg - self.Gr.gw - 1]
+        self.env_cloud_cover = 0.
+        self.env_lwp         = 0.
+
+        for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
+            self.env_lwp += Ref.rho0_half[k] * self.QL.values[k] * self.EnvArea.values[k] * self.Gr.dz
+
+            if self.QL.values[k] > 1e-8 and self.EnvArea.values[k] > 1e-3:
+                self.env_cloud_base  = fmin(self.env_cloud_base,  self.Gr.z_half[k])
+                self.env_cloud_top   = fmax(self.env_cloud_top,   self.Gr.z_half[k])
+                self.env_cloud_cover = fmax(self.env_cloud_cover, self.CF.values[k])
         return
 
 cdef class EnvironmentThermodynamics:

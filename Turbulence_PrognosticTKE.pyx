@@ -254,9 +254,9 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             double [:] mf_h = np.zeros((self.Gr.nzg,), dtype=np.double, order='c')
             double [:] mf_qt = np.zeros((self.Gr.nzg,), dtype=np.double, order='c')
 
-        self.UpdVar.io(Stats)
-        self.EnvVar.io(Stats)
-        self.Rain.io(Stats)
+        self.UpdVar.io(Stats, self.Ref)
+        self.EnvVar.io(Stats, self.Ref)
+        self.Rain.io(Stats, self.Ref)
 
         Stats.write_profile('eddy_viscosity', self.KM.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('eddy_diffusivity', self.KH.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
@@ -389,6 +389,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             self.RainPhysics.solve_rain_evap(GMV, TS, self.Rain.Env_QR, self.Rain.Env_RainArea, True)
             # update GMV_new with rain evaporation source terms
             self.update_GMV_Rain(GMV)
+
             # dump rain evaporation source terms into the environment,
             # update environment and buoyancy for nice output
             #TODO - maybe we dont want that - we want the last eos in the environment to be the quadrature run
@@ -396,8 +397,11 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             #self.EnvThermo.eos_update_SA_smpl(self.EnvVar)
             #self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
 
-        # Back out the tendencies of the grid mean variables for the whole timestep by differencing GMV.new and
-        # GMV.values
+        # update mean cloud fraction
+        for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
+            GMV.CF.values[k] = self.UpdVar.upd_cloud_fraction[k] + self.EnvVar.CF.values[k]
+        # Back out the tendencies of the grid mean variables for the whole timestep
+        # by differencing GMV.new and GMV.values
         ParameterizationBase.update(self, GMV, Case, TS)
 
         return
@@ -686,7 +690,6 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
     # whichvals used to check which substep we are on--correspondingly use 'GMV.SomeVar.value' (last timestep value)
     # or GMV.SomeVar.mf_update (GMV value following massflux substep)
     cpdef decompose_environment(self, GridMeanVariables GMV, whichvals):
-
         cdef:
             Py_ssize_t k, gw = self.Gr.gw
             double val1, val2, au_full
@@ -703,6 +706,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         elif whichvals == 'new':
             self.EnvVar.QT.values[:] = GMV.QT.new[:]
             self.EnvVar.H.values[:]  = GMV.H.new[:]
+        else:
+            assert(False)
 
         with nogil:
             for k in xrange(self.Gr.nzg-1):
@@ -828,15 +833,16 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             double transport_plus, transport_minus
             long quadrature_order = 3
 
-
-        self.UpdVar.get_cloud_base_top_cover()
+        # calculate cloud base height (needed for bulk detrainment)
+        # TODO - maybe wont be needed at some point...
+        self.UpdVar.upd_cloud_diagnostics(self.Ref)
 
         input.wstar = self.wstar
 
         input.dz = self.Gr.dz
         input.zbl = self.compute_zbl_qt_grad(GMV)
         for i in xrange(self.n_updrafts):
-            input.zi = self.UpdVar.cloud_base[i]
+            input.zi = self.UpdVar.upd_cloud_base[i]
             for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
                 input.quadrature_order = quadrature_order
                 input.b = self.UpdVar.B.values[i,k]
@@ -892,8 +898,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
                 input.transport_der = (transport_plus - transport_minus)/2.0/self.Gr.dz
 
-                if input.zbl-self.UpdVar.cloud_base[i] > 0.0:
-                    input.poisson = np.random.poisson(self.Gr.dz/((input.zbl-self.UpdVar.cloud_base[i])/10.0))
+                if input.zbl-self.UpdVar.upd_cloud_base[i] > 0.0:
+                    input.poisson = np.random.poisson(self.Gr.dz/((input.zbl-self.UpdVar.upd_cloud_base[i])/10.0))
                 else:
                     input.poisson = 0.0
                 ## End: Ignacio

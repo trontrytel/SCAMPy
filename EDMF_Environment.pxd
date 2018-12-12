@@ -56,10 +56,16 @@ cdef class EnvironmentVariables:
         double prescribed_Hvar
         double prescribed_HQTcov
 
+        double env_cloud_base
+        double env_cloud_top
+        double env_cloud_cover
+        double env_lwp
+
         str EnvThermo_scheme
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats )
-    cpdef io(self, NetCDFIO_Stats Stats)
+    cpdef io(self, NetCDFIO_Stats Stats, ReferenceState Ref)
+    cpdef env_cloud_diagnostics(self, ReferenceState Ref)
 
 cdef class EnvironmentThermodynamics:
     cdef:
