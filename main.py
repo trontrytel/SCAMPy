@@ -1,24 +1,23 @@
 import argparse
 import json
 
-
 def main():
     # Parse information from the command line
-    parser = argparse.ArgumentParser(prog='SCAMPy')
-    parser.add_argument("namelist")
-    parser.add_argument("paramlist")
-    args = parser.parse_args()
+    #parser = argparse.ArgumentParser(prog='SCAMPy')
+    #parser.add_argument("namelist")
+    #parser.add_argument("paramlist")
+    #args = parser.parse_args()
 
-    file_namelist = open(args.namelist).read()
-    namelist = json.loads(file_namelist)
-    del file_namelist
+    #file_namelist = open(args.namelist).read()
+    #namelist = json.loads(file_namelist)
+    #del file_namelist
 
-    file_paramlist = open(args.paramlist).read()
-    paramlist = json.loads(file_paramlist)
-    del file_paramlist
+    #file_paramlist = open(args.paramlist).read()
+    #paramlist = json.loads(file_paramlist)
+    #del file_paramlist
 
-    main1d(namelist, paramlist)
-    #scampify()
+    #main1d(namelist, paramlist)
+    main_scampify()
 
     return
 
@@ -31,18 +30,17 @@ def main1d(namelist, paramlist):
 
     return
 
-def scampify():
-    import scampify2
-    Simulation = scampify2.Scampify1d()
-    Simulation.initialize()
-    Simulation.do_environment()
-    Simulation.do_updrafts()
-    Simulation.plot_all()
+def main_scampify():
+    import scampify
+    Simulation = scampify.Scampify1d()
+    Simulation.run()
+    #Simulation.do_updrafts()
+    #Simulation.do_environment()
+    #Simulation.do_rain()
+    #Simulation.plot_all()
+    print('The scampified simulation has completed.')
+
+    return
 
 if __name__ == "__main__":
     main()
-
-
-
-
-

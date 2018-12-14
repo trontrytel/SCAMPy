@@ -1,5 +1,8 @@
 cimport Grid
 cimport ReferenceState
+cimport TimeStepping
+from Variables cimport GridMeanVariables
+
 cimport EDMF_Environment
 cimport EDMF_Updrafts
 cimport EDMF_Rain
@@ -7,7 +10,9 @@ cimport EDMF_Rain
 cdef class Scampify1d:
     cdef:
         Grid.Grid Gr
-        ReferenceState.ReferenceState ref_state
+        ReferenceState.ReferenceState Ref
+        TimeStepping.TimeStepping TS
+        GridMeanVariables GMV
 
         EDMF_Rain.RainVariables rain_var
         EDMF_Updrafts.UpdraftVariables upd_var
