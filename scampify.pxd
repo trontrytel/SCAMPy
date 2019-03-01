@@ -29,4 +29,8 @@ cdef class Scampify1d:
         EDMF_Environment.EnvironmentThermodynamics env_thr
         EDMF_Rain.RainPhysics rain_phs
 
+        dict r_dict
+        dict p_dict
+        dict v_dict
+
     cpdef do_updrafts(self)

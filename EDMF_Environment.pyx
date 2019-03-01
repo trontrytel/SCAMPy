@@ -111,13 +111,18 @@ cdef class EnvironmentVariables:
 
         #TODO  - most likely a temporary solution (unless it could be useful for testing)
         try:
-            self.use_prescribed_scalar_var = namelist['turbulence']['sgs']['use_prescribed_scalar_var']
+            self.use_prescribed_scalar_var = namelist['offline']['use_prescribed_scalar_var']
         except:
             self.use_prescribed_scalar_var = False
-        if self.use_prescribed_scalar_var == True:
-            self.prescribed_QTvar  = namelist['turbulence']['sgs']['prescribed_QTvar']
-            self.prescribed_Hvar   = namelist['turbulence']['sgs']['prescribed_Hvar']
-            self.prescribed_HQTcov = namelist['turbulence']['sgs']['prescribed_HQTcov']
+        try:
+            self.LES_data = namelist['offline']['LES_data']
+        except:
+            self.LES_data = " "
+
+        #if self.use_prescribed_scalar_var == True:
+        #    self.prescribed_QTvar  = namelist['turbulence']['sgs']['prescribed_QTvar']
+        #    self.prescribed_Hvar   = namelist['turbulence']['sgs']['prescribed_Hvar']
+        #    self.prescribed_HQTcov = namelist['turbulence']['sgs']['prescribed_HQTcov']
 
         if (self.EnvThermo_scheme == 'sommeria_deardorff' or self.EnvThermo_scheme == 'sa_quadrature'):
             if (self.calc_scalar_var == False and self.use_prescribed_scalar_var == False ):
@@ -238,6 +243,9 @@ cdef class EnvironmentThermodynamics:
         EnvVar.QT.values[k]  = qt
         EnvVar.QL.values[k]  = ql
         EnvVar.B.values[k]   = buoyancy_c(self.Ref.alpha0_half[k], alpha)
+        #with gil:
+        #    print k, H, T, qt, ql
+
         return
 
     cdef void update_EnvRain(self, Py_ssize_t k, EnvironmentVariables EnvVar, RainVariables Rain, double qr) nogil:
@@ -346,21 +354,21 @@ cdef class EnvironmentThermodynamics:
         if EnvVar.H.name != 'thetal':
             sys.exit('EDMF_Environment: rain source terms are only defined for thetal as model variable')
 
-        # for testing (to be removed)
-        if EnvVar.use_prescribed_scalar_var:
-            for k in xrange(gw, self.Gr.nzg-gw):
-                if k * self.Gr.dz <= 1500:
-                    EnvVar.QTvar.values[k]  = EnvVar.prescribed_QTvar
-                else:
-                    EnvVar.QTvar.values[k]  = 0.
-                if k * self.Gr.dz <= 1500 and k * self.Gr.dz > 500:
-                    EnvVar.Hvar.values[k]   = EnvVar.prescribed_Hvar
-                else:
-                    EnvVar.Hvar.values[k]   = 0.
-                if k * self.Gr.dz <= 1500 and k * self.Gr.dz > 200:
-                    EnvVar.HQTcov.values[k] = EnvVar.prescribed_HQTcov
-                else:
-                    EnvVar.HQTcov.values[k] = 0.
+        ## for testing (to be removed)
+        #if EnvVar.use_prescribed_scalar_var:
+        #    for k in xrange(gw, self.Gr.nzg-gw):
+        #        if k * self.Gr.dz <= 1500:
+        #            EnvVar.QTvar.values[k]  = EnvVar.prescribed_QTvar
+        #        else:
+        #            EnvVar.QTvar.values[k]  = 0.
+        #        if k * self.Gr.dz <= 1500 and k * self.Gr.dz > 500:
+        #            EnvVar.Hvar.values[k]   = EnvVar.prescribed_Hvar
+        #        else:
+        #            EnvVar.Hvar.values[k]   = 0.
+        #        if k * self.Gr.dz <= 1500 and k * self.Gr.dz > 200:
+        #            EnvVar.HQTcov.values[k] = EnvVar.prescribed_HQTcov
+        #        else:
+        #            EnvVar.HQTcov.values[k] = 0.
 
         # initialize the quadrature points and their labels
         inner_env = np.zeros(env_len, dtype=np.double, order='c')
@@ -372,7 +380,11 @@ cdef class EnvironmentThermodynamics:
 
         with nogil:
             for k in xrange(gw, self.Gr.nzg-gw):
-                if EnvVar.QTvar.values[k] != 0.0 and EnvVar.Hvar.values[k] != 0.0 and EnvVar.HQTcov.values[k] != 0.0:
+                #if EnvVar.QTvar.values[k] != 0.0 and EnvVar.Hvar.values[k] != 0.0 and EnvVar.HQTcov.values[k] != 0.0:
+                if EnvVar.QTvar.values[k] > 0.0 and EnvVar.Hvar.values[k] > 0.0 and EnvVar.HQTcov.values[k] != 0.0:
+                    #with gil:
+                    #    print k, EnvVar.H.values[k], EnvVar.QTvar.values[k], EnvVar.Hvar.values[k], EnvVar.HQTcov.values[k]
+
                     sd_q = sqrt(EnvVar.QTvar.values[k])
                     sd_h = sqrt(EnvVar.Hvar.values[k])
                     corr = fmax(fmin(EnvVar.HQTcov.values[k]/fmax(sd_h*sd_q, 1e-13),1.0),-1.0)
@@ -445,6 +457,9 @@ cdef class EnvironmentThermodynamics:
                         for idx in range(src_len):
                             outer_src[idx] += inner_src[idx] * weights[m_q] * sqpi_inv
 
+                    #with gil:
+                    #    print k, outer_env[i_thl], outer_env[i_ql]
+
                     # update environmental variables
                     self.update_EnvVar(k, EnvVar, outer_env[i_T], outer_env[i_thl],\
                                        outer_env[i_qt_cld] + outer_env[i_qt_dry],\
@@ -465,6 +480,9 @@ cdef class EnvironmentThermodynamics:
                     self.QTvar_rain_dt[k]  = outer_src[i_Sqt_qt] - outer_src[i_Sqt] * EnvVar.QT.values[k]
                     self.HQTcov_rain_dt[k] = outer_src[i_SH_qt]  - outer_src[i_SH]  * EnvVar.QT.values[k] + \
                                              outer_src[i_Sqt_H]  - outer_src[i_Sqt] * EnvVar.H.values[k]
+                    #with gil:
+                    #    print k, EnvVar.H.values[k], EnvVar.QL.values[k]
+                    #    print " "
 
                 else:
                     # if variance and covaraiance are zero do the same as in SA_mean
@@ -486,6 +504,7 @@ cdef class EnvironmentThermodynamics:
                     self.Hvar_rain_dt[k]   = 0.
                     self.QTvar_rain_dt[k]  = 0.
                     self.HQTcov_rain_dt[k] = 0.
+
         return
 
     cdef void sommeria_deardorff(self, EnvironmentVariables EnvVar):

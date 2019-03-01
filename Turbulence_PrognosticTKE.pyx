@@ -5,6 +5,11 @@
 #cython: cdivision=False
 
 import numpy as np
+
+#TODO - tmp
+import math as mt
+from netCDF4 import Dataset
+
 include "parameters.pxi"
 import cython
 import sys
@@ -368,6 +373,28 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         #   - the buoyancy of updrafts and environment is updated such that
         #     the mean buoyancy with repect to reference state alpha_0 is zero.
         self.decompose_environment(GMV, 'mf_update')
+
+        if self.EnvVar.use_prescribed_scalar_var:
+            LES_data = Dataset(self.EnvVar.LES_data)
+            it = mt.floor(TS.t / TS.dt / 10.)
+
+            for idx in range(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
+
+                self.EnvVar.Hvar.values[idx] =\
+                    LES_data["profiles/env_thetali2"][it, idx - self.Gr.gw] -\
+                    LES_data["profiles/env_thetali"][ it, idx - self.Gr.gw] *\
+                    LES_data["profiles/env_thetali"][ it, idx - self.Gr.gw]
+
+                self.EnvVar.QTvar.values[idx] =\
+                    LES_data["profiles/env_qt2"][it, idx - self.Gr.gw] -\
+                    LES_data["profiles/env_qt"][ it, idx - self.Gr.gw] *\
+                    LES_data["profiles/env_qt"][ it, idx - self.Gr.gw]
+
+                self.EnvVar.HQTcov.values[idx] =\
+                    LES_data["profiles/env_qt_thetali"][it, idx - self.Gr.gw] -\
+                    LES_data["profiles/env_thetali"][  it,  idx - self.Gr.gw] *\
+                    LES_data["profiles/env_qt"][       it,  idx - self.Gr.gw]
+
         self.EnvThermo.satadjust(self.EnvVar, self.Rain)
         self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
 

@@ -62,6 +62,7 @@ cdef class EnvironmentVariables:
         double env_lwp
 
         str EnvThermo_scheme
+        str LES_data
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats )
     cpdef io(self, NetCDFIO_Stats Stats, ReferenceState Ref)
