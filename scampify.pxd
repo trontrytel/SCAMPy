@@ -13,6 +13,7 @@ cimport EDMF_Rain
 cdef class Scampify1d:
     cdef:
         int it
+        int norm
 
         Grid.Grid Gr
         ReferenceState.ReferenceState Ref

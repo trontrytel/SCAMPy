@@ -23,6 +23,7 @@ cdef class Scampify1d:
     def __init__(self, namelist, paramlist, scampifylist):
 
         self.it    = 0 # TODO - get rid of me
+        self.norm  = scampifylist["les_stats_freq"] / namelist["time_stepping"]["dt"]
 
         # create instances of grid, reference state, ...
         self.Gr    = Grid(namelist)
@@ -75,8 +76,12 @@ cdef class Scampify1d:
 
     def initialize(self, namelist, paramlist, scampifylist):
 
-        nc_file = scampifylist["nc_file"]
+        nc_file  = scampifylist["nc_file"]
         LES_data = Dataset(nc_file)
+        if namelist['meta']['casename'] in ['Bomex']:
+           half_flag = True
+        else:
+           half_flag = False
 
         var_list = [\
             'ql_mean',         'env_ql',         'updraft_ql',\
@@ -86,8 +91,11 @@ cdef class Scampify1d:
                                'env_fraction',   'updraft_fraction',\
             'w_mean']
             #'qrain_mean',\
-        #ref_list = ['p0_full', 'p0'     , 'alpha0_full', 'alpha0'     , 'rho0_full', 'rho0']
-        ref_list = ['p0'     , 'p0_half', 'alpha0'     , 'alpha0_half', 'rho0'     , 'rho0_half']
+
+        if half_flag:
+            ref_list = ['p0'     , 'p0_half', 'alpha0'     , 'alpha0_half', 'rho0'     , 'rho0_half']
+        else:
+            ref_list = ['p0_full', 'p0'     , 'alpha0_full', 'alpha0'     , 'rho0_full', 'rho0']
 
         self.r_dict = self.read_reference(LES_data, ref_list)
         self.p_dict = self.read_profiles( LES_data, var_list)
@@ -95,19 +103,20 @@ cdef class Scampify1d:
 
         # read in reference profiles
         for idx in range(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
-            #self.Ref.p0[idx]          = r_dict['p0_full'    ][idx - self.Gr.gw]
-            #self.Ref.p0_half[idx]     = r_dict['p0'         ][idx - self.Gr.gw]
-            #self.Ref.alpha0[idx]      = r_dict['alpha0_full'][idx - self.Gr.gw]
-            #self.Ref.alpha0_half[idx] = r_dict['alpha0'     ][idx - self.Gr.gw]
-            #self.Ref.rho0[idx]        = r_dict['rho0_full'  ][idx - self.Gr.gw]
-            #self.Ref.rho0_half[idx]   = r_dict['rho0'       ][idx - self.Gr.gw]
-
-            self.Ref.p0[idx]          = self.r_dict['p0'         ][idx - self.Gr.gw]
-            self.Ref.p0_half[idx]     = self.r_dict['p0_half'    ][idx - self.Gr.gw]
-            self.Ref.alpha0[idx]      = self.r_dict['alpha0'     ][idx - self.Gr.gw]
-            self.Ref.alpha0_half[idx] = self.r_dict['alpha0_half'][idx - self.Gr.gw]
-            self.Ref.rho0[idx]        = self.r_dict['rho0'       ][idx - self.Gr.gw]
-            self.Ref.rho0_half[idx]   = self.r_dict['rho0_half'  ][idx - self.Gr.gw]
+            if half_flag:
+                self.Ref.p0[idx]          = self.r_dict['p0'         ][idx - self.Gr.gw]
+                self.Ref.p0_half[idx]     = self.r_dict['p0_half'    ][idx - self.Gr.gw]
+                self.Ref.alpha0[idx]      = self.r_dict['alpha0'     ][idx - self.Gr.gw]
+                self.Ref.alpha0_half[idx] = self.r_dict['alpha0_half'][idx - self.Gr.gw]
+                self.Ref.rho0[idx]        = self.r_dict['rho0'       ][idx - self.Gr.gw]
+                self.Ref.rho0_half[idx]   = self.r_dict['rho0_half'  ][idx - self.Gr.gw]
+            else:
+                self.Ref.p0[idx]          =self.r_dict['p0_full'    ][idx - self.Gr.gw]
+                self.Ref.p0_half[idx]     =self.r_dict['p0'         ][idx - self.Gr.gw]
+                self.Ref.alpha0[idx]      =self.r_dict['alpha0_full'][idx - self.Gr.gw]
+                self.Ref.alpha0_half[idx] =self.r_dict['alpha0'     ][idx - self.Gr.gw]
+                self.Ref.rho0[idx]        =self.r_dict['rho0_full'  ][idx - self.Gr.gw]
+                self.Ref.rho0_half[idx]   =self.r_dict['rho0'       ][idx - self.Gr.gw]
 
         # read in initial GMV
         for idx in range(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
@@ -224,13 +233,12 @@ cdef class Scampify1d:
     def run(self):
 
         self.TS.t = 0.
-        self.it   = 0
 
         print "scampify!"
 
         while self.TS.t <= self.TS.t_max:
             print self.it
-            self.read_in_LES_data(mt.floor(self.it / 10.)) #TODO - change to interpolating
+            self.read_in_LES_data(mt.floor(self.it / self.norm)) #TODO - change to interpolating
             self.upd_var.set_means(self.GMV)
             self.do_updrafts()
             self.do_environment()
