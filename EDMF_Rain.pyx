@@ -60,8 +60,8 @@ cdef class RainVariables:
         try:
             self.max_supersaturation = namelist['microphysics']['max_supersaturation']
         except:
-            print "EDMF_Rain: defaulting to max_supersaturation for rain = 0.1"
-            self.max_supersaturation = 0.1
+            print "EDMF_Rain: defaulting to max_supersaturation for rain = 1.02"
+            self.max_supersaturation = 1.02
 
         try:
             self.rain_model = namelist['microphysics']['rain_model']

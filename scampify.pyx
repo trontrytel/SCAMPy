@@ -92,10 +92,10 @@ cdef class Scampify1d:
             'w_mean']
             #'qrain_mean',\
 
-        if half_flag:
-            ref_list = ['p0'     , 'p0_half', 'alpha0'     , 'alpha0_half', 'rho0'     , 'rho0_half']
-        else:
-            ref_list = ['p0_full', 'p0'     , 'alpha0_full', 'alpha0'     , 'rho0_full', 'rho0']
+        #if half_flag:
+        #    ref_list = ['p0'     , 'p0_half', 'alpha0'     , 'alpha0_half', 'rho0'     , 'rho0_half']
+        #else:
+        ref_list = ['p0_full', 'p0'     , 'alpha0_full', 'alpha0'     , 'rho0_full', 'rho0']
 
         self.r_dict = self.read_reference(LES_data, ref_list)
         self.p_dict = self.read_profiles( LES_data, var_list)
@@ -103,20 +103,20 @@ cdef class Scampify1d:
 
         # read in reference profiles
         for idx in range(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
-            if half_flag:
-                self.Ref.p0[idx]          = self.r_dict['p0'         ][idx - self.Gr.gw]
-                self.Ref.p0_half[idx]     = self.r_dict['p0_half'    ][idx - self.Gr.gw]
-                self.Ref.alpha0[idx]      = self.r_dict['alpha0'     ][idx - self.Gr.gw]
-                self.Ref.alpha0_half[idx] = self.r_dict['alpha0_half'][idx - self.Gr.gw]
-                self.Ref.rho0[idx]        = self.r_dict['rho0'       ][idx - self.Gr.gw]
-                self.Ref.rho0_half[idx]   = self.r_dict['rho0_half'  ][idx - self.Gr.gw]
-            else:
-                self.Ref.p0[idx]          =self.r_dict['p0_full'    ][idx - self.Gr.gw]
-                self.Ref.p0_half[idx]     =self.r_dict['p0'         ][idx - self.Gr.gw]
-                self.Ref.alpha0[idx]      =self.r_dict['alpha0_full'][idx - self.Gr.gw]
-                self.Ref.alpha0_half[idx] =self.r_dict['alpha0'     ][idx - self.Gr.gw]
-                self.Ref.rho0[idx]        =self.r_dict['rho0_full'  ][idx - self.Gr.gw]
-                self.Ref.rho0_half[idx]   =self.r_dict['rho0'       ][idx - self.Gr.gw]
+            #if half_flag:
+            #    self.Ref.p0[idx]          = self.r_dict['p0'         ][idx - self.Gr.gw]
+            #    self.Ref.p0_half[idx]     = self.r_dict['p0_half'    ][idx - self.Gr.gw]
+            #    self.Ref.alpha0[idx]      = self.r_dict['alpha0'     ][idx - self.Gr.gw]
+            #    self.Ref.alpha0_half[idx] = self.r_dict['alpha0_half'][idx - self.Gr.gw]
+            #    self.Ref.rho0[idx]        = self.r_dict['rho0'       ][idx - self.Gr.gw]
+            #    self.Ref.rho0_half[idx]   = self.r_dict['rho0_half'  ][idx - self.Gr.gw]
+            #else:
+            self.Ref.p0[idx]          =self.r_dict['p0_full'    ][idx - self.Gr.gw]
+            self.Ref.p0_half[idx]     =self.r_dict['p0'         ][idx - self.Gr.gw]
+            self.Ref.alpha0[idx]      =self.r_dict['alpha0_full'][idx - self.Gr.gw]
+            self.Ref.alpha0_half[idx] =self.r_dict['alpha0'     ][idx - self.Gr.gw]
+            self.Ref.rho0[idx]        =self.r_dict['rho0_full'  ][idx - self.Gr.gw]
+            self.Ref.rho0_half[idx]   =self.r_dict['rho0'       ][idx - self.Gr.gw]
 
         # read in initial GMV
         for idx in range(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
@@ -249,7 +249,7 @@ cdef class Scampify1d:
             for idx in range(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
 
                 #self.upd_var.QL.bulkvalues[idx] = self.upd_var.QL.values[0, idx]
-                #self.upd_var.Area.bulkvalues[idx] = self.upd_var.Area.values[0, idx]
+                self.upd_var.Area.bulkvalues[idx] = self.upd_var.Area.values[0, idx]
 
                 self.GMV.QT.values[idx] = self.upd_var.QT.bulkvalues[idx] * self.upd_var.Area.bulkvalues[idx] +\
                                           self.env_var.QT.values[idx]     * self.env_var.EnvArea.values[idx]
