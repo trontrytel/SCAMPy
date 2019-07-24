@@ -54,7 +54,8 @@ cdef double acnv_instant(double ql, double qt, double sat_treshold, double T, do
     if ar <= 0.:
         _ret = 0.
     else:
-        _ret = fmax(0.0, ql - sat_treshold * qsat)
+#        _ret = fmax(0.0, ql - sat_treshold * qsat)
+       _ret = fmax(0.0, ql - 3e-4)
     return _ret
 
 # time-rate expressions for 1-moment microphysics

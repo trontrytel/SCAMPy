@@ -237,7 +237,7 @@ cdef class Scampify1d:
         print "scampify!"
 
         while self.TS.t <= self.TS.t_max:
-            print self.it
+            print self.it, self.norm, mt.floor(self.it / self.norm)
             self.read_in_LES_data(mt.floor(self.it / self.norm)) #TODO - change to interpolating
             self.upd_var.set_means(self.GMV)
             self.do_updrafts()
