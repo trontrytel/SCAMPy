@@ -13,7 +13,7 @@ from NetCDFIO cimport NetCDFIO_Stats
 cimport TimeStepping
 cimport EDMF_Updrafts
 cimport EDMF_Environment
-cimport EDMF_Rain
+#cimport EDMF_Rain
 
 from thermodynamic_functions cimport  *
 from microphysics_functions cimport  *
@@ -128,12 +128,12 @@ cdef class Scampify1d:
         # init Environment, Updraft and Rain
         self.env_var   = EDMF_Environment.EnvironmentVariables(namelist, self.Gr)
         self.upd_var   = EDMF_Updrafts.UpdraftVariables(1, namelist, paramlist, self.Gr)
-        self.rain_var  = EDMF_Rain.RainVariables(namelist, self.Gr)
+        #self.rain_var  = EDMF_Rain.RainVariables(namelist, self.Gr)
 
         # and their functions
         self.env_thr   = EDMF_Environment.EnvironmentThermodynamics(namelist, self.Gr, self.Ref, self.env_var, self.rain_var)
         self.upd_thr   = EDMF_Updrafts.UpdraftThermodynamics(1, self.Gr, self.Ref, self.upd_var, self.rain_var)
-        self.rain_phs  = EDMF_Rain.RainPhysics(self.Gr, self.Ref)
+        #self.rain_phs  = EDMF_Rain.RainPhysics(self.Gr, self.Ref)
 
         # read in initial updraft and environment properties
         for idx in range(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
@@ -153,7 +153,7 @@ cdef class Scampify1d:
         self.GMV.initialize_io(self.Stats)
         self.upd_var.initialize_io(self.Stats)
         self.env_var.initialize_io(self.Stats)
-        self.rain_var.initialize_io(self.Stats)
+        #self.rain_var.initialize_io(self.Stats)
 
     def read_in_LES_data(self, int it):
 
@@ -179,56 +179,56 @@ cdef class Scampify1d:
             self.GMV.THL.values[idx]  = self.p_dict["thetali_mean"    ][it, idx-self.Gr.gw]
             self.GMV.T.values[idx]    = self.p_dict["temperature_mean"][it, idx-self.Gr.gw]
 
-    def do_environment(self):
+    #def do_environment(self):
 
-        if self.env_var.EnvThermo_scheme == 'sa_quadrature':
-            self.env_thr.eos_update_SA_sgs(self.env_var, self.rain_var)
-        else:
-            self.env_thr.eos_update_SA_mean(self.env_var, self.rain_var)
+    #    #if self.env_var.EnvThermo_scheme == 'sa_quadrature':
+    #    #    self.env_thr.eos_update_SA_sgs(self.env_var, self.rain_var)
+    #    #else:
+    #    #    self.env_thr.eos_update_SA_mean(self.env_var, self.rain_var)
 
-    cpdef do_updrafts(self):
-        cdef:
-            Py_ssize_t k
-            eos_struct sa
+    #cpdef do_updrafts(self):
+    #    cdef:
+    #        Py_ssize_t k
+    #        eos_struct sa
 
-        for k in xrange(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
+    #    for k in xrange(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
 
-            if self.upd_var.Area.values[0,k] > 1e-20:
+    #        if self.upd_var.Area.values[0,k] > 1e-20:
 
-                # saturation adjustment
-                sa = eos(
-                    self.upd_thr.t_to_prog_fp,
-                    self.upd_thr.prog_to_t_fp,
-                    self.Ref.p0_half[k],
-                    self.upd_var.QT.values[0,k],
-                    self.upd_var.H.values[0,k]
-                )
+    #            # saturation adjustment
+    #            sa = eos(
+    #                self.upd_thr.t_to_prog_fp,
+    #                self.upd_thr.prog_to_t_fp,
+    #                self.Ref.p0_half[k],
+    #                self.upd_var.QT.values[0,k],
+    #                self.upd_var.H.values[0,k]
+    #            )
 
-                # autoconversion
-                mph = microphysics(
-                    sa.T,
-                    sa.ql,
-                    self.Ref.p0_half[k],
-                    self.upd_var.QT.values[0,k],
-                    self.upd_var.Area.values[0,k],
-                    self.rain_var.max_supersaturation,
-                    False
-                )
+    #            # autoconversion
+    #            mph = microphysics(
+    #                sa.T,
+    #                sa.ql,
+    #                self.Ref.p0_half[k],
+    #                self.upd_var.QT.values[0,k],
+    #                self.upd_var.Area.values[0,k],
+    #                self.rain_var.max_supersaturation,
+    #                False
+    #            )
 
-                # update updraft variables
-                self.upd_var.QL.values[0,k] = mph.ql
-                self.upd_var.T.values[0, k] = mph.T
-                self.upd_var.QT.values[0,k] = mph.qt
-                self.upd_var.H.values[0, k] = mph.thl
+    #            # update updraft variables
+    #            self.upd_var.QL.values[0,k] = mph.ql
+    #            self.upd_var.T.values[0, k] = mph.T
+    #            self.upd_var.QT.values[0,k] = mph.qt
+    #            self.upd_var.H.values[0, k] = mph.thl
 
-            else:
-                self.upd_var.Area.values[0,k] = 0.
-                self.upd_var.QL.values[0,k] = 0.
-                self.upd_var.T.values[0, k] = self.GMV.T.values[k]
-                self.upd_var.QT.values[0,k] = self.GMV.QT.values[k]
-                self.upd_var.H.values[0, k] = self.GMV.H.values[k]
+    #        else:
+    #            self.upd_var.Area.values[0,k] = 0.
+    #            self.upd_var.QL.values[0,k] = 0.
+    #            self.upd_var.T.values[0, k] = self.GMV.T.values[k]
+    #            self.upd_var.QT.values[0,k] = self.GMV.QT.values[k]
+    #            self.upd_var.H.values[0, k] = self.GMV.H.values[k]
 
-                #TODO - update rain variables
+    #            #TODO - update rain variables
 
     def run(self):
 
@@ -240,8 +240,8 @@ cdef class Scampify1d:
             print self.it, self.norm, mt.floor(self.it / self.norm)
             self.read_in_LES_data(mt.floor(self.it / self.norm)) #TODO - change to interpolating
             self.upd_var.set_means(self.GMV)
-            self.do_updrafts()
-            self.do_environment()
+            #self.do_updrafts()
+            #self.do_environment()
             #self.do_rain()
             self.upd_var.set_means(self.GMV)
 
@@ -264,9 +264,9 @@ cdef class Scampify1d:
             self.Stats.open_files()
             self.Stats.write_simulation_time(self.TS.t)
             self.GMV.io(self.Stats)
-            self.upd_var.io(self.Stats, self.Ref)
-            self.env_var.io(self.Stats, self.Ref)
-            self.rain_var.io(self.Stats, self.Ref)
+            #self.upd_var.io(self.Stats, self.Ref)
+            #self.env_var.io(self.Stats, self.Ref)
+            #self.rain_var.io(self.Stats, self.Ref)
             self.Stats.close_files()
 
             self.TS.t += self.TS.dt
