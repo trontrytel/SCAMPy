@@ -125,10 +125,10 @@ cdef class GridMeanVariables:
         self.Gr = Gr
         self.Ref = Ref
 
-        self.mean_lwp = 0.
-        self.mean_cloud_base   = 0.
-        self.mean_cloud_top    = 0.
-        self.mean_cloud_cover  = 0.
+        self.lwp = 0.
+        self.cloud_base   = 0.
+        self.cloud_top    = 0.
+        self.cloud_cover  = 0.
 
         self.U = VariablePrognostic(Gr.nzg, 'half', 'velocity', 'sym','u', 'm/s' )
         self.V = VariablePrognostic(Gr.nzg, 'half', 'velocity','sym', 'v', 'm/s' )
@@ -156,7 +156,7 @@ cdef class GridMeanVariables:
         self.B   = VariableDiagnostic(Gr.nzg, 'half', 'scalar', 'sym', 'buoyancy',        'm^2/s^3')
         self.THL = VariableDiagnostic(Gr.nzg, 'half', 'scalar', 'sym', 'thetal',          'K')
         self.QR  = VariableDiagnostic(Gr.nzg, 'half', 'scalar', 'sym', 'qr',              'kg/kg')
-        self.CF  = VariableDiagnostic(Gr.nzg, 'half', 'scalar', 'sym', 'cloud cfraction', 'kg/kg')
+        self.cloud_fraction  = VariableDiagnostic(Gr.nzg, 'half', 'scalar', 'sym', 'cloud cfraction', 'kg/kg')
 
         # TKE   TODO   repeated from EDMF_Environment.pyx logic
         if  namelist['turbulence']['scheme'] == 'EDMF_PrognosticTKE':
@@ -174,9 +174,9 @@ cdef class GridMeanVariables:
             self.calc_scalar_var = False
 
         try:
-            self.EnvThermo_scheme = str(namelist['thermodynamics']['saturation'])
+            self.EnvThermo_scheme = str(namelist['thermodynamics']['sgs'])
         except:
-            self.EnvThermo_scheme = 'sa_mean'
+            self.EnvThermo_scheme = 'mean'
 
         #Now add the 2nd moment variables
         if self.calc_tke:
@@ -278,29 +278,29 @@ cdef class GridMeanVariables:
             Stats.write_profile('QTvar_mean',self.QTvar.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
             Stats.write_profile('HQTcov_mean',self.HQTcov.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
 
-        Stats.write_profile('cloud_fraction_mean',self.CF.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        Stats.write_profile('cloud_fraction_mean',self.cloud_fraction.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
 
         self.mean_cloud_diagnostics()
-        Stats.write_ts('lwp_mean', self.mean_lwp)
-        Stats.write_ts('cloud_base_mean',  self.mean_cloud_base)
-        Stats.write_ts('cloud_top_mean',   self.mean_cloud_top)
-        Stats.write_ts('cloud_cover_mean', self.mean_cloud_cover)
+        Stats.write_ts('lwp_mean', self.lwp)
+        Stats.write_ts('cloud_base_mean',  self.cloud_base)
+        Stats.write_ts('cloud_top_mean',   self.cloud_top)
+        Stats.write_ts('cloud_cover_mean', self.cloud_cover)
         return
 
     cpdef mean_cloud_diagnostics(self):
         cdef Py_ssize_t k
-        self.mean_lwp = 0.
-        self.mean_cloud_base   = self.Gr.z_half[self.Gr.nzg - self.Gr.gw - 1]
-        self.mean_cloud_top    = 0.
-        self.mean_cloud_cover  = 0.
+        self.lwp = 0.
+        self.cloud_base   = self.Gr.z_half[self.Gr.nzg - self.Gr.gw - 1]
+        self.cloud_top    = 0.
+        self.cloud_cover  = 0.
 
         for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
-            self.mean_lwp += self.Ref.rho0_half[k] * self.QL.values[k] * self.Gr.dz
+            self.lwp += self.Ref.rho0_half[k] * self.QL.values[k] * self.Gr.dz
 
             if self.QL.values[k] > 1e-8:
-                self.mean_cloud_base  = fmin(self.mean_cloud_base,  self.Gr.z_half[k])
-                self.mean_cloud_top   = fmax(self.mean_cloud_top,   self.Gr.z_half[k])
-                self.mean_cloud_cover = fmax(self.mean_cloud_cover, self.CF.values[k])
+                self.cloud_base  = fmin(self.cloud_base,  self.Gr.z_half[k])
+                self.cloud_top   = fmax(self.cloud_top,   self.Gr.z_half[k])
+                self.cloud_cover = fmax(self.cloud_cover, self.cloud_fraction.values[k])
         return
 
     cpdef satadjust(self):
