@@ -13,7 +13,7 @@ from NetCDFIO cimport NetCDFIO_Stats
 cimport TimeStepping
 cimport EDMF_Updrafts
 cimport EDMF_Environment
-#cimport EDMF_Rain
+cimport EDMF_Rain
 
 from thermodynamic_functions cimport  *
 from microphysics_functions cimport  *
@@ -186,10 +186,12 @@ cdef class Scampify1d:
     #    #else:
     #    #    self.env_thr.eos_update_SA_mean(self.env_var, self.rain_var)
 
-    #cpdef do_updrafts(self):
-    #    cdef:
-    #        Py_ssize_t k
-    #        eos_struct sa
+    cpdef do_updrafts(self):
+        cdef:
+            Py_ssize_t k
+            eos_struct sa
+
+        pass
 
     #    for k in xrange(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
 
