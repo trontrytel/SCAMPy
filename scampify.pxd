@@ -35,3 +35,4 @@ cdef class Scampify1d:
         dict v_dict
 
     cpdef do_updrafts(self)
+    cpdef do_rain(self)

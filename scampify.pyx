@@ -128,12 +128,12 @@ cdef class Scampify1d:
         # init Environment, Updraft and Rain
         self.env_var   = EDMF_Environment.EnvironmentVariables(namelist, self.Gr)
         self.upd_var   = EDMF_Updrafts.UpdraftVariables(1, namelist, paramlist, self.Gr)
-        #self.rain_var  = EDMF_Rain.RainVariables(namelist, self.Gr)
+        self.rain_var  = EDMF_Rain.RainVariables(namelist, self.Gr)
 
         # and their functions
         self.env_thr   = EDMF_Environment.EnvironmentThermodynamics(namelist, self.Gr, self.Ref, self.env_var, self.rain_var)
         self.upd_thr   = EDMF_Updrafts.UpdraftThermodynamics(1, self.Gr, self.Ref, self.upd_var, self.rain_var)
-        #self.rain_phs  = EDMF_Rain.RainPhysics(self.Gr, self.Ref)
+        self.rain_phs  = EDMF_Rain.RainPhysics(self.Gr, self.Ref)
 
         # read in initial updraft and environment properties
         for idx in range(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
@@ -153,7 +153,7 @@ cdef class Scampify1d:
         self.GMV.initialize_io(self.Stats)
         self.upd_var.initialize_io(self.Stats)
         self.env_var.initialize_io(self.Stats)
-        #self.rain_var.initialize_io(self.Stats)
+        self.rain_var.initialize_io(self.Stats)
 
     def read_in_LES_data(self, int it):
 
@@ -179,12 +179,12 @@ cdef class Scampify1d:
             self.GMV.THL.values[idx]  = self.p_dict["thetali_mean"    ][it, idx-self.Gr.gw]
             self.GMV.T.values[idx]    = self.p_dict["temperature_mean"][it, idx-self.Gr.gw]
 
-    #def do_environment(self):
+    def do_environment(self):
 
-    #    #if self.env_var.EnvThermo_scheme == 'sa_quadrature':
-    #    #    self.env_thr.eos_update_SA_sgs(self.env_var, self.rain_var)
-    #    #else:
-    #    #    self.env_thr.eos_update_SA_mean(self.env_var, self.rain_var)
+        if self.env_var.EnvThermo_scheme == 'quadrature':
+            self.env_thr.eos_update_SA_sgs(self.env_var, self.rain_var)
+        else:
+            self.env_thr.eos_update_SA_mean(self.env_var, self.rain_var)
 
     cpdef do_updrafts(self):
         cdef:
@@ -232,6 +232,13 @@ cdef class Scampify1d:
 
     #            #TODO - update rain variables
 
+    cpdef do_rain(self):
+        cdef:
+            Py_ssize_t k
+
+        pass
+
+
     def run(self):
 
         self.TS.t = 0.
@@ -242,9 +249,9 @@ cdef class Scampify1d:
             print self.it, self.norm, mt.floor(self.it / self.norm)
             self.read_in_LES_data(mt.floor(self.it / self.norm)) #TODO - change to interpolating
             self.upd_var.set_means(self.GMV)
-            #self.do_updrafts()
-            #self.do_environment()
-            #self.do_rain()
+            self.do_updrafts() #TODO - pass
+            self.do_environment()
+            self.do_rain() # TODO - pass
             self.upd_var.set_means(self.GMV)
 
             # TODO - calculate the GMV QL and QR
@@ -266,9 +273,9 @@ cdef class Scampify1d:
             self.Stats.open_files()
             self.Stats.write_simulation_time(self.TS.t)
             self.GMV.io(self.Stats)
-            #self.upd_var.io(self.Stats, self.Ref)
-            #self.env_var.io(self.Stats, self.Ref)
-            #self.rain_var.io(self.Stats, self.Ref)
+            self.upd_var.io(self.Stats, self.Ref)
+            self.env_var.io(self.Stats, self.Ref)
+            self.rain_var.io(self.Stats, self.Ref)
             self.Stats.close_files()
 
             self.TS.t += self.TS.dt

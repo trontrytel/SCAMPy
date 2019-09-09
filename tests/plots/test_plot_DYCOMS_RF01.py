@@ -22,8 +22,30 @@ def sim_data(request):
     # generate namelists and paramlists
     setup = cmn.simulation_setup('DYCOMS_RF01')
 
-    # run scampy
-    scampy.main1d(setup["namelist"], setup["paramlist"])
+    setup['namelist']['grid']['dims'] = 1
+    setup['namelist']['grid']['dz'] = 5.
+    setup['namelist']['grid']['gw'] = 2
+    setup['namelist']['grid']['nz'] = 300
+
+    setup['namelist']['time_stepping']['t_max'] = 14400
+    setup['namelist']['time_stepping']['dt'] = 2
+
+    setup['namelist']["stats_io"]["frequency"] = 60.
+
+    # additional parameters for offline runs
+    scampifylist = {}
+    scampifylist["offline"] = False
+    scampifylist["nc_file"] = '../SCAMPY_tests/plots/DYCOMS_comparison/DYCOMS_SA_LES_new_tracers/Stats.DYCOMS_RF01.Restart_3.nc'
+    scampifylist["les_stats_freq"] = 10.
+
+    if scampifylist["offline"]:
+        # run scampy offline
+        print "offline run"
+        scampy.main_scampify(setup["namelist"], setup["paramlist"], scampifylist)
+    else:
+        # run scampy online
+        print "online run"
+        scampy.main1d(setup["namelist"], setup["paramlist"])
 
     # simulation results
     sim_data = Dataset(setup["outfile"], 'r')
