@@ -20,6 +20,7 @@ import plot_scripts as pls
 def sim_data(request):
 
     # generate namelists and paramlists
+    cmn.removing_files
     setup = cmn.simulation_setup('DYCOMS_RF01')
 
     setup['namelist']['grid']['dims'] = 1
@@ -32,12 +33,17 @@ def sim_data(request):
 
     setup['namelist']["stats_io"]["frequency"] = 60.
 
+    setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
+    setup['namelist']['microphysics']['rain_model']          = True
+    setup['namelist']['microphysics']['max_supersaturation'] = 0.05
+
     # additional parameters for offline runs
     scampifylist = {}
-    scampifylist["offline"] = False
-    scampifylist["nc_file"] = '../SCAMPY_tests/plots/DYCOMS_comparison/DYCOMS_SA_LES_new_tracers/Stats.DYCOMS_RF01.Restart_3.nc'
+    scampifylist["offline"] = True
+    scampifylist["nc_file"] = '../../SCAMPY_tests/plots/DYCOMS_comparison/DYCOMS_SA_LES_new_tracers/Stats.DYCOMS_RF01.Restart_3.nc'
     scampifylist["les_stats_freq"] = 10.
 
+    subprocess.call("python setup.py build_ext --inplace", shell=True, cwd='../')
     if scampifylist["offline"]:
         # run scampy offline
         print "offline run"
@@ -55,78 +61,22 @@ def sim_data(request):
 
     return sim_data
 
-def test_plot_DYCOMS_RF01(sim_data):
+def test_plot_timeseries_DYCOMS_RF01(sim_data):
     """
-    plot DYCOMS_RF01 quicklook profiles
+    plot DYCOMS_RF01 timeseries
     """
-    data_to_plot = cmn.read_data_avg(sim_data, n_steps=100)
-
-    pls.plot_mean(data_to_plot,   "DYCOMS_RF01_quicklook.pdf")
-    pls.plot_drafts(data_to_plot, "DYCOMS_RF01_quicklook_drafts.pdf")
-
-def test_plot_var_covar_DYCOMS_RF01(sim_data):
-    """
-    plot DYCOMS_RF01 quicklook profiles
-    """
-    data_to_plot = cmn.read_data_avg(sim_data, n_steps=100, var_covar=True)
-
-    pls.plot_var_covar_mean(data_to_plot,       "DYCOMS_RF01_var_covar_mean.pdf")
-    pls.plot_var_covar_components(data_to_plot, "DYCOMS_RF01_var_covar_components.pdf")
-
-def test_plot_timeseries_DYCOMS(sim_data):
-    """
-    plot timeseries
-    """
+    # make directory
+    localpath = os.getcwd()
+    try:
+        os.mkdir(localpath + "/plots/output/DYCOMS_RF01/")
+    except:
+        print('DYCOMS_RF01 folder exists')
+    try:
+        os.mkdir(localpath + "/plots/output/DYCOMS_RF01/all_variables/")
+    except:
+        print('DYCOMS_RF01/all_variables folder exists')
+    les_data = Dataset(localpath + '/les_data/DYCOMS_RF01.nc', 'r')
     data_to_plot = cmn.read_data_srs(sim_data)
+    les_data_to_plot = cmn.read_les_data_srs(les_data)
 
-    pls.plot_timeseries(data_to_plot, "DYCOMS")
-
-def test_plot_timeseries_1D_DYCOMS_RF01(sim_data):
-    """
-    plot DYCOMS_RF01 1D timeseries
-    """
-    data_to_plot = cmn.read_data_timeseries(sim_data)
-
-    pls.plot_timeseries_1D(data_to_plot, "DYCOMS_RF01_timeseries_1D.pdf")
-
-def test_DYCOMS_RF01_radiation(sim_data):
-    """
-    plots DYCOMS_RF01
-    """
-    import matplotlib as mpl
-    mpl.use('Agg') # Must be before importing matplotlib.pyplot or pylab!
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure(1)
-    fig.set_figheight(12)
-    fig.set_figwidth(14)
-    mpl.rcParams.update({'font.size': 18})
-    mpl.rc('lines', linewidth=4, markersize=10)
-
-    plt_data = cmn.read_data_avg(sim_data,     n_steps=100, var_covar=False)
-    rad_data = cmn.read_rad_data_avg(sim_data, n_steps=100)
-
-    plots = []
-    # loop over simulation and reference data for t=0 and t=-1
-    x_lab  = ['longwave radiative flux [W/m2]', 'dTdt [K/day]',       'QT [g/kg]',         'QL [g/kg]']
-    legend = ["lower right",                    "lower left",         "lower left",        "lower right"]
-    line   = ['--',                             '--',                 '-',                 '-']
-    plot_y = [rad_data["rad_flux"],             rad_data["rad_dTdt"], plt_data["qt_mean"], plt_data["ql_mean"]]
-    plot_x = [rad_data["z"],                    plt_data["z_half"],   plt_data["z_half"],  plt_data["z_half"]]
-    color  = ["palegreen",                      "forestgreen"]
-    label  = ["ini",                            "end"        ]
-
-    for plot_it in range(4):
-        plots.append(plt.subplot(2,2,plot_it+1))
-                              #(rows, columns, number)
-        for it in range(2):
-            plots[plot_it].plot(plot_y[plot_it][it], plot_x[plot_it], '.-', color=color[it], label=label[it])
-        plots[plot_it].legend(loc=legend[plot_it])
-        plots[plot_it].set_xlabel(x_lab[plot_it])
-        plots[plot_it].set_ylabel('z [m]')
-    plots[2].set_xlim([1, 10])
-    plots[3].set_xlim([-0.1, 0.5])
-
-    plt.savefig("plots/output/DYCOMS_RF01_radiation.pdf")
-    plt.clf()
-
+    pls.plot_humidities(data_to_plot, les_data_to_plot,3,4,         "DYCOMS_RF01_humidities.pdf",         folder="plots/output/DYCOMS_RF01/")

@@ -5,6 +5,7 @@ from netCDF4 import Dataset
 
 from Cases import CasesFactory
 from Cases import CasesBase
+
 from Grid  cimport Grid
 from ReferenceState cimport ReferenceState
 from Variables cimport GridMeanVariables
@@ -171,8 +172,6 @@ cdef class Scampify1d:
             self.env_var.QTvar.values[idx]   = self.v_dict['QTvar'       ][it, idx-self.Gr.gw]
             self.env_var.HQTcov.values[idx]  = self.v_dict['HQTcov'      ][it, idx-self.Gr.gw]
 
-            #print idx, self.env_var.H.values[idx], self.env_var.QT.values[idx], self.env_var.EnvArea.values[idx]
-
             # read GMV
             self.GMV.W.values[idx]    = self.p_dict["w_mean"          ][it, idx-self.Gr.gw]
             self.GMV.QT.values[idx]   = self.p_dict["qt_mean"         ][it, idx-self.Gr.gw]
@@ -182,62 +181,91 @@ cdef class Scampify1d:
     def do_environment(self):
 
         if self.env_var.EnvThermo_scheme == 'quadrature':
-            self.env_thr.eos_update_SA_sgs(self.env_var, self.rain_var)
+            self.env_thr.sgs_quadrature(self.env_var, self.rain_var)
         else:
-            self.env_thr.eos_update_SA_mean(self.env_var, self.rain_var)
+            self.env_thr.sgs_mean(self.env_var, self.rain_var)
 
-    cpdef do_updrafts(self):
+    cpdef do_updraft_scalars(self):
         cdef:
             Py_ssize_t k
             eos_struct sa
 
-        pass
+        for k in xrange(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
 
-    #    for k in xrange(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
+            if self.upd_var.Area.values[0,k] > 1e-20:
 
-    #        if self.upd_var.Area.values[0,k] > 1e-20:
+                # saturation adjustment
+                sa = eos(
+                    self.upd_thr.t_to_prog_fp,
+                    self.upd_thr.prog_to_t_fp,
+                    self.Ref.p0_half[k],
+                    self.upd_var.QT.values[0,k],
+                    self.upd_var.H.values[0,k]
+                )
+                self.upd_var.QL.values[0,k] = sa.ql
+                self.upd_var.T.values[0, k] = sa.T
 
-    #            # saturation adjustment
-    #            sa = eos(
-    #                self.upd_thr.t_to_prog_fp,
-    #                self.upd_thr.prog_to_t_fp,
-    #                self.Ref.p0_half[k],
-    #                self.upd_var.QT.values[0,k],
-    #                self.upd_var.H.values[0,k]
-    #            )
+            else:
+                self.upd_var.Area.values[0,k] = 0.
+                self.upd_var.QL.values[0,k] = 0.
+                self.upd_var.T.values[0, k] = self.GMV.T.values[k]
 
-    #            # autoconversion
-    #            mph = microphysics(
-    #                sa.T,
-    #                sa.ql,
-    #                self.Ref.p0_half[k],
-    #                self.upd_var.QT.values[0,k],
-    #                self.upd_var.Area.values[0,k],
-    #                self.rain_var.max_supersaturation,
-    #                False
-    #            )
+    cpdef do_updraft_microphysics(self):
+        cdef:
+            Py_ssize_t k
 
-    #            # update updraft variables
-    #            self.upd_var.QL.values[0,k] = mph.ql
-    #            self.upd_var.T.values[0, k] = mph.T
-    #            self.upd_var.QT.values[0,k] = mph.qt
-    #            self.upd_var.H.values[0, k] = mph.thl
+            mph_struct  mph
 
-    #        else:
-    #            self.upd_var.Area.values[0,k] = 0.
-    #            self.upd_var.QL.values[0,k] = 0.
-    #            self.upd_var.T.values[0, k] = self.GMV.T.values[k]
-    #            self.upd_var.QT.values[0,k] = self.GMV.QT.values[k]
-    #            self.upd_var.H.values[0, k] = self.GMV.H.values[k]
+        for k in xrange(self.Gr.nzg):
 
-    #            #TODO - update rain variables
+            if self.upd_var.QT.values[0,k] > 1e-20:
+
+                # autoconversion, TODO - add accretion
+                mph = microphysics_rain_src(
+                    self.upd_var.T.values[0,k], self.upd_var.QL.values[0,k], self.Ref.p0_half[k],
+                    self.upd_var.QT.values[0,k], self.upd_var.Area.values[0,k],
+                    self.rain_var.max_supersaturation
+                )
+
+                # update Updraft.new
+                self.upd_var.QT.values[0,k] = mph.qt
+                self.upd_var.QL.values[0,k] = mph.ql
+                self.upd_var.H.values[0,k]  = mph.thl
+
+                # update rain sources of state variables
+                self.upd_thr.prec_source_qt[0,k] -= mph.qr_src * self.upd_var.Area.values[0,k]
+                self.upd_thr.prec_source_h[0,k]  += mph.thl_rain_src * self.upd_var.Area.values[0,k]
+        return
+
+    cpdef apply_rain_evaporation_sources_to_GMV_H_QT(self):
+        cdef:
+            Py_ssize_t k
+
+        with nogil:
+            for k in xrange(self.Gr.gw, self.Gr.nzg):
+                self.GMV.H.values[k] += self.rain_phs.rain_evap_source_h[k]
+                self.GMV.QT.values[k] += self.rain_phs.rain_evap_source_qt[k]
+        return
 
     cpdef do_rain(self):
         cdef:
             Py_ssize_t k
 
-        pass
+        # add rain sources and sinks to the grid mean
+        self.rain_var.sum_subdomains_rain(self.upd_thr, self.env_thr)
 
+        # rain fall (all three categories are assumed to be falling though "grid-mean" conditions
+        self.rain_phs.solve_rain_fall(self.GMV, self.TS, self.rain_var.QR,     self.rain_var.RainArea)
+        self.rain_phs.solve_rain_fall(self.GMV, self.TS, self.rain_var.Upd_QR, self.rain_var.Upd_RainArea)
+        self.rain_phs.solve_rain_fall(self.GMV, self.TS, self.rain_var.Env_QR, self.rain_var.Env_RainArea)
+
+        # rain evaporation (all three categories are assumed to be evaporating in "grid-mean" conditions
+        self.rain_phs.solve_rain_evap(self.GMV, self.TS, self.rain_var.QR,     self.rain_var.RainArea)
+        self.rain_phs.solve_rain_evap(self.GMV, self.TS, self.rain_var.Upd_QR, self.rain_var.Upd_RainArea)
+        self.rain_phs.solve_rain_evap(self.GMV, self.TS, self.rain_var.Env_QR, self.rain_var.Env_RainArea)
+
+        # update GMV_new with rain evaporation source terms
+        self.apply_rain_evaporation_sources_to_GMV_H_QT()
 
     def run(self):
 
@@ -246,29 +274,32 @@ cdef class Scampify1d:
         print "scampify!"
 
         while self.TS.t <= self.TS.t_max:
-            print self.it, self.norm, mt.floor(self.it / self.norm)
+
             self.read_in_LES_data(mt.floor(self.it / self.norm)) #TODO - change to interpolating
             self.upd_var.set_means(self.GMV)
-            self.do_updrafts() #TODO - pass
+
+            self.upd_thr.clear_precip_sources()
+
+            self.do_updraft_scalars()
+            self.do_updraft_microphysics()
+
             self.do_environment()
-            self.do_rain() # TODO - pass
+
+            self.do_rain()
+
             self.upd_var.set_means(self.GMV)
 
-            # TODO - calculate the GMV QL and QR
             for idx in range(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
 
-                #self.upd_var.QL.bulkvalues[idx] = self.upd_var.QL.values[0, idx]
                 self.upd_var.Area.bulkvalues[idx] = self.upd_var.Area.values[0, idx]
+                self.upd_var.QL.bulkvalues[idx] = self.upd_var.QL.values[0, idx]
+                self.upd_var.QT.bulkvalues[idx] = self.upd_var.QT.values[0, idx]
 
                 self.GMV.QT.values[idx] = self.upd_var.QT.bulkvalues[idx] * self.upd_var.Area.bulkvalues[idx] +\
                                           self.env_var.QT.values[idx]     * self.env_var.EnvArea.values[idx]
 
                 self.GMV.QL.values[idx] = self.upd_var.QL.bulkvalues[idx] * self.upd_var.Area.bulkvalues[idx] +\
                                           self.env_var.QL.values[idx]     * self.env_var.EnvArea.values[idx]
-
-                self.GMV.QR.values[idx] = 0.#self.upd_var.QR.bulkvalues[idx] * self.upd_var.Area.bulkvalues[idx] +\
-                #self.env_var.QR.values[idx]     * self.env_var.EnvArea.values[idx]
-
 
             self.Stats.open_files()
             self.Stats.write_simulation_time(self.TS.t)
