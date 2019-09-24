@@ -50,7 +50,7 @@ def sim_data(request):
     else:
         # run scampy online
         print "online run"
-        scampy.main1d(setup["namelist"], setup["paramlist"])
+        #scampy.main1d(setup["namelist"], setup["paramlist"])
 
     # simulation results
     scm_data = Dataset(setup["scm_outfile"], 'r')
@@ -107,8 +107,13 @@ def test_plot_timeseries_DYCOMS_RF01(sim_data):
         folder="scampify_plots/output/DYCOMS_RF01_drizzle/"
     )
 
+    cb_min = [285,   285,   288,  0,      0,  9,   0,   0,    0,     0,     0,     0, -0.16,    0,   0]
+    cb_max = [307.5, 307.5, 300, 12.5, 12.5, 11, 0.8, 0.8, 0.64, 0.002, 0.002, 0.002,     0, 0.24, 1.6]
+
     pls.plot_timeseries(
         scm_data_to_plot,
         les_data_to_plot,
+        cb_min,
+        cb_max,
         folder="scampify_plots/output/DYCOMS_RF01_drizzle/"
     )

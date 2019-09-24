@@ -156,7 +156,7 @@ def plot_timeseries_1D(scm_data, les_data, folder="scampify_plots/output/"):
         plt.savefig(folder + fig_name[plot_it]+".pdf")
         plt.clf()
 
-def plot_timeseries(scm_data, les_data, folder="scampify_plots/output/"):
+def plot_timeseries(scm_data, les_data, cb_min, cb_max, folder="scampify_plots/output/"):
     """
     Plots the time series of Scampy simulations
 
@@ -222,18 +222,21 @@ def plot_timeseries(scm_data, les_data, folder="scampify_plots/output/"):
             les_field[np.where(a_les==0.0)] = np.nan
             les_field[np.where(np.isnan(a_les))] = np.nan
 
+        levels = np.linspace(cb_min[plot_it], cb_max[plot_it], 20)
+        cmap = 'viridis_r' # "RdBu_r"
+
         plt.subplot(211)
-        plt.contourf(les_time, les_z_half, les_field, cmap='RdBu_r')
-        plt.colorbar()
+        cntrf = plt.contourf(les_time, les_z_half, les_field, cmap=cmap, levels=levels, vmin=cb_min[plot_it], vmax=cb_max[plot_it])
+        plt.colorbar(cntrf)
         plt.ylabel('height [km]')
-        #plt.ylim([0, np.max(scm_data["z_half"])])
+        plt.ylim([0, np.max(scm_data["z_half"]/1000.)])
 
         plt.subplot(212)
-        plt.contourf(scm_time, scm_z_half, scm_field, cmap='RdBu_r')
-        plt.colorbar()
+        cntrf = plt.contourf(scm_time, scm_z_half, scm_field, cmap=cmap, levels=levels, vmin=cb_min[plot_it], vmax=cb_max[plot_it])
+        plt.colorbar(cntrf)
         plt.xlabel('time [h]')
         plt.ylabel('height [km]')
-        #plt.ylim([0, np.max(scm_data["z_half"])])
+        plt.ylim([0, np.max(scm_data["z_half"]/1000.)])
 
         plt.tight_layout()
         plt.savefig(folder + fig_name[plot_it]+".pdf")

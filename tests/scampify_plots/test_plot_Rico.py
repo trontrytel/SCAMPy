@@ -45,7 +45,7 @@ def sim_data(request):
     else:
         # run scampy online
         print "online run"
-        scampy.main1d(setup["namelist"], setup["paramlist"])
+        #scampy.main1d(setup["namelist"], setup["paramlist"])
 
     # simulation results
     scm_data = Dataset(setup["scm_outfile"], 'r')
@@ -102,8 +102,13 @@ def test_plot_timeseries_Rico(sim_data):
         folder="scampify_plots/output/Rico/"
     )
 
+    cb_min = [296, 296, 297,  0,    0,   7.5,    0,    0,   0,    0,     0,   0,  -0.02,    0, 0]
+    cb_max = [332, 332, 305, 17.5, 17.5, 18,  0.05, 0.02, 2.8, 0.007, 0.004, 0.56,    0, 0.24, 5]
+
     pls.plot_timeseries(
         scm_data_to_plot,
         les_data_to_plot,
+        cb_min,
+        cb_max,
         folder="scampify_plots/output/Rico/"
     )

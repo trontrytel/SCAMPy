@@ -96,8 +96,13 @@ def test_plot_timeseries_TRMM_LBA(sim_data):
         folder="scampify_plots/output/TRMM_LBA/"
     )
 
+    cb_min = [280, 280, 294,  0,  0,  0,    0,     0,   0,    0,     0,   0, -0.35,    0,    0]
+    cb_max = [370, 370, 348, 20, 20, 20, 0.09, 0.028, 2.8, 0.09, 0.064, 2.4,     0, 0.28, 10.5]
+
     pls.plot_timeseries(
         scm_data_to_plot,
         les_data_to_plot,
+        cb_min,
+        cb_max,
         folder="scampify_plots/output/TRMM_LBA/"
     )
