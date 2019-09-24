@@ -97,7 +97,7 @@ cdef class EnvironmentVariables:
         self.THL = EnvironmentVariable(nz, 'half', 'scalar', 'thetal', 'K')
         self.T = EnvironmentVariable( nz, 'half', 'scalar', 'temperature','K' )
         self.B = EnvironmentVariable( nz, 'half', 'scalar', 'buoyancy','m^2/s^3' )
-        self.EnvArea = EnvironmentVariable(nz, 'half', 'scalar', 'env_area', '-')
+        self.Area = EnvironmentVariable(nz, 'half', 'scalar', 'env_area', '-')
         self.cloud_fraction = EnvironmentVariable(nz, 'half', 'scalar', 'env_cloud_fraction', '-')
 
         # TODO - the flag setting is repeated from Variables.pyx logic
@@ -173,7 +173,7 @@ cdef class EnvironmentVariables:
         Stats.write_profile('env_w', self.W.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_qt', self.QT.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_ql', self.QL.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
-        Stats.write_profile('env_area', self.EnvArea.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        Stats.write_profile('env_area', self.Area.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_temperature', self.T.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('env_RH', self.RH.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
 
@@ -207,9 +207,9 @@ cdef class EnvironmentVariables:
         self.lwp         = 0.
 
         for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
-            self.lwp += Ref.rho0_half[k] * self.QL.values[k] * self.EnvArea.values[k] * self.Gr.dz
+            self.lwp += Ref.rho0_half[k] * self.QL.values[k] * self.Area.values[k] * self.Gr.dz
 
-            if self.QL.values[k] > 1e-8 and self.EnvArea.values[k] > 1e-3:
+            if self.QL.values[k] > 1e-8 and self.Area.values[k] > 1e-3:
                 self.cloud_base  = fmin(self.cloud_base,  self.Gr.z_half[k])
                 self.cloud_top   = fmax(self.cloud_top,   self.Gr.z_half[k])
                 self.cloud_cover = fmax(self.cloud_cover, self.cloud_fraction.values[k])
@@ -262,8 +262,8 @@ cdef class EnvironmentThermodynamics:
     cdef void update_EnvRain_sources(self, Py_ssize_t k, EnvironmentVariables EnvVar,
                                      double qr_src, double thl_rain_src) nogil:
 
-        self.prec_source_qt[k] = -qr_src * EnvVar.EnvArea.values[k]
-        self.prec_source_h[k]  = thl_rain_src * EnvVar.EnvArea.values[k]
+        self.prec_source_qt[k] = -qr_src * EnvVar.Area.values[k]
+        self.prec_source_h[k]  = thl_rain_src * EnvVar.Area.values[k]
 
         return
 
@@ -271,7 +271,7 @@ cdef class EnvironmentThermodynamics:
                                double T, double th, double qt, double ql,
                                double qv) nogil :
         if ql > 0.0:
-            EnvVar.cloud_fraction.values[k] = 1.
+            EnvVar.cloud_fraction.values[k] = EnvVar.Area.values[k]
             self.th_cloudy[k]   = th
             self.t_cloudy[k]    = T
             self.qt_cloudy[k]   = qt
@@ -314,7 +314,7 @@ cdef class EnvironmentThermodynamics:
         return
 
 
-    cdef void sgs_mean(self, EnvironmentVariables EnvVar, RainVariables Rain):
+    cdef void sgs_mean(self, EnvironmentVariables EnvVar, RainVariables Rain, double dt):
 
         cdef:
             Py_ssize_t k
@@ -332,10 +332,16 @@ cdef class EnvironmentThermodynamics:
                     self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k],
                     EnvVar.QT.values[k], EnvVar.H.values[k]
                 )
-                # autoconversion, TODO - add accretion
+                # autoconversion and accretion
                 mph = microphysics_rain_src(
-                    sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k],
-                    EnvVar.EnvArea.values[k], Rain.max_supersaturation
+                    EnvVar.QT.values[k],
+                    sa.ql,
+                    Rain.Env_QR.values[k],
+                    EnvVar.Area.values[k],
+                    sa.T,
+                    self.Ref.p0_half[k],
+                    self.Ref.rho0_half[k],
+                    dt
                 )
 
                 self.update_EnvVar(k, EnvVar, sa.T, mph.thl, mph.qt, mph.ql, mph.alpha)
@@ -343,7 +349,7 @@ cdef class EnvironmentThermodynamics:
                 self.update_EnvRain_sources(k, EnvVar, mph.qr_src, mph.thl_rain_src)
         return
 
-    cdef void sgs_quadrature(self, EnvironmentVariables EnvVar, RainVariables Rain):
+    cdef void sgs_quadrature(self, EnvironmentVariables EnvVar, RainVariables Rain, double dt):
         a, w = np.polynomial.hermite.hermgauss(self.quadrature_order)
 
         #TODO - remember you output source terms multipierd by dt (bec. of instanteneous autoconcv)
@@ -424,10 +430,16 @@ cdef class EnvironmentThermodynamics:
                             )
                             # autoconversion, TODO - add accretiom
                             mph = microphysics_rain_src(
-                                sa.T, sa.ql, self.Ref.p0_half[k], qt_hat,
-                                EnvVar.EnvArea.values[k],
-                                Rain.max_supersaturation
+                                qt_hat,
+                                sa.ql,
+                                Rain.Env_QR.values[k],
+                                EnvVar.Area.values[k],
+                                sa.T,
+                                self.Ref.p0_half[k],
+                                self.Ref.rho0_half[k],
+                                dt
                             )
+
                             # environmental variables
                             inner_env[i_ql]     += mph.ql     * weights[m_h] * sqpi_inv
                             inner_env[i_T]      += sa.T       * weights[m_h] * sqpi_inv
@@ -464,7 +476,7 @@ cdef class EnvironmentThermodynamics:
                     self.update_EnvRain_sources(k, EnvVar, -outer_src[i_Sqt], outer_src[i_SH])
 
                     # update cloudy/dry variables for buoyancy in TKE
-                    EnvVar.cloud_fraction.values[k] = outer_env[i_cf]
+                    EnvVar.cloud_fraction.values[k] = outer_env[i_cf] * EnvVar.Area.values[k]
                     self.qt_dry[k]    = outer_env[i_qt_dry]
                     self.th_dry[k]    = theta_c(self.Ref.p0_half[k], outer_env[i_T_dry])
                     self.t_cloudy[k]  = outer_env[i_T_cld]
@@ -486,8 +498,14 @@ cdef class EnvironmentThermodynamics:
                         EnvVar.H.values[k]
                     )
                     mph = microphysics_rain_src(
-                        sa.T, sa.ql, self.Ref.p0_half[k], EnvVar.QT.values[k],
-                        EnvVar.EnvArea.values[k], Rain.max_supersaturation
+                        EnvVar.QT.values[k],
+                        sa.ql,
+                        Rain.Env_QR.values[k],
+                        EnvVar.Area.values[k],
+                        sa.T,
+                        self.Ref.p0_half[k],
+                        self.Ref.rho0_half[k],
+                        dt
                     )
 
                     self.update_EnvVar(k, EnvVar, sa.T, mph.thl, mph.qt, mph.ql, mph.alpha)
@@ -500,13 +518,13 @@ cdef class EnvironmentThermodynamics:
 
         return
 
-    cpdef microphysics(self, EnvironmentVariables EnvVar, RainVariables Rain):
+    cpdef microphysics(self, EnvironmentVariables EnvVar, RainVariables Rain, double dt):
 
         if EnvVar.EnvThermo_scheme == 'mean':
-            self.sgs_mean(EnvVar, Rain)
+            self.sgs_mean(EnvVar, Rain, dt)
 
         elif EnvVar.EnvThermo_scheme == 'quadrature':
-            self.sgs_quadrature(EnvVar, Rain)
+            self.sgs_quadrature(EnvVar, Rain, dt)
 
         else:
             sys.exit('EDMF_Environment: Unrecognized EnvThermo_scheme. Possible options: mean, quadrature')

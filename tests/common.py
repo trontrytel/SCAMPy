@@ -19,19 +19,21 @@ def simulation_setup(case):
     # simulation related parameters
     os.system("python ../generate_namelist.py " + case)
     file_case = open(case + '.in').read()
-    # turbulence related parameters
-    os.system("python ../generate_paramlist.py " +  case)
-    file_params = open('paramlist_' + case + '.in').read()
-
     namelist  = json.loads(file_case)
-    paramlist = json.loads(file_params)
-
-    # changes to namelist file
+    # fh = open(namelist['meta']['casename']+ ".in", 'w')
+    # add here changes to namelist file:
     namelist['output']['output_root'] = "./Tests."
     namelist['meta']['uuid'] = case
+    #write_file(case+".in",namelist)
+    #pp.pprint(namelist)
 
-    pp.pprint(namelist)
-    pp.pprint(paramlist)
+    os.system("python ../generate_paramlist.py " +  case)
+    file_params = open('paramlist_' + case + '.in').read()
+    paramlist = json.loads(file_params)
+    # add here changes to paramlist file such as:
+    #paramlist['turbulence']['EDMF_PrognosticTKE']['entrainment_factor'] = 0.15
+    #write_file("paramlist_"+case+".in",paramlist)
+    #pp.pprint(paramlist)
 
     # TODO - copied from NetCDFIO
     # ugly way to know the name of the folder where the data is saved
@@ -72,9 +74,20 @@ def read_data_srs(sim_data):
     sim_data  - netcdf Dataset with simulation results
     """
     variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean",\
-                 "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "updraft_thetal",\
+                 "buoyancy_mean", "b_mix","u_mean", "v_mean", "tke_mean",\
+                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "updraft_thetal",\
                  "env_qr", "updraft_qr", "updraft_w", "env_w", "env_thetal",\
-                 "Hvar_mean", "QTvar_mean", "HQTcov_mean", "env_Hvar", "env_QTvar", "env_HQTcov"\
+                 "massflux_h", "diffusive_flux_h", "total_flux_h",\
+                 "massflux_qt","diffusive_flux_qt","total_flux_qt","turbulent_entrainment",\
+                 "eddy_viscosity", "eddy_diffusivity", "mixing_length", "mixing_length_ratio",\
+                 "entrainment_sc", "detrainment_sc", "massflux", "nh_pressure", "eddy_diffusivity",\
+                 "Hvar_mean", "QTvar_mean", "HQTcov_mean", "env_Hvar", "env_QTvar", "env_HQTcov",\
+                 "Hvar_dissipation", "QTvar_dissipation", "HQTcov_dissipation",\
+                 "Hvar_entr_gain", "QTvar_entr_gain", "HQTcov_entr_gain",\
+                 "Hvar_detr_loss", "QTvar_detr_loss", "HQTcov_detr_loss",\
+                 "Hvar_shear", "QTvar_shear", "HQTcov_shear",\
+                 "Hvar_rain", "QTvar_rain", "HQTcov_rain","tke_entr_gain","tke_detr_loss",\
+                 "tke_advection","tke_buoy","tke_dissipation","tke_pressure","tke_transport","tke_shear"\
                 ]
     # read the data
     data = {"z_half" : np.array(sim_data["profiles/z_half"][:]), "t" : np.array(sim_data["profiles/t"][:])}
@@ -126,7 +139,7 @@ def read_data_timeseries(sim_data):
     sim_data - netcdf Dataset with simulation results
     """
     variables = ["cloud_cover_mean", "cloud_base_mean", "cloud_top_mean",\
-                 "lwp_mean", "shf", "lhf", "Tsurface", "rd"]
+                 "ustar", "lwp_mean", "shf", "lhf", "Tsurface", "rd"]
 
     # read the data
     data = {"z_half" : np.array(sim_data["profiles/z_half"][:]), "t" : np.array(sim_data["profiles/t"][:])}
@@ -136,12 +149,13 @@ def read_data_timeseries(sim_data):
         data[var] = []
         data[var] = np.array(sim_data["timeseries/" + var][:])
 
-    CT = np.array(sim_data["timeseries/updraft_cloud_top"][:])
+    CT = np.array(sim_data["timeseries/cloud_top_mean"][:])
     CT[np.where(CT<=0.0)] = np.nan
-    data["updraft_cloud_top"] = CT
-    CB = np.array(sim_data["timeseries/updraft_cloud_base"][:])
+    data["cloud_top_mean"] = CT
+
+    CB = np.array(sim_data["timeseries/cloud_base_mean"][:])
     CB[np.where(CB>=maxz)] = np.nan
-    data["updraft_cloud_base"] = CB
+    data["cloud_base_mean"] = CB
 
     return data
 
@@ -152,24 +166,33 @@ def read_les_data_timeseries(les_data):
     Input:
     les_data - netcdf Dataset with specific fileds taken from LES stats file
     """
-    variables = ["cloud_fraction", "cloud_base", "cloud_top",\
-                 "friction_velocity_mean", "shf_surface_mean", "lhf_surface_mean", "lwp", "thetali_srf_int"] #TODO add rwp
 
     # read the data
     les = {"z_half_les" : np.array(les_data["z_half"][:]), "t" : np.array(les_data["t"][:])}
     maxz = np.max(les['z_half_les'])
-    CF = np.array(les_data["timeseries/cloud_fraction"][:])
+
+    CF = np.array(les_data["timeseries/cloud_fraction_mean"][:])
     CF[np.where(CF<=0.0)] = np.nan
-    les["updraft_cloud_cover"] = CF
-    CT = np.array(les_data["timeseries/cloud_top"][:])
+    les["cloud_cover_mean"] = CF
+
+    CT = np.array(les_data["timeseries/cloud_top_mean"][:])
     CT[np.where(CT<=0.0)] = np.nan
-    les["updraft_cloud_top"] = CT
-    CB = np.array(les_data["timeseries/cloud_base"][:])
+    les["cloud_top_mean"] = CT
+
+    CB = np.array(les_data["timeseries/cloud_base_mean"][:])
     CB[np.where(CB>maxz)] = np.nan
-    les["updraft_cloud_base"] = CB
+    les["cloud_base_mean"] = CB
 
     les["ustar"] = np.array(les_data["timeseries/friction_velocity_mean"][:])
     les["shf"] = np.array(les_data["timeseries/shf_surface_mean"][:])
     les["lhf"] = np.array(les_data["timeseries/lhf_surface_mean"][:])
-    les["lwp"] = np.array(les_data["timeseries/lwp"][:])
+    les["lwp_mean"] = np.array(les_data["timeseries/lwp_mean"][:])
     return les
+
+
+def write_file(name, list):
+    fh = open(name, 'w')
+    json.dump(list, fh, sort_keys=True, indent=4)
+    fh.close()
+
+    return

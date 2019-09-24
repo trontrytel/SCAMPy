@@ -178,12 +178,12 @@ cdef class Scampify1d:
             self.GMV.THL.values[idx]  = self.p_dict["thetali_mean"    ][it, idx-self.Gr.gw]
             self.GMV.T.values[idx]    = self.p_dict["temperature_mean"][it, idx-self.Gr.gw]
 
-    def do_environment(self):
+    def do_environment(self, double dt):
 
         if self.env_var.EnvThermo_scheme == 'quadrature':
-            self.env_thr.sgs_quadrature(self.env_var, self.rain_var)
+            self.env_thr.sgs_quadrature(self.env_var, self.rain_var, dt)
         else:
-            self.env_thr.sgs_mean(self.env_var, self.rain_var)
+            self.env_thr.sgs_mean(self.env_var, self.rain_var, dt)
 
     cpdef do_updraft_scalars(self):
         cdef:
@@ -210,7 +210,7 @@ cdef class Scampify1d:
                 self.upd_var.QL.values[0,k] = 0.
                 self.upd_var.T.values[0, k] = self.GMV.T.values[k]
 
-    cpdef do_updraft_microphysics(self):
+    cpdef do_updraft_microphysics(self, double dt):
         cdef:
             Py_ssize_t k
 
@@ -222,9 +222,14 @@ cdef class Scampify1d:
 
                 # autoconversion, TODO - add accretion
                 mph = microphysics_rain_src(
-                    self.upd_var.T.values[0,k], self.upd_var.QL.values[0,k], self.Ref.p0_half[k],
-                    self.upd_var.QT.values[0,k], self.upd_var.Area.values[0,k],
-                    self.rain_var.max_supersaturation
+                    self.upd_var.QT.values[0,k],
+                    self.upd_var.QL.values[0,k],
+                    self.rain_var.Upd_QR.values[k],
+                    self.upd_var.Area.values[0,k],
+                    self.upd_var.T.values[0,k],
+                    self.Ref.p0_half[k],
+                    self.Ref.rho0_half[k],
+                    dt
                 )
 
                 # update Updraft.new
@@ -281,9 +286,9 @@ cdef class Scampify1d:
             self.upd_thr.clear_precip_sources()
 
             self.do_updraft_scalars()
-            self.do_updraft_microphysics()
+            self.do_updraft_microphysics(self.TS.dt)
 
-            self.do_environment()
+            self.do_environment(self.TS.dt)
 
             self.do_rain()
 

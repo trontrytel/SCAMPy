@@ -15,6 +15,7 @@ import numpy as np
 import main as scampy
 import common as cmn
 import plot_scripts as pls
+import pprint as pp
 
 @pytest.fixture(scope="module")
 def sim_data(request):
@@ -22,6 +23,18 @@ def sim_data(request):
     # generate namelists and paramlists
     cmn.removing_files
     setup = cmn.simulation_setup('Rico')
+
+    setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
+    setup["namelist"]['microphysics']['rain_model'] = True
+    setup["namelist"]['grid']['nz'] = 150
+    setup["namelist"]["turbulence"]["EDMF_PrognosticTKE"]["entrainment"]="moisture_deficit"
+
+    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['entrainment_factor'] = 0.075   # 0.15
+    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['detrainment_factor'] = 1.75      # 2
+    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['entrainment_erf_const'] = 2   # 2
+
+    pp.pprint(setup["namelist"])
+    pp.pprint(setup["paramlist"])
 
     # run scampy
     subprocess.call("python setup.py build_ext --inplace", shell=True, cwd='../')
@@ -49,7 +62,14 @@ def test_plot_timeseries_Rico(sim_data):
         os.mkdir(localpath + "/plots/output/Rico/all_variables/")
     except:
         print('Rico/all_variables folder exists')
-    les_data = Dataset(localpath + '/les_data/Rico.nc', 'r')
+
+    if (os.path.exists(localpath + "/les_data/Rico.nc")):
+        les_data = Dataset(localpath + "/les_data/Rico.nc", 'r')
+    else:
+        url_ = "https://www.dropbox.com/s/c2bvey47y8xryuc/Rico.nc?dl=0"
+        os.system("wget -O "+localpath+"/les_data/Rico.nc "+url_)
+        les_data = Dataset(localpath + "/les_data/Rico.nc", 'r')
+
     data_to_plot = cmn.read_data_srs(sim_data)
     les_data_to_plot = cmn.read_les_data_srs(les_data)
 
@@ -78,7 +98,14 @@ def test_plot_timeseries_1D_Rico(sim_data):
         os.mkdir(localpath + "/plots/output/Rico/all_variables/")
     except:
         print('Rico/all_variables folder exists')
-    les_data = Dataset(localpath + '/les_data/Rico.nc', 'r')
+
+    if (os.path.exists(localpath + "/les_data/Rico.nc")):
+        les_data = Dataset(localpath + "/les_data/Rico.nc", 'r')
+    else:
+        url_ = "https://www.dropbox.com/s/c2bvey47y8xryuc/Rico.nc?dl=0"
+        os.system("wget -O "+localpath+"/les_data/Rico.nc "+url_)
+        les_data = Dataset(localpath + "/les_data/Rico.nc", 'r')
+
     data_to_plot = cmn.read_data_timeseries(sim_data)
     les_data_to_plot = cmn.read_les_data_timeseries(les_data)
     data_to_plot_ = cmn.read_data_srs(sim_data)

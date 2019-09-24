@@ -204,6 +204,11 @@ _ext = Extension('scampy_wrapper', ['scampy_wrapper.pyx'], include_dirs=include_
                  runtime_library_dirs=library_dirs)
 extensions.append(_ext)
 
+_ext = Extension('pytest_wrapper', ['pytest_wrapper.pyx'], include_dirs=include_path,
+                 extra_compile_args=extra_compile_args, libraries=libraries, library_dirs=library_dirs,
+                 runtime_library_dirs=library_dirs)
+extensions.append(_ext)
+
 #Build RRTMG
 #
 # rrtmg_compiled = os.path.exists('./RRTMG/rrtmg_build/rrtmg_combined.o')

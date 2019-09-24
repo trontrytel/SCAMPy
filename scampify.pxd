@@ -35,6 +35,6 @@ cdef class Scampify1d:
         dict v_dict
 
     cpdef do_updraft_scalars(self)
-    cpdef do_updraft_microphysics(self)
+    cpdef do_updraft_microphysics(self, double dt)
     cpdef apply_rain_evaporation_sources_to_GMV_H_QT(self)
     cpdef do_rain(self)
