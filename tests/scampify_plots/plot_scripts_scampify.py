@@ -54,7 +54,7 @@ def plot_humidities(scm_data, les_data, tmin, tmax, title, folder="scampify_plot
         plt.plot(np.nanmean(scm_data[data_arr[it]][:, t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., "-", c="royalblue", label='scm', lw = 4)
         plt.xlabel(label_arr[it])
         plt.grid(True)
-        if it in [1,4,7]:
+        if it in [0,3,6]:
             plt.ylabel("z [km]")
 
     plt.tight_layout()
@@ -102,7 +102,7 @@ def plot_updraft_properties(scm_data, les_data, tmin, tmax, title, folder="scamp
       plt.plot(np.nanmean(scm_data[scm_data_arr[it]][:, t0_scm : t1_scm], axis=1), scm_data["z_half"]/1000., "-", c="royalblue", label='scm', lw = 2)
       plt.xlabel(label_arr[it])
       plt.grid(True)
-      if it in [1,4]:
+      if it in [0,3]:
           plt.ylabel("z [km]")
 
     plt.tight_layout()
@@ -120,41 +120,51 @@ def plot_timeseries_1D(scm_data, les_data, folder="scampify_plots/output/"):
     tmax     - upper bound for time mean
     folder   - folder where to save the created plot
     """
-    plot_scm_y = [scm_data["cloud_cover_mean"], scm_data["lwp_mean"], scm_data["rwp_mean"],\
-                  scm_data["lhf"], scm_data["shf"], scm_data["cloud_top_mean"], scm_data["cloud_base_mean"]]
+    # surface fluxes
+    plot_scm_y = [scm_data["lhf"], scm_data["shf"]]
+    plot_les_y = [les_data["lhf"], les_data["shf"]]
+    y_lab = ["LHF", "SHF"]
 
-    plot_les_y = [les_data["cloud_cover_mean"], les_data["lwp_mean"], les_data["rwp_mean"],\
-                  les_data["lhf"], les_data["shf"], les_data["cloud_top_mean"], les_data["cloud_base_mean"]]
-
-    y_lab      = ['cloud cover', 'lwp', 'rwp', 'lhf', 'shf', 'CB, CT [km]']
-
-    fig_name   = ['cloud_cover', 'liquid_water_path', 'rain_water_path',\
-                  'latent_heat_flux',  'sensible_heat_flux', 'cloud_base_top']
-
-    # iteration over plots
-    plots = []
-    for plot_it in range(6):
-
-        fig = plt.figure(1)
-        plt.xlabel('time [h]')
+    fig = plt.figure(1)
+    for plot_it in range(2):
+        plt.subplot(2,1,plot_it+1)
+        plt.plot(les_data["t"][1:]/3600., plot_les_y[plot_it][1:], '-', color="gray", lw = 3, label="LES")
+        plt.plot(scm_data["t"][1:]/3600., plot_scm_y[plot_it][1:], '-', color="b",    lw = 3, label="SCM")
         plt.ylabel(y_lab[plot_it])
         plt.xlim([0, scm_data["t"][-1]/3600.])
         plt.grid(True)
+    plt.xlabel('time [h]')
+    plt.tight_layout()
+    plt.savefig(folder + "surface_heat_fluxes.pdf")
+    plt.clf()
 
-        if plot_it < 5:
-            plt.plot(les_data["t"][1:]/3600., plot_les_y[plot_it][1:], '-', color="gray", lw = 4, label="LES")
-            plt.plot(scm_data["t"][1:]/3600., plot_scm_y[plot_it][1:], '-', color="b",    lw = 2, label="SCM")
-            plt.legend()
+    # cloud timeseries
+    plot_scm_y = [scm_data["lwp_mean"],\
+                  scm_data["cloud_cover_mean"],\
+                  scm_data["rwp_mean"],\
+                  scm_data["cloud_top_mean"]/1e3, scm_data["cloud_base_mean"]/1e3]
+    plot_les_y = [les_data["lwp_mean"],\
+                  les_data["cloud_cover_mean"],\
+                  les_data["rwp_mean"],\
+                  les_data["cloud_top_mean"]/1e3, les_data["cloud_base_mean"]/1e3]
+    y_lab      = ['lwp', 'cloud_cover', 'rwp', 'CB, CT [km]']
 
-        else:
-            plt.plot(les_data["t"][1:]/3600., les_data["cloud_base_mean"][1:]/1000., '-', color="gray",      label="CB_les", lw = 4)
-            plt.plot(les_data["t"][1:]/3600., les_data["cloud_top_mean"][1:]/1000.,  '-', color="gray",      label="CT_les", lw = 4)
-            plt.plot(scm_data["t"][1:]/3600., scm_data["cloud_base_mean"][1:]/1000., '-', color="crimson",   label="CB_scm", lw = 2)
-            plt.plot(scm_data["t"][1:]/3600., scm_data["cloud_top_mean"][1:]/1000.,  '-', color="royalblue", label="CT_scm", lw = 2)
-
-        plt.tight_layout()
-        plt.savefig(folder + fig_name[plot_it]+".pdf")
-        plt.clf()
+    fig = plt.figure(1)
+    for plot_it in range(4):
+      plt.subplot(2,2,plot_it+1)
+      plt.plot(les_data["t"][1:]/3600., plot_les_y[plot_it][1:], '-', color="gray", label="LES", lw=3)
+      plt.plot(scm_data["t"][1:]/3600., plot_scm_y[plot_it][1:], '-', color="b",    label="SCM", lw=3)
+      if plot_it == 3:
+        plt.plot(les_data["t"][1:]/3600., plot_les_y[4][1:], '-', color="gray", lw=3)
+        plt.plot(scm_data["t"][1:]/3600., plot_scm_y[4][1:], '-', color="b", lw=3)
+      plt.legend()
+      plt.grid(True)
+      plt.xlim([0, scm_data["t"][-1]/3600.])
+      plt.xlabel('time [h]')
+      plt.ylabel(y_lab[plot_it])
+    plt.tight_layout()
+    plt.savefig(folder + "timeseries_cloud_properties.pdf")
+    plt.clf()
 
 def plot_timeseries(scm_data, les_data, cb_min, cb_max, folder="scampify_plots/output/"):
     """
@@ -222,21 +232,25 @@ def plot_timeseries(scm_data, les_data, cb_min, cb_max, folder="scampify_plots/o
             les_field[np.where(a_les==0.0)] = np.nan
             les_field[np.where(np.isnan(a_les))] = np.nan
 
-        levels = np.linspace(cb_min[plot_it], cb_max[plot_it], 20)
-        cmap = 'viridis_r' # "RdBu_r"
+        levels = np.linspace(cb_min[plot_it], cb_max[plot_it], 11)
+        cmap = "RdBu_r"
 
         plt.subplot(211)
         cntrf = plt.contourf(les_time, les_z_half, les_field, cmap=cmap, levels=levels, vmin=cb_min[plot_it], vmax=cb_max[plot_it])
-        plt.colorbar(cntrf)
+        cbar = plt.colorbar(cntrf)
+        cbar.set_label(labels[plot_it])
         plt.ylabel('height [km]')
         plt.ylim([0, np.max(scm_data["z_half"]/1000.)])
+        plt.grid(True)
 
         plt.subplot(212)
         cntrf = plt.contourf(scm_time, scm_z_half, scm_field, cmap=cmap, levels=levels, vmin=cb_min[plot_it], vmax=cb_max[plot_it])
-        plt.colorbar(cntrf)
+        cbar = plt.colorbar(cntrf)
+        cbar.set_label(labels[plot_it])
         plt.xlabel('time [h]')
         plt.ylabel('height [km]')
         plt.ylim([0, np.max(scm_data["z_half"]/1000.)])
+        plt.grid(True)
 
         plt.tight_layout()
         plt.savefig(folder + fig_name[plot_it]+".pdf")
