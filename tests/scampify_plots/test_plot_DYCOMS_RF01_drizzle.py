@@ -50,7 +50,7 @@ def sim_data(request):
     else:
         # run scampy online
         print "online run"
-        #scampy.main1d(setup["namelist"], setup["paramlist"])
+        scampy.main1d(setup["namelist"], setup["paramlist"])
 
     # simulation results
     scm_data = Dataset(setup["scm_outfile"], 'r')

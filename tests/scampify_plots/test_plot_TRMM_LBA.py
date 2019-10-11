@@ -28,8 +28,9 @@ def sim_data(request):
 
     # additional parameters for offline runs
     scampifylist = {}
-    scampifylist["offline"] = False
+    scampifylist["offline"] = True
     scampifylist["les_stats_freq"] = 10.
+    scampifylist["les_outfile"] = setup["les_outfile"]
 
     subprocess.call("python setup.py build_ext --inplace", shell=True, cwd='../')
     if scampifylist["offline"]:
@@ -39,7 +40,7 @@ def sim_data(request):
     else:
         # run scampy online
         print "online run"
-        #scampy.main1d(setup["namelist"], setup["paramlist"])
+        scampy.main1d(setup["namelist"], setup["paramlist"])
 
     # simulation results
     scm_data = Dataset(setup["scm_outfile"], 'r')

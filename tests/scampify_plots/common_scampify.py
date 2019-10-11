@@ -22,7 +22,6 @@ def simulation_setup(case):
     namelist  = json.loads(file_case)
     namelist['output']['output_root'] = "./Tests."
     namelist['meta']['uuid'] = case
-
     os.system("python ../generate_paramlist.py " +  case)
     file_params = open('paramlist_' + case + '.in').read()
     paramlist = json.loads(file_params)
