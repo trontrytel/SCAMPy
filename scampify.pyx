@@ -26,8 +26,6 @@ cdef class Scampify1d:
         self.it    = 0 # TODO - get rid of me
         self.norm  = scampifylist["les_stats_freq"] / namelist["time_stepping"]["dt"]
 
-        print self.norm
-
         # create instances of grid, reference state, ...
         self.Gr    = Grid(namelist)
         self.Ref   = ReferenceState(self.Gr)
@@ -153,7 +151,7 @@ cdef class Scampify1d:
             # read environment
             self.env_var.QT.values[idx]      = self.p_dict['env_qt'      ][it, idx-self.Gr.gw]
             self.env_var.H.values[idx]       = self.p_dict['env_thetali' ][it, idx-self.Gr.gw]
-            self.env_var.Area.values[idx] = self.p_dict['env_fraction'][it, idx-self.Gr.gw]
+            self.env_var.Area.values[idx]    = self.p_dict['env_fraction'][it, idx-self.Gr.gw]
             self.env_var.Hvar.values[idx]    = self.v_dict['Hvar'        ][it, idx-self.Gr.gw]
             self.env_var.QTvar.values[idx]   = self.v_dict['QTvar'       ][it, idx-self.Gr.gw]
             self.env_var.HQTcov.values[idx]  = self.v_dict['HQTcov'      ][it, idx-self.Gr.gw]
@@ -206,7 +204,7 @@ cdef class Scampify1d:
 
             if self.upd_var.QT.values[0,k] > 1e-20:
 
-                # autoconversion, TODO - add accretion
+                # autoconversion and accretion
                 mph = microphysics_rain_src(
                     self.upd_var.QT.values[0,k],
                     self.upd_var.QL.values[0,k],
@@ -255,8 +253,9 @@ cdef class Scampify1d:
         self.rain_phs.solve_rain_evap(self.GMV, self.TS, self.rain_var.Upd_QR, self.rain_var.Upd_RainArea)
         self.rain_phs.solve_rain_evap(self.GMV, self.TS, self.rain_var.Env_QR, self.rain_var.Env_RainArea)
 
+        # offline run
         # update GMV_new with rain evaporation source terms
-        self.apply_rain_evaporation_sources_to_GMV_H_QT()
+        #self.apply_rain_evaporation_sources_to_GMV_H_QT()
 
     def run(self):
 
@@ -273,6 +272,8 @@ cdef class Scampify1d:
 
             self.do_updraft_scalars()
             self.do_updraft_microphysics(self.TS.dt)
+
+            self.upd_thr.update_total_precip_sources()
 
             self.do_environment(self.TS.dt)
 
@@ -291,6 +292,9 @@ cdef class Scampify1d:
 
                 self.GMV.QL.values[idx] = self.upd_var.QL.bulkvalues[idx] * self.upd_var.Area.bulkvalues[idx] +\
                                           self.env_var.QL.values[idx]     * self.env_var.Area.values[idx]
+
+                self.GMV.QR.values[idx] = self.rain_var.QR.values[idx] * self.rain_var.RainArea.values[idx]
+
 
             self.Stats.open_files()
             self.Stats.write_simulation_time(self.TS.t)
