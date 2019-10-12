@@ -131,7 +131,7 @@ def read_scm_data_timeseries(scm_data):
     sim_data - netcdf Dataset with simulation results
     """
     variables = ["cloud_cover_mean", "cloud_base_mean", "cloud_top_mean",\
-                 "lwp_mean", "rwp_mean", "shf", "lhf"]
+                 "lwp_mean", "rwp_mean"]
 
     data = {"z_half" : np.array(scm_data["profiles/z_half"][:]),\
             "t"      : np.array(scm_data["profiles/t"][:])}
@@ -159,7 +159,7 @@ def read_les_data_timeseries(les_data):
     les_data - netcdf Dataset with specific fileds taken from LES stats file
     """
     variables = ["cloud_fraction", "cloud_base", "cloud_top",\
-                 "lwp_mean", "rwp_mean", "shf_surface_mean", "lhf_surface_mean"]
+                 "lwp_mean", "rwp_mean"]
 
     data = {"z_half_les" : np.array(les_data["profiles/z_half"][:]),\
             "t"          : np.array(les_data["profiles/t"][:])}

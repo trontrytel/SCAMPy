@@ -22,6 +22,13 @@ def sim_data(request):
     setup['namelist']['microphysics']['rain_model'] = True
     setup["namelist"]["turbulence"]["EDMF_PrognosticTKE"]["entrainment"]="moisture_deficit"
 
+    setup['namelist']['grid']['gw'] = 3
+    setup['namelist']['grid']['nz'] = 220
+    setup['namelist']['grid']['dz'] = 100
+
+    setup["namelist"]['time_stepping']['dt'] = 10.
+    setup['namelist']['time_stepping']['t_max'] = 21600.0
+
     setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['entrainment_factor'] = 0.2       # 0.15
     setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['detrainment_factor'] = 3         # 2
     setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['entrainment_erf_const'] = 2      # 2
@@ -29,7 +36,7 @@ def sim_data(request):
     # additional parameters for offline runs
     scampifylist = {}
     scampifylist["offline"] = True
-    scampifylist["les_stats_freq"] = 10.
+    scampifylist["les_stats_freq"] = 100.
     scampifylist["les_outfile"] = setup["les_outfile"]
 
     subprocess.call("python setup.py build_ext --inplace", shell=True, cwd='../')

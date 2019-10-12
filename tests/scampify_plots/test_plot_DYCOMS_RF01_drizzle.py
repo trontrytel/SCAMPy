@@ -23,15 +23,12 @@ def sim_data(request):
     cmn.removing_files
     setup = cmn.simulation_setup('DYCOMS_RF01')
 
-    setup['namelist']['grid']['dims'] = 1
+    setup['namelist']['grid']['gw'] = 3
     setup['namelist']['grid']['dz'] = 5.
-    setup['namelist']['grid']['gw'] = 2
     setup['namelist']['grid']['nz'] = 300
 
     setup['namelist']['time_stepping']['t_max'] = 14400
-    setup['namelist']['time_stepping']['dt'] = 2
-
-    setup['namelist']["stats_io"]["frequency"] = 60.
+    setup["namelist"]['time_stepping']['dt'] = 4.
 
     setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
     setup['namelist']['microphysics']['rain_model'] = True
@@ -39,8 +36,9 @@ def sim_data(request):
 
     # additional parameters for offline runs
     scampifylist = {}
-    scampifylist["offline"] = False
-    scampifylist["les_stats_freq"] = 10.
+    scampifylist["offline"] = True
+    scampifylist["les_stats_freq"] = 60.
+    scampifylist["les_outfile"] = setup["les_outfile"]
 
     subprocess.call("python setup.py build_ext --inplace", shell=True, cwd='../')
     if scampifylist["offline"]:

@@ -26,6 +26,8 @@ cdef class Scampify1d:
         self.it    = 0 # TODO - get rid of me
         self.norm  = scampifylist["les_stats_freq"] / namelist["time_stepping"]["dt"]
 
+        print self.norm
+
         # create instances of grid, reference state, ...
         self.Gr    = Grid(namelist)
         self.Ref   = ReferenceState(self.Gr)
@@ -122,15 +124,15 @@ cdef class Scampify1d:
 
         # read in initial updraft and environment properties
         for idx in range(self.Gr.gw, self.Gr.nzg - self.Gr.gw):
-            self.env_var.QT.values[idx]       = self.p_dict['env_qt'          ][0,idx - self.Gr.gw]
-            self.env_var.H.values[idx]        = self.p_dict['env_thetali'     ][0,idx - self.Gr.gw]
-            self.env_var.EnvArea.values[idx]  = self.p_dict['env_fraction'    ][0,idx - self.Gr.gw]
-            self.env_var.Hvar.values[idx]     = self.v_dict['Hvar'            ][0,idx - self.Gr.gw]
-            self.env_var.QTvar.values[idx]    = self.v_dict['QTvar'           ][0,idx - self.Gr.gw]
-            self.env_var.HQTcov.values[idx]   = self.v_dict['HQTcov'          ][0,idx - self.Gr.gw]
-            self.upd_var.QT.values[0,   idx]  = self.p_dict['updraft_qt'      ][0,idx - self.Gr.gw]
-            self.upd_var.H.values[0,    idx]  = self.p_dict['updraft_thetali' ][0,idx - self.Gr.gw]
-            self.upd_var.Area.values[0, idx]  = self.p_dict['updraft_fraction'][0,idx - self.Gr.gw]
+            self.env_var.QT.values[idx]      = self.p_dict['env_qt'          ][0,idx - self.Gr.gw]
+            self.env_var.H.values[idx]       = self.p_dict['env_thetali'     ][0,idx - self.Gr.gw]
+            self.env_var.Area.values[idx]    = self.p_dict['env_fraction'    ][0,idx - self.Gr.gw]
+            self.env_var.Hvar.values[idx]    = self.v_dict['Hvar'            ][0,idx - self.Gr.gw]
+            self.env_var.QTvar.values[idx]   = self.v_dict['QTvar'           ][0,idx - self.Gr.gw]
+            self.env_var.HQTcov.values[idx]  = self.v_dict['HQTcov'          ][0,idx - self.Gr.gw]
+            self.upd_var.QT.values[0,   idx] = self.p_dict['updraft_qt'      ][0,idx - self.Gr.gw]
+            self.upd_var.H.values[0,    idx] = self.p_dict['updraft_thetali' ][0,idx - self.Gr.gw]
+            self.upd_var.Area.values[0, idx] = self.p_dict['updraft_fraction'][0,idx - self.Gr.gw]
 
         # initialize output
         self.Case.initialize_reference(self.Gr, self.Ref, self.Stats)
@@ -151,7 +153,7 @@ cdef class Scampify1d:
             # read environment
             self.env_var.QT.values[idx]      = self.p_dict['env_qt'      ][it, idx-self.Gr.gw]
             self.env_var.H.values[idx]       = self.p_dict['env_thetali' ][it, idx-self.Gr.gw]
-            self.env_var.EnvArea.values[idx] = self.p_dict['env_fraction'][it, idx-self.Gr.gw]
+            self.env_var.Area.values[idx] = self.p_dict['env_fraction'][it, idx-self.Gr.gw]
             self.env_var.Hvar.values[idx]    = self.v_dict['Hvar'        ][it, idx-self.Gr.gw]
             self.env_var.QTvar.values[idx]   = self.v_dict['QTvar'       ][it, idx-self.Gr.gw]
             self.env_var.HQTcov.values[idx]  = self.v_dict['HQTcov'      ][it, idx-self.Gr.gw]
@@ -285,10 +287,10 @@ cdef class Scampify1d:
                 self.upd_var.QT.bulkvalues[idx] = self.upd_var.QT.values[0, idx]
 
                 self.GMV.QT.values[idx] = self.upd_var.QT.bulkvalues[idx] * self.upd_var.Area.bulkvalues[idx] +\
-                                          self.env_var.QT.values[idx]     * self.env_var.EnvArea.values[idx]
+                                          self.env_var.QT.values[idx]     * self.env_var.Area.values[idx]
 
                 self.GMV.QL.values[idx] = self.upd_var.QL.bulkvalues[idx] * self.upd_var.Area.bulkvalues[idx] +\
-                                          self.env_var.QL.values[idx]     * self.env_var.EnvArea.values[idx]
+                                          self.env_var.QL.values[idx]     * self.env_var.Area.values[idx]
 
             self.Stats.open_files()
             self.Stats.write_simulation_time(self.TS.t)

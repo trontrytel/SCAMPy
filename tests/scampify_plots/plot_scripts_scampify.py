@@ -121,22 +121,22 @@ def plot_timeseries_1D(scm_data, les_data, folder="scampify_plots/output/"):
     folder   - folder where to save the created plot
     """
     # surface fluxes
-    plot_scm_y = [scm_data["lhf"], scm_data["shf"]]
-    plot_les_y = [les_data["lhf"], les_data["shf"]]
-    y_lab = ["LHF", "SHF"]
+    #plot_scm_y = [scm_data["lhf"], scm_data["shf"]]
+    #plot_les_y = [les_data["lhf"], les_data["shf"]]
+    #y_lab = ["LHF", "SHF"]
 
-    fig = plt.figure(1)
-    for plot_it in range(2):
-        plt.subplot(2,1,plot_it+1)
-        plt.plot(les_data["t"][1:]/3600., plot_les_y[plot_it][1:], '-', color="gray", lw = 3, label="LES")
-        plt.plot(scm_data["t"][1:]/3600., plot_scm_y[plot_it][1:], '-', color="b",    lw = 3, label="SCM")
-        plt.ylabel(y_lab[plot_it])
-        plt.xlim([0, scm_data["t"][-1]/3600.])
-        plt.grid(True)
-    plt.xlabel('time [h]')
-    plt.tight_layout()
-    plt.savefig(folder + "surface_heat_fluxes.pdf")
-    plt.clf()
+    #fig = plt.figure(1)
+    #for plot_it in range(2):
+    #    plt.subplot(2,1,plot_it+1)
+    #    plt.plot(les_data["t"][1:]/3600., plot_les_y[plot_it][1:], '-', color="gray", lw = 3, label="LES")
+    #    plt.plot(scm_data["t"][1:]/3600., plot_scm_y[plot_it][1:], '-', color="b",    lw = 3, label="SCM")
+    #    plt.ylabel(y_lab[plot_it])
+    #    plt.xlim([0, scm_data["t"][-1]/3600.])
+    #    plt.grid(True)
+    #plt.xlabel('time [h]')
+    #plt.tight_layout()
+    #plt.savefig(folder + "surface_heat_fluxes.pdf")
+    #plt.clf()
 
     # cloud timeseries
     plot_scm_y = [scm_data["lwp_mean"],\
