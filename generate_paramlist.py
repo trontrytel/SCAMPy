@@ -81,7 +81,6 @@ def main():
 
     write_file(paramlist)
 
-
 def Soares(paramlist_defaults):
 
     paramlist = copy.deepcopy(paramlist_defaults)
@@ -89,7 +88,6 @@ def Soares(paramlist_defaults):
     paramlist['meta']['casename'] = 'Soares'
 
     return paramlist
-
 
 def Bomex(paramlist_defaults):
 
@@ -115,7 +113,6 @@ def Rico(paramlist_defaults):
 
     return  paramlist
 
-
 def TRMM_LBA(paramlist_defaults):
 
     paramlist = copy.deepcopy(paramlist_defaults)
@@ -132,7 +129,6 @@ def ARM_SGP(paramlist_defaults):
 
     return  paramlist
 
-
 def GATE_III(paramlist_defaults):
 
     paramlist = copy.deepcopy(paramlist_defaults)
@@ -140,7 +136,6 @@ def GATE_III(paramlist_defaults):
     paramlist['meta']['casename'] = 'GATE_III'
 
     return  paramlist
-
 
 def DYCOMS_RF01(paramlist_defaults):
 
@@ -170,7 +165,6 @@ def SP(paramlist_defaults):
     paramlist['meta']['casename'] = 'SP'
 
     return  paramlist
-
 
 def write_file(paramlist):
 

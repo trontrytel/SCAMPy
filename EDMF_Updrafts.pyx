@@ -417,6 +417,7 @@ cdef class UpdraftThermodynamics:
 
                     # autoconversion and accretion
                     mph = microphysics_rain_src(
+                        Rain.rain_model,
                         UpdVar.QT.new[i,k],
                         UpdVar.QL.new[i,k],
                         Rain.Upd_QR.values[k],

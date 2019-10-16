@@ -23,12 +23,15 @@ def main():
 
     namelist_defaults['thermodynamics'] = {}
     namelist_defaults['thermodynamics']['thermal_variable'] = 'thetal'
-    namelist_defaults['thermodynamics']['saturation'] = 'sa_mean'
+    namelist_defaults['thermodynamics']['sgs'] = 'mean'
 
     namelist_defaults['microphysics'] = {}
     namelist_defaults['microphysics']['rain_model'] = 'None'
 
     namelist_defaults['time_stepping'] = {}
+
+    namelist_defaults['microphysics'] = {}
+    namelist_defaults['microphysics']['rain_model'] = 'None'
 
     namelist_defaults['turbulence'] = {}
     namelist_defaults['turbulence']['scheme'] = 'EDMF_PrognosticTKE'
@@ -137,10 +140,11 @@ def Rico(namelist_defaults):
     namelist['grid']['nz'] = 100
     namelist['grid']['dz'] = 40.0
 
-    namelist['microphysics']['rain_model'] = 'cutoff'
-
     namelist['time_stepping']['dt'] = 20.0
     namelist['time_stepping']['t_max'] = 86400.0
+
+    #namelist['microphysics']['rain_model'] = 'cutoff'
+    namelist['microphysics']['rain_model'] = 'clima_1m'
 
     namelist['meta']['simname'] = 'Rico'
     namelist['meta']['casename'] = 'Rico'
@@ -154,10 +158,11 @@ def TRMM_LBA(namelist_defaults):
     namelist['grid']['nz'] = 400
     namelist['grid']['dz'] = 40
 
-    namelist['microphysics']['rain_model'] = 'cutoff'
-
     namelist['time_stepping']['dt'] = 30.0
     namelist['time_stepping']['t_max'] = 21600.0
+
+    #namelist['microphysics']['rain_model'] = 'cutoff'
+    namelist['microphysics']['rain_model'] = 'clima_1m'
 
     namelist['meta']['simname'] = 'TRMM_LBA'
     namelist['meta']['casename'] = 'TRMM_LBA'

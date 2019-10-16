@@ -6,6 +6,7 @@
 
 import cython
 import numpy as np
+import sys
 
 cimport Grid
 cimport ReferenceState
@@ -59,15 +60,14 @@ cdef class RainVariables:
         self.env_rwp = 0.
 
         try:
-            self.max_supersaturation = namelist['microphysics']['max_supersaturation']
+            self.rain_model = str(namelist['microphysics']['rain_model'])
         except:
-            print "EDMF_Rain: defaulting to max_supersaturation for rain = 0.1"
-            self.max_supersaturation = 0.1
+            print "EDMF_Rain: defaulting to no rain"
+            self.rain_model = "None"
 
-        try:
-            self.rain_model = namelist['microphysics']['rain_model']
-        except:
-            self.rain_model = False
+        if self.rain_model not in ["None", "cutoff", "clima_1m"]:
+            sys.exit('rain model not recognized')
+
         return
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats):

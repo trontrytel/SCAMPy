@@ -21,7 +21,7 @@ cdef class RainVariable:
 
 cdef class RainVariables:
     cdef:
-        bint rain_model
+        str rain_model
 
         double mean_rwp
         double env_rwp
