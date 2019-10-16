@@ -38,7 +38,6 @@ class Simulation1d:
         return
 
     def run(self):
-
         while self.TS.t <= self.TS.t_max:
             self.GMV.zero_tendencies()
             self.Case.update_surface(self.GMV, self.TS)
@@ -50,8 +49,6 @@ class Simulation1d:
             self.Turb.update_GMV_diagnostics(self.GMV)
             if np.mod(self.TS.t, self.Stats.frequency) == 0:
                 self.io()
-
-
         return
 
     def initialize_io(self):
