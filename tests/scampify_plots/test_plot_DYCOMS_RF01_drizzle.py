@@ -31,7 +31,7 @@ def sim_data(request):
     setup["namelist"]['time_stepping']['dt'] = 4.
 
     setup['namelist']['microphysics']['rain_model'] = 'clima_1m'
-    #setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
+    setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
     #setup["namelist"]["turbulence"]["EDMF_PrognosticTKE"]["entrainment"]="moisture_deficit"
 
     # additional parameters for offline runs
@@ -68,7 +68,6 @@ def test_plot_timeseries_DYCOMS_RF01(sim_data):
     """
     plot DYCOMS_RF01 timeseries
     """
-    # make directory
     localpath = os.getcwd()
     try:
         os.mkdir(localpath + "/scampify_plots/output/DYCOMS_RF01_drizzle/")
@@ -81,37 +80,15 @@ def test_plot_timeseries_DYCOMS_RF01(sim_data):
     scm_data_to_plot_timesrs = cmn.read_scm_data_timeseries(sim_data["scm_data"])
     les_data_to_plot_timesrs = cmn.read_les_data_timeseries(sim_data["les_data"])
 
-    pls.plot_humidities(
-        scm_data_to_plot,
-        les_data_to_plot,
-        3,
-        4,
-        "drizzle_DYCOMS_RF01_humidities.pdf",
-        folder="scampify_plots/output/DYCOMS_RF01_drizzle/"
-    )
-
-    pls.plot_updraft_properties(
-        scm_data_to_plot,
-        les_data_to_plot,
-        3,
-        4,
-        "drizzle_DYCOMS_RF01_updraft_properties.pdf",
-        folder="scampify_plots/output/DYCOMS_RF01_drizzle/"
-    )
-
-    pls.plot_timeseries_1D(
-        scm_data_to_plot_timesrs,
-        les_data_to_plot_timesrs,
-        folder="scampify_plots/output/DYCOMS_RF01_drizzle/"
-    )
-
     cb_min = [285,   285,   288.75,   0,      0,  9,   0,   0,    0,     0,     0,      0, -0.16,    0,   0]
     cb_max = [307.5, 307.5, 289.5, 12.5, 12.5, 11, 0.8, 0.8, 0.64, 0.002, 0.002, 0.0012,     0, 0.24, 1.5]
+    t0 = 3
+    t1 = 4
+    folder = "scampify_plots/output/DYCOMS_RF01_drizzle/"
+    case = "drizzle_DYCOMS_RF01_"
 
-    pls.plot_timeseries(
-        scm_data_to_plot,
-        les_data_to_plot,
-        cb_min,
-        cb_max,
-        folder="scampify_plots/output/DYCOMS_RF01_drizzle/"
-    )
+    pls.plot_humidities(scm_data_to_plot, les_data_to_plot, t0, t1, case+"humidities.pdf", folder=folder)
+    pls.plot_cloud_rain_components(scm_data_to_plot, les_data_to_plot, t0, t1, case + "cloud_rain_comp.pdf", folder=folder)
+    pls.plot_updraft_properties(scm_data_to_plot, les_data_to_plot, t0, t1, case+"updraft_properties.pdf", folder=folder)
+    pls.plot_timeseries_1D(scm_data_to_plot_timesrs, les_data_to_plot_timesrs, folder=folder)
+    pls.plot_timeseries(scm_data_to_plot, les_data_to_plot, cb_min, cb_max, folder=folder)

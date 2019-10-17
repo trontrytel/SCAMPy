@@ -41,7 +41,7 @@ def simulation_setup(case):
     scm_outfile = outpath + "/stats/Stats." + case + ".nc"
 
     # reference LES simulations
-    les_outpath = "scampify_plots/les_data/"
+    les_outpath = "scampify_plots/data_les/"
     if case == "TRMM_LBA":
         les_outfile = les_outpath + "TRMM_LBA/CLIMA_1M_micro/Stats.TRMM_LBA.nc"
     elif case == "Rico":

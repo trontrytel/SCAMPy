@@ -34,6 +34,9 @@ def plot_humidities(scm_data, les_data, tmin, tmax, title, folder="scampify_plot
     les_data["upd_qv"]  = les_data["updraft_qt"] - les_data["updraft_ql"]
     les_data["env_qv"]  = les_data["env_qt"]     - les_data["env_ql"]
 
+    les_data["env_qr"] = np.multiply(les_data["env_qr"], (1. - les_data["updraft_fraction"]))
+    les_data["updraft_qr"] = np.multiply(les_data["updraft_qr"], les_data["updraft_fraction"])
+
     fig = plt.figure(1)
     fig.set_figheight(12)
     fig.set_figwidth(14)
@@ -60,6 +63,94 @@ def plot_humidities(scm_data, les_data, tmin, tmax, title, folder="scampify_plot
     plt.tight_layout()
     plt.savefig(folder + title)
     plt.clf()
+
+def plot_cloud_rain_components(scm_data, les_data, tmin, tmax, title, folder="scampify_plots/output/"):
+    """
+    Plots updraft and environment water realted profiles from scm and les
+
+    Input:
+    scm_data - scm stats file
+    les_data - les stats file
+    tmin     - lower bound for time mean
+    tmax     - upper bound for time mean
+    title    - name for the created plot
+    folder   - folder where to save the created plot
+    """
+    t0_scm = int(np.where(np.array(scm_data["t"]) > tmin*3600.)[0][0])
+    t0_les = int(np.where(np.array(les_data["t"]) > tmin*3600.)[0][0])
+    t1_scm = int(np.where(np.array(tmax*3600.0 <= scm_data["t"]))[0][0])
+    t1_les = int(np.where(np.array(tmax*3600.0 <= les_data["t"]))[0][0])
+
+    scm_upd_area = scm_data["updraft_area"]
+    scm_env_area = 1. - scm_upd_area
+    les_upd_area = les_data["updraft_fraction"]
+    les_env_area = 1. - les_upd_area
+
+    scm_upd_ql = np.multiply(scm_upd_area, scm_data["updraft_ql"])
+    scm_upd_qr = scm_data["updraft_qr"]
+    scm_env_ql = np.multiply(scm_env_area, scm_data["env_ql"])
+    scm_env_qr = scm_data["env_qr"]
+
+    les_upd_ql = np.multiply(les_upd_area, les_data["updraft_ql"])
+    les_upd_qr = np.multiply(les_upd_area, les_data["updraft_qr"])
+    les_env_ql = np.multiply(les_env_area, les_data["env_ql"])
+    les_env_qr = np.multiply(les_env_area, les_data["env_qr"])
+
+    les_mean_ql = les_data["ql_mean"]
+    les_mean_qr = les_data["qr_mean"]
+    scm_mean_ql = scm_data["ql_mean"]
+    scm_mean_qr = scm_data["qr_mean"]
+
+    fig = plt.figure(1)
+    fig.set_figheight(12)
+    fig.set_figwidth(14)
+    mpl.rcParams.update({'font.size': 18})
+    mpl.rc('lines', linewidth=4, markersize=10)
+
+    data_arr = ["qv_mean", "upd_qv", "env_qv",\
+                "ql_mean", "updraft_ql", "env_ql",\
+                "qr_mean", "updraft_qr", "env_qr"]
+
+    label_arr = ["mean_qv [g/kg]", "updraft qv [g/kg]", "env qv [g/kg]",\
+                 "mean ql [g/kg]", "updraft ql [g/kg]", "env ql [g/kg]",\
+                 "mean qr [g/kg]", "updraft qr [g/kg]", "env qr [g/kg]"]
+
+    plt.subplot(2, 2, 1)
+    plt.plot(np.nanmean(les_mean_ql[:, t0_les : t1_les], axis=1), les_data["z_half"] / 1000., '-', c='black', label='les_mean', lw = 2)
+    plt.plot(np.nanmean(les_env_ql[:,  t0_les : t1_les], axis=1), les_data["z_half"] / 1000., '-', c='red',   label='les_env', lw = 2)
+    plt.plot(np.nanmean(les_upd_ql[:,  t0_les : t1_les], axis=1), les_data["z_half"] / 1000., '-', c='blue',  label='les_upd', lw = 2)
+    plt.xlabel("LES ql [g/lg]")
+    plt.ylabel("z [km]")
+    plt.grid(True)
+
+    plt.subplot(2, 2, 2)
+    plt.plot(np.nanmean(les_mean_qr[:, t0_les : t1_les], axis=1), les_data["z_half"] / 1000., '-', c='black', label='les_mean', lw = 2)
+    plt.plot(np.nanmean(les_env_qr[:,  t0_les : t1_les], axis=1), les_data["z_half"] / 1000., '-', c='red',   label='les_env', lw = 2)
+    plt.plot(np.nanmean(les_upd_qr[:,  t0_les : t1_les], axis=1), les_data["z_half"] / 1000., '-', c='blue',  label='les_upd', lw = 2)
+    plt.xlabel("LES qr [g/lg]")
+    plt.ylabel("z [km]")
+    plt.grid(True)
+
+    plt.subplot(2, 2, 3)
+    plt.plot(np.nanmean(scm_mean_ql[:, t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., '-', c='black', label='scm_mean', lw = 2)
+    plt.plot(np.nanmean(scm_env_ql[:,  t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., '-', c='red',   label='scm_env', lw = 2)
+    plt.plot(np.nanmean(scm_upd_ql[:,  t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., '-', c='blue',  label='scm_upd', lw = 2)
+    plt.xlabel("SCM ql [g/lg]")
+    plt.ylabel("z [km]")
+    plt.grid(True)
+
+    plt.subplot(2, 2, 4)
+    plt.plot(np.nanmean(scm_mean_qr[:, t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., '-', c='black', label='scm_mean', lw = 2)
+    plt.plot(np.nanmean(scm_env_qr[:,  t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., '-', c='red',   label='scm_env', lw = 2)
+    plt.plot(np.nanmean(scm_upd_qr[:,  t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., '-', c='blue',  label='scm_upd', lw = 2)
+    plt.xlabel("SCM qr [g/lg]")
+    plt.ylabel("z [km]")
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.savefig(folder + title)
+    plt.clf()
+
 
 def plot_updraft_properties(scm_data, les_data, tmin, tmax, title, folder="scampify_plots/output/"):
     """
@@ -120,24 +211,6 @@ def plot_timeseries_1D(scm_data, les_data, folder="scampify_plots/output/"):
     tmax     - upper bound for time mean
     folder   - folder where to save the created plot
     """
-    # surface fluxes
-    #plot_scm_y = [scm_data["lhf"], scm_data["shf"]]
-    #plot_les_y = [les_data["lhf"], les_data["shf"]]
-    #y_lab = ["LHF", "SHF"]
-
-    #fig = plt.figure(1)
-    #for plot_it in range(2):
-    #    plt.subplot(2,1,plot_it+1)
-    #    plt.plot(les_data["t"][1:]/3600., plot_les_y[plot_it][1:], '-', color="gray", lw = 3, label="LES")
-    #    plt.plot(scm_data["t"][1:]/3600., plot_scm_y[plot_it][1:], '-', color="b",    lw = 3, label="SCM")
-    #    plt.ylabel(y_lab[plot_it])
-    #    plt.xlim([0, scm_data["t"][-1]/3600.])
-    #    plt.grid(True)
-    #plt.xlabel('time [h]')
-    #plt.tight_layout()
-    #plt.savefig(folder + "surface_heat_fluxes.pdf")
-    #plt.clf()
-
     # cloud timeseries
     plot_scm_y = [scm_data["lwp_mean"],\
                   scm_data["cloud_cover_mean"],\
@@ -183,6 +256,9 @@ def plot_timeseries(scm_data, les_data, cb_min, cb_max, folder="scampify_plots/o
 
     les_z_half = les_data["z_half"] / 1000.
     les_time   = les_data["t"] / 3600.
+
+    les_data["env_qr"] = np.multiply(les_data["env_qr"], (1. - les_data["updraft_fraction"]))
+    les_data["updraft_qr"] = np.multiply(les_data["updraft_qr"], les_data["updraft_fraction"])
 
     les_vars  = ["thetali_mean", "env_thetali",      "updraft_thetali",\
                  "qt_mean",      "env_qt",           "updraft_qt",\

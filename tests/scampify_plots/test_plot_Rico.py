@@ -24,7 +24,7 @@ def sim_data(request):
     setup = cmn.simulation_setup('Rico')
 
     setup["namelist"]['microphysics']['rain_model'] = 'clima_1m'
-    #setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
+    setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
     #setup["namelist"]["turbulence"]["EDMF_PrognosticTKE"]["entrainment"]="moisture_deficit"
 
     setup['namelist']['grid']['gw'] = 3
@@ -72,7 +72,6 @@ def test_plot_timeseries_Rico(sim_data):
     """
     plot Rico timeseries
     """
-    # make directory
     localpath = os.getcwd()
     try:
         os.mkdir(localpath + "/scampify_plots/output/Rico/")
@@ -85,37 +84,15 @@ def test_plot_timeseries_Rico(sim_data):
     scm_data_to_plot_timesrs = cmn.read_scm_data_timeseries(sim_data["scm_data"])
     les_data_to_plot_timesrs = cmn.read_les_data_timeseries(sim_data["les_data"])
 
-    pls.plot_humidities(
-        scm_data_to_plot,
-        les_data_to_plot,
-        22,
-        24,
-        "Rico_humidities.pdf",
-        folder="scampify_plots/output/Rico/"
-    )
-
-    pls.plot_updraft_properties(
-        scm_data_to_plot,
-        les_data_to_plot,
-        22,
-        24,
-        "Rico_updraft_properties.pdf",
-        folder="scampify_plots/output/Rico/"
-    )
-
-    pls.plot_timeseries_1D(
-        scm_data_to_plot_timesrs,
-        les_data_to_plot_timesrs,
-        folder="scampify_plots/output/Rico/"
-    )
-
     cb_min = [296, 296, 297,  0,    0,   7.5,    0,    0,   0,    0,     0,   0,  -0.1,    0, 0]
     cb_max = [332, 332, 305, 17.5, 17.5, 18,  0.05, 0.02, 2.8, 0.007, 0.004, 0.56,   0, 0.24, 5]
+    t0 = 22
+    t1 = 24
+    folder = "scampify_plots/output/Rico/"
+    case = "Rico_"
 
-    pls.plot_timeseries(
-        scm_data_to_plot,
-        les_data_to_plot,
-        cb_min,
-        cb_max,
-        folder="scampify_plots/output/Rico/"
-    )
+    pls.plot_humidities(scm_data_to_plot, les_data_to_plot, t0, t1, case+"humidities.pdf", folder=folder)
+    pls.plot_cloud_rain_components(scm_data_to_plot, les_data_to_plot, t0, t1, case + "cloud_rain_comp.pdf", folder=folder)
+    pls.plot_updraft_properties(scm_data_to_plot, les_data_to_plot, t0, t1, case+"updraft_properties.pdf", folder=folder)
+    pls.plot_timeseries_1D(scm_data_to_plot_timesrs, les_data_to_plot_timesrs, folder=folder)
+    pls.plot_timeseries(scm_data_to_plot, les_data_to_plot, cb_min, cb_max, folder=folder)

@@ -21,6 +21,7 @@ def sim_data(request):
 
     setup['namelist']['microphysics']['rain_model'] = 'clima_1m'
     setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
+    #setup['namelist']['thermodynamics']['quadrature_order'] = 20
     #setup["namelist"]["turbulence"]["EDMF_PrognosticTKE"]["entrainment"]="moisture_deficit"
 
     setup['namelist']['grid']['gw'] = 3
@@ -44,10 +45,12 @@ def sim_data(request):
     if scampifylist["offline"]:
         # run scampy offline
         print "offline run"
+        #print "no-run"
         scampy.main_scampify(setup["namelist"], setup["paramlist"], scampifylist)
     else:
         # run scampy online
         print "online run"
+        #print "no-run"
         scampy.main1d(setup["namelist"], setup["paramlist"])
 
     # simulation results
@@ -68,7 +71,6 @@ def test_plot_timeseries_TRMM_LBA(sim_data):
     """
     plot TRMM_LBA timeseries
     """
-    # make directory
     localpath = os.getcwd()
     try:
         os.mkdir(localpath + "/scampify_plots/output/TRMM_LBA/")
@@ -81,37 +83,15 @@ def test_plot_timeseries_TRMM_LBA(sim_data):
     scm_data_to_plot_timesrs = cmn.read_scm_data_timeseries(sim_data["scm_data"])
     les_data_to_plot_timesrs = cmn.read_les_data_timeseries(sim_data["les_data"])
 
-    pls.plot_humidities(
-        scm_data_to_plot,
-        les_data_to_plot,
-        5,
-        6,
-        "TRMM_LBA_humidities.pdf",
-        folder="scampify_plots/output/TRMM_LBA/"
-    )
-
-    pls.plot_updraft_properties(
-        scm_data_to_plot,
-        les_data_to_plot,
-        5,
-        6,
-        "TRMM_LBA_updraft_properties.pdf",
-        folder="scampify_plots/output/TRMM_LBA/"
-    )
-
-    pls.plot_timeseries_1D(
-        scm_data_to_plot_timesrs,
-        les_data_to_plot_timesrs,
-        folder="scampify_plots/output/TRMM_LBA/"
-    )
-
     cb_min = [280, 280, 294,  0,  0,  0,    0,     0,   0,    0,     0,   0, -0.35,    0,    0]
-    cb_max = [370, 370, 348, 20, 20, 20, 0.09, 0.028, 2.8, 0.09, 0.064, 2.4,     0, 0.28, 10.5]
+    cb_max = [370, 370, 348, 20, 20, 20, 0.09, 0.028, 2.8, 0.09, 0.064, 0.06,    0, 0.28, 10.5]
+    t0 = 5
+    t1 = 6
+    folder = "scampify_plots/output/TRMM_LBA/"
+    case = "TRMM_LBA_"
 
-    pls.plot_timeseries(
-        scm_data_to_plot,
-        les_data_to_plot,
-        cb_min,
-        cb_max,
-        folder="scampify_plots/output/TRMM_LBA/"
-    )
+    pls.plot_humidities(scm_data_to_plot, les_data_to_plot, t0, t1, case + "humidities.pdf", folder=folder)
+    pls.plot_cloud_rain_components(scm_data_to_plot, les_data_to_plot, t0, t1, case + "cloud_rain_comp.pdf", folder=folder)
+    pls.plot_updraft_properties(scm_data_to_plot, les_data_to_plot, t0, t1, case + "updraft_properties.pdf", folder=folder)
+    pls.plot_timeseries_1D(scm_data_to_plot_timesrs, les_data_to_plot_timesrs, folder=folder)
+    pls.plot_timeseries(scm_data_to_plot, les_data_to_plot, cb_min, cb_max, folder=folder)
