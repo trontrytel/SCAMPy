@@ -206,6 +206,7 @@ cdef class Scampify1d:
 
                 # autoconversion and accretion
                 mph = microphysics_rain_src(
+                    self.rain_var.rain_model,
                     self.upd_var.QT.values[0,k],
                     self.upd_var.QL.values[0,k],
                     self.rain_var.Upd_QR.values[k],

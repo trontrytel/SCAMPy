@@ -18,9 +18,10 @@ def sim_data(request):
     # generate namelists and paramlists
     cmn.removing_files
     setup = cmn.simulation_setup('TRMM_LBA')
+
+    setup['namelist']['microphysics']['rain_model'] = 'clima_1m'
     setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
-    setup['namelist']['microphysics']['rain_model'] = True
-    setup["namelist"]["turbulence"]["EDMF_PrognosticTKE"]["entrainment"]="moisture_deficit"
+    #setup["namelist"]["turbulence"]["EDMF_PrognosticTKE"]["entrainment"]="moisture_deficit"
 
     setup['namelist']['grid']['gw'] = 3
     setup['namelist']['grid']['nz'] = 220
@@ -29,9 +30,9 @@ def sim_data(request):
     setup["namelist"]['time_stepping']['dt'] = 10.
     setup['namelist']['time_stepping']['t_max'] = 21600.0
 
-    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['entrainment_factor'] = 0.2       # 0.15
-    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['detrainment_factor'] = 3         # 2
-    setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['entrainment_erf_const'] = 2      # 2
+    #setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['entrainment_factor'] = 0.2       # 0.15
+    #setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['detrainment_factor'] = 3         # 2
+    #setup["paramlist"]['turbulence']['EDMF_PrognosticTKE']['entrainment_erf_const'] = 2      # 2
 
     # additional parameters for offline runs
     scampifylist = {}

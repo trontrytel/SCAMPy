@@ -30,9 +30,9 @@ def sim_data(request):
     setup['namelist']['time_stepping']['t_max'] = 14400
     setup["namelist"]['time_stepping']['dt'] = 4.
 
-    setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
-    setup['namelist']['microphysics']['rain_model'] = True
-    setup["namelist"]["turbulence"]["EDMF_PrognosticTKE"]["entrainment"]="moisture_deficit"
+    setup['namelist']['microphysics']['rain_model'] = 'clima_1m'
+    #setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
+    #setup["namelist"]["turbulence"]["EDMF_PrognosticTKE"]["entrainment"]="moisture_deficit"
 
     # additional parameters for offline runs
     scampifylist = {}

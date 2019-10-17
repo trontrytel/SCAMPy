@@ -86,7 +86,7 @@ def read_scm_data_srs(scm_data):
         data[var] = []
         if ("qt" in var or "ql" in var or "qr" in var):
             try:
-                data[var] = np.transpose(np.array(scm_data["profiles/"  + var][:, :])) * 1000  #g/kg
+                data[var] = np.transpose(np.array(scm_data["profiles/"  + var][:, :])) * 1000 #g/kg
             except:
                 data[var] = np.transpose(np.array(scm_data["profiles/w_mean" ][:, :])) * 0  # have zeros when no ql or qr
         else:
