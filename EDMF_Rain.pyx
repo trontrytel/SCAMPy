@@ -71,7 +71,7 @@ cdef class RainVariables:
         return
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats):
-        Stats.add_profile('qr')
+        Stats.add_profile('qr_mean')
         Stats.add_profile('updraft_qr')
         Stats.add_profile('env_qr')
         Stats.add_profile('rain_area')
@@ -83,7 +83,7 @@ cdef class RainVariables:
         return
 
     cpdef io(self, NetCDFIO_Stats Stats, ReferenceState.ReferenceState Ref):
-        Stats.write_profile('qr',                self.QR.values[self.Gr.gw           : self.Gr.nzg - self.Gr.gw])
+        Stats.write_profile('qr_mean',           self.QR.values[self.Gr.gw           : self.Gr.nzg - self.Gr.gw])
         Stats.write_profile('updraft_qr',        self.Upd_QR.values[self.Gr.gw       : self.Gr.nzg - self.Gr.gw])
         Stats.write_profile('env_qr',            self.Env_QR.values[self.Gr.gw       : self.Gr.nzg - self.Gr.gw])
         Stats.write_profile('rain_area',         self.RainArea.values[self.Gr.gw     : self.Gr.nzg - self.Gr.gw])

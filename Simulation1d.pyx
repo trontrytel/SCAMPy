@@ -52,7 +52,6 @@ class Simulation1d:
         return
 
     def initialize_io(self):
-
         self.GMV.initialize_io(self.Stats)
         self.Case.initialize_io(self.Stats)
         self.Turb.initialize_io(self.Stats)

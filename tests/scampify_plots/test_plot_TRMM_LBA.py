@@ -19,8 +19,8 @@ def sim_data(request):
     cmn.removing_files
     setup = cmn.simulation_setup('TRMM_LBA')
 
-    setup['namelist']['microphysics']['rain_model'] = 'clima_1m'
-    setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
+    #setup['namelist']['microphysics']['rain_model'] = 'clima_1m'
+    #setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
     #setup['namelist']['thermodynamics']['quadrature_order'] = 20
     #setup["namelist"]["turbulence"]["EDMF_PrognosticTKE"]["entrainment"]="moisture_deficit"
 
@@ -64,7 +64,6 @@ def sim_data(request):
 
     # remove netcdf file after tests
     #request.addfinalizer(cmn.removing_files)
-
     return sim_data
 
 def test_plot_timeseries_TRMM_LBA(sim_data):

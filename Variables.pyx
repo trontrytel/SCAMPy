@@ -231,7 +231,6 @@ cdef class GridMeanVariables:
         Stats.add_profile('u_mean')
         Stats.add_profile('v_mean')
         Stats.add_profile('qt_mean')
-        Stats.add_profile('qr_mean')
         Stats.add_profile('RH_mean')
         if self.H.name == 's':
             Stats.add_profile('s_mean')
@@ -261,13 +260,12 @@ cdef class GridMeanVariables:
         cdef:
             double [:] arr = self.U.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw]
             Py_ssize_t k
+
         Stats.write_profile('u_mean', arr)
         Stats.write_profile('v_mean',self.V.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('qt_mean',self.QT.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('ql_mean',self.QL.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
-        Stats.write_profile('qr_mean',self.QR.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('temperature_mean',self.T.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
-        Stats.write_profile('RH_mean',self.QR.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('buoyancy_mean',self.B.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         if self.H.name == 's':
             Stats.write_profile('s_mean',self.H.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
@@ -280,7 +278,6 @@ cdef class GridMeanVariables:
             Stats.write_profile('Hvar_mean',self.Hvar.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
             Stats.write_profile('QTvar_mean',self.QTvar.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
             Stats.write_profile('HQTcov_mean',self.HQTcov.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
-
         Stats.write_profile('cloud_fraction_mean',self.cloud_fraction.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_ts('cloud_cover_mean', self.cloud_cover)
 
