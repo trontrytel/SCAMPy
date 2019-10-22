@@ -37,7 +37,7 @@ def sim_data(request):
 
     # additional parameters for offline runs
     scampifylist = {}
-    scampifylist["offline"] = False
+    scampifylist["offline"] = True
     scampifylist["les_stats_freq"] = 100.
     scampifylist["les_outfile"] = setup["les_outfile"]
 

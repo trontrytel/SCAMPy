@@ -294,8 +294,6 @@ cdef class Scampify1d:
                 self.GMV.QL.values[idx] = self.upd_var.QL.bulkvalues[idx] * self.upd_var.Area.bulkvalues[idx] +\
                                           self.env_var.QL.values[idx]     * self.env_var.Area.values[idx]
 
-                self.GMV.QR.values[idx] = self.rain_var.QR.values[idx] * self.rain_var.RainArea.values[idx]
-
 
             self.Stats.open_files()
             self.Stats.write_simulation_time(self.TS.t)
