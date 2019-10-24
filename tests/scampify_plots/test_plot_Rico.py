@@ -24,7 +24,7 @@ def sim_data(request):
     setup = cmn.simulation_setup('Rico')
 
     setup["namelist"]['microphysics']['rain_model'] = 'clima_1m'
-    setup['namelist']['thermodynamics']['sgs'] = 'quadrature'
+    setup['namelist']['thermodynamics']['sgs'] = 'mean'#'quadrature'
     #setup["namelist"]["turbulence"]["EDMF_PrognosticTKE"]["entrainment"]="moisture_deficit"
 
     setup['namelist']['grid']['gw'] = 3
@@ -40,7 +40,7 @@ def sim_data(request):
 
     # additional parameters for offline runs
     scampifylist = {}
-    scampifylist["offline"] = True
+    scampifylist["offline"] = False
     scampifylist["les_stats_freq"] = 100.
     scampifylist["les_outfile"] = setup["les_outfile"]
 
