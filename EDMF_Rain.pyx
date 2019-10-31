@@ -235,7 +235,7 @@ cdef class RainPhysics:
 
             flag_evaporate_all = False
 
-            tmp_evap = max(0, conv_q_rai_to_q_vap(QR.values[k],
+            tmp_evap = min(0, conv_q_rai_to_q_vap(QR.values[k],
                                                   GMV.QT.values[k],
                                                   GMV.QL.values[k],
                                                   GMV.T.values[k],
@@ -243,16 +243,16 @@ cdef class RainPhysics:
                                                   self.Ref.rho0[k]
                                                 ) * dt_model)
 
-            if tmp_evap > QR.values[k]:
+            if abs(tmp_evap) > QR.values[k]:
                 flag_evaporate_all = True
-                tmp_evap = QR.values[k]
+                tmp_evap = -QR.values[k]
 
-            self.rain_evap_source_qt[k] = tmp_evap * RainArea.values[k]
+            self.rain_evap_source_qt[k] = -tmp_evap * RainArea.values[k]
 
             self.rain_evap_source_h[k]  = rain_source_to_thetal(
                 self.Ref.p0[k],
                 GMV.T.values[k],
-                - tmp_evap
+                tmp_evap # TODO check
             ) * RainArea.values[k]
 
             if flag_evaporate_all:
@@ -262,5 +262,5 @@ cdef class RainPhysics:
                 # TODO: assuming that rain evaporation doesn't change
                 # rain area fraction
                 # (should be changed for prognostic rain area fractions)
-                QR.values[k] -= tmp_evap
+                QR.values[k] += tmp_evap
         return
