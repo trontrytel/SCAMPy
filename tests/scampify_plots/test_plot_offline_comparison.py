@@ -132,9 +132,9 @@ def test_plot_offline_individual(case, sgs, mode):
     # plot results
     pls.plot_humidities(scm_data_to_plot, les_data_to_plot, params[case], "humidities.pdf", folder=folder)
     pls.plot_cloud_rain_components(scm_data_to_plot, les_data_to_plot, params[case], "cloud_rain_comp.pdf", folder=folder)
-    #pls.plot_updraft_properties(scm_data_to_plot, les_data_to_plot, t0, t1, "updraft_properties.pdf", folder=folder)
-    #pls.plot_timeseries_1D(scm_data_to_plot_timesrs, les_data_to_plot_timesrs, folder=folder)
-    #pls.plot_timeseries(scm_data_to_plot, les_data_to_plot, cb_min, cb_max, folder=folder)
+    pls.plot_updraft_properties(scm_data_to_plot, les_data_to_plot, params[case], "updraft_properties.pdf", folder=folder)
+    pls.plot_timeseries_1D(scm_data_to_plot_timesrs, les_data_to_plot_timesrs, folder=folder)
+    pls.plot_timeseries(scm_data_to_plot, les_data_to_plot, params[case], folder=folder)
 
 def test_plot_offline_all():
 

@@ -3,6 +3,7 @@ sys.path.insert(0, "./")
 sys.path.insert(0, "../")
 
 import numpy as np
+import copy
 
 import matplotlib as mpl
 mpl.use('Agg')  # To allow plotting when display is off
@@ -113,16 +114,19 @@ def plot_humidities(scm_data, les_data, params, title, folder="scampify_plots/ou
     t1_scm = int(np.where(np.array(tmax*3600.0 <= scm_data["t"]))[0][0])
     t1_les = int(np.where(np.array(tmax*3600.0 <= les_data["t"]))[0][0])
 
-    scm_data["qv_mean"] = scm_data["qt_mean"]    - scm_data["ql_mean"]
-    scm_data["upd_qv"]  = scm_data["updraft_qt"] - scm_data["updraft_ql"]
-    scm_data["env_qv"]  = scm_data["env_qt"]     - scm_data["env_ql"]
+    _scm_data = copy.deepcopy(scm_data)
+    _les_data = copy.deepcopy(les_data)
 
-    les_data["qv_mean"] = les_data["qt_mean"]    - les_data["ql_mean"]
-    les_data["upd_qv"]  = les_data["updraft_qt"] - les_data["updraft_ql"]
-    les_data["env_qv"]  = les_data["env_qt"]     - les_data["env_ql"]
+    _scm_data["qv_mean"] = _scm_data["qt_mean"]    - _scm_data["ql_mean"]
+    _scm_data["upd_qv"]  = _scm_data["updraft_qt"] - _scm_data["updraft_ql"]
+    _scm_data["env_qv"]  = _scm_data["env_qt"]     - _scm_data["env_ql"]
 
-    les_data["env_qr"] = np.multiply(les_data["env_qr"], (1. - les_data["updraft_fraction"]))
-    les_data["updraft_qr"] = np.multiply(les_data["updraft_qr"], les_data["updraft_fraction"])
+    _les_data["qv_mean"] = _les_data["qt_mean"]    - _les_data["ql_mean"]
+    _les_data["upd_qv"]  = _les_data["updraft_qt"] - _les_data["updraft_ql"]
+    _les_data["env_qv"]  = _les_data["env_qt"]     - _les_data["env_ql"]
+
+    _les_data["env_qr"]     = np.multiply(_les_data["env_qr"], (1. - _les_data["updraft_fraction"]))
+    _les_data["updraft_qr"] = np.multiply(_les_data["updraft_qr"], _les_data["updraft_fraction"])
 
     fig = plt.figure(1)
     fig.set_figheight(12)
@@ -140,8 +144,8 @@ def plot_humidities(scm_data, les_data, params, title, folder="scampify_plots/ou
 
     for it in range(9):
         plt.subplot(3, 3, it+1)
-        plt.plot(np.nanmean(les_data[data_arr[it]][:, t0_les : t1_les], axis=1), les_data["z_half"] / 1000., '-', c='gray',      label='les', lw = 2)
-        plt.plot(np.nanmean(scm_data[data_arr[it]][:, t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., "-", c="royalblue", label='scm', lw = 4)
+        plt.plot(np.nanmean(_les_data[data_arr[it]][:, t0_les : t1_les], axis=1), _les_data["z_half"] / 1000., '-', c='gray',      label='les', lw = 2)
+        plt.plot(np.nanmean(_scm_data[data_arr[it]][:, t0_scm : t1_scm], axis=1), _scm_data["z_half"] / 1000., "-", c="royalblue", label='scm', lw = 4)
         plt.xlabel(label_arr[it])
         plt.ylim([params["z_min"], params["z_max"]])
         plt.grid(True)
@@ -179,13 +183,13 @@ def plot_cloud_rain_components(scm_data, les_data, params, title, folder="scampi
     les_env_area = 1. - les_upd_area
 
     scm_upd_ql = np.multiply(scm_upd_area, scm_data["updraft_ql"])
-    scm_upd_qr = scm_data["updraft_qr"]
     scm_env_ql = np.multiply(scm_env_area, scm_data["env_ql"])
+    scm_upd_qr = scm_data["updraft_qr"]
     scm_env_qr = scm_data["env_qr"]
 
     les_upd_ql = np.multiply(les_upd_area, les_data["updraft_ql"])
-    les_upd_qr = np.multiply(les_upd_area, les_data["updraft_qr"])
     les_env_ql = np.multiply(les_env_area, les_data["env_ql"])
+    les_upd_qr = np.multiply(les_upd_area, les_data["updraft_qr"])
     les_env_qr = np.multiply(les_env_area, les_data["env_qr"])
 
     les_mean_ql = les_data["ql_mean"]
@@ -245,18 +249,20 @@ def plot_cloud_rain_components(scm_data, les_data, params, title, folder="scampi
     plt.clf()
 
 
-def plot_updraft_properties(scm_data, les_data, tmin, tmax, title, folder="scampify_plots/output/"):
+def plot_updraft_properties(scm_data, les_data, params, title, folder="scampify_plots/output/"):
     """
     Plots updraft and environment profiles from scm and les
 
     Input:
     data   - scm stats file
     les    - les stats file
-    tmin   - lower bound for time mean
-    tmax   - upper bound for time mean
-    title  - name for the created plot
-    folder - folder where to save the created plot
+    params   - dictionary with simulation parameters
+    title    - name for the created plot
+    folder   - folder where to save the created plot
     """
+    tmin = params["t0"]
+    tmax = params["t1"]
+
     t0_scm = int(np.where(np.array(scm_data["t"]) > tmin * 3600.)[0][0])
     t0_les = int(np.where(np.array(les_data["t"]) > tmin * 3600.)[0][0])
     t1_scm = int(np.where(np.array(tmax*3600. <= scm_data["t"]))[0][0])
@@ -288,6 +294,8 @@ def plot_updraft_properties(scm_data, les_data, tmin, tmax, title, folder="scamp
       plt.grid(True)
       if it in [0,3]:
           plt.ylabel("z [km]")
+      if it == 5:
+          plt.legend()
 
     plt.tight_layout()
     plt.savefig(folder + title)
@@ -332,17 +340,18 @@ def plot_timeseries_1D(scm_data, les_data, folder="scampify_plots/output/"):
     plt.savefig(folder + "timeseries_cloud_properties.pdf")
     plt.clf()
 
-def plot_timeseries(scm_data, les_data, cb_min, cb_max, folder="scampify_plots/output/"):
+def plot_timeseries(scm_data, les_data, params, folder="scampify_plots/output/"):
     """
     Plots the time series of Scampy simulations
 
     Input:
-    data   - scm stats file
-    les    - les stats file
-    tmin   - lower bound for time mean
-    tmax   - upper bound for time mean
-    folder - folder where to save the created plot
+    scm_data - scm stats file
+    les_data - les stats file
+    params   - dictionary with simulation parameters
+    folder   - folder where to save the created plot
     """
+    cb_min = params["cb_min"]
+    cb_max = params["cb_max"]
 
     scm_z_half = scm_data["z_half"] / 1000.
     scm_time   = scm_data["t"] / 3600.
