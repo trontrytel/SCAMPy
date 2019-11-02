@@ -84,19 +84,17 @@ def test_plot_offline_individual(case, sgs, mode):
         model = "offline"
     fpath = "scampify_plots/data_scm_"+model+"/quad_"+quad
 
-    # TODO - commented out for plot testing
     # remove old simulation files
-    #subprocess.call("rm -r " + fpath + "/Tests.*", shell=True)
+    subprocess.call("rm -r " + fpath + "/Tests.*", shell=True)
 
     # set folder for the new simulation files
     setup["namelist"]["output"]["output_root"]=fpath + "/Tests."
 
-    # TODO - commented out for plot testing
     #subprocess.call("python setup.py build_ext --inplace", shell=True, cwd='../')
-    #if scampifylist["offline"]:
-    #    scampy.main_scampify(setup["namelist"], setup["paramlist"], scampifylist)
-    #else:
-    #    scampy.main1d(setup["namelist"], setup["paramlist"])
+    if scampifylist["offline"]:
+        scampy.main_scampify(setup["namelist"], setup["paramlist"], scampifylist)
+    else:
+        scampy.main1d(setup["namelist"], setup["paramlist"])
 
     setup["scm_outfile"] = fpath + "/" + setup["scm_outfile"][1:]
     params[case]["s"+model[0:2]+"_q"+quad] = setup["scm_outfile"]
