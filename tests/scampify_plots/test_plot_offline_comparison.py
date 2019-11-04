@@ -50,7 +50,7 @@ params["TRMM_LBA"] = \
 
 @pytest.mark.parametrize("case", cases)
 @pytest.mark.parametrize("sgs", ['mean', 'quadrature'])
-@pytest.mark.parametrize("mode", [True, False])
+@pytest.mark.parametrize("mode", [False]) # True - quadrature - Rico, True - quadrature - TRMM
 def test_plot_offline_individual(case, sgs, mode):
 
     # generate namelists and paramlists
@@ -64,8 +64,9 @@ def test_plot_offline_individual(case, sgs, mode):
     setup['namelist']['grid']['dz'] = params[case]["dz"]
     setup['namelist']['grid']['nz'] = params[case]["nz"]
 
-    setup["namelist"]['time_stepping']['dt'] =params[case]["dt"]
+    setup["namelist"]['time_stepping']['dt'] = params[case]["dt"] / 10.
     setup['namelist']['time_stepping']['t_max'] = params[case]["t_max"]
+    setup['namelist']['stats_io']['frequency'] /= 10.
 
     # additional parameters for offline runs
     scampifylist = {}
@@ -85,7 +86,7 @@ def test_plot_offline_individual(case, sgs, mode):
     fpath = "scampify_plots/data_scm_"+model+"/quad_"+quad
 
     # remove old simulation files
-    subprocess.call("rm -r " + fpath + "/Tests.*", shell=True)
+    #subprocess.call("rm -r " + fpath + "/Tests.*", shell=True)
 
     # set folder for the new simulation files
     setup["namelist"]["output"]["output_root"]=fpath + "/Tests."
@@ -144,8 +145,6 @@ def test_plot_offline_all():
         # les specific data
         rd[case]["les"] = {}
         rd[case]["les"]["data"] = cmn.read_les_data_srs(Dataset(params[case]["les"], 'r'))
-        rd[case]["les"]["t0"] = int(np.where(rd[case]["les"]["data"]["t"] > params[case]["t0"] * 3600.)[0][0])
-        rd[case]["les"]["t1"] = int(np.where(params[case]["t1"] * 3600.0 <= rd[case]["les"]["data"]["t"])[0][0])
         rd[case]["les"]["upd_area"] = rd[case]["les"]["data"]["updraft_fraction"]
         rd[case]["les"]["env_area"] = 1. - rd[case]["les"]["upd_area"]
         rd[case]["les"]["qr_upd"] = np.multiply(rd[case]["les"]["upd_area"], rd[case]["les"]["data"]["updraft_qr"])
@@ -155,8 +154,6 @@ def test_plot_offline_all():
         for model in ["son_qon", "son_qof", "sof_qon", "sof_qof"]:
             rd[case][model] = {}
             rd[case][model]["data"] = cmn.read_scm_data_srs(Dataset(params[case][model], 'r'))
-            rd[case][model]["t0"] = int(np.where(rd[case][model]["data"]["t"] > params[case]["t0"] * 3600.)[0][0])
-            rd[case][model]["t1"] = int(np.where(params[case]["t1"] * 3600.0 <= rd[case][model]["data"]["t"])[0][0])
             rd[case][model]["upd_area"] = rd[case][model]["data"]["updraft_area"]
             rd[case][model]["env_area"] = 1. - rd[case][model]["upd_area"]
             rd[case][model]["qr_upd"] = rd[case][model]["data"]["updraft_qr"]
@@ -169,6 +166,8 @@ def test_plot_offline_all():
             rd[case][model]["ql_upd"]  = np.multiply(rd[case][model]["upd_area"], rd[case][model]["data"]["updraft_ql"])
             rd[case][model]["ql_env"]  = np.multiply(rd[case][model]["env_area"], rd[case][model]["data"]["env_ql"])
             rd[case][model]["z_half"]  = rd[case][model]["data"]["z_half"] / 1000.
+            rd[case][model]["t_range"] = (np.where(rd[case][model]["data"]["t"] >  params[case]["t0"] * 3600.) and\
+                                          np.where(rd[case][modle]["data"]["t"] <= params[case]["t1"] * 3600.))[0]
 
         # plot results
         pls.plot_les_online_offline(case, rd[case], params[case])

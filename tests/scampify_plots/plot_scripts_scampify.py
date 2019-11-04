@@ -30,7 +30,7 @@ def plot_les_online_offline(case, data, params):
 
     plt.subplot(2, 3, 1)
     for sdm in ["mean", "env", "upd"]:
-        plt.plot(np.nanmean(data["les"]["ql_"+sdm][:, data["les"]["t0"] : data["les"]["t1"]], axis=1), data["les"]["z_half"], '-', c=cd1[sdm], label='les_'+sdm)
+        plt.plot(np.nanmean(data["les"]["ql_"+sdm][:, data["les"]["t_range"]], axis=1), data["les"]["z_half"], '-', c=cd1[sdm], label='les_'+sdm)
     plt.xlabel("LES ql [g/kg]")
     plt.ylabel("z [km]")
     plt.xlim([params["ql_min"], params["ql_max"]])
@@ -39,8 +39,8 @@ def plot_les_online_offline(case, data, params):
 
     plt.subplot(2, 3, 2)
     for sdm in ["mean", "env", "upd"]:
-        plt.plot(np.nanmean(data["sof_qon"]["ql_"+sdm][:, data["sof_qon"]["t0"] : data["sof_qon"]["t1"]], axis=1), data["sof_qon"]["z_half"], '-', c=cd2[sdm], label='scm_sgs_'+sdm)
-        plt.plot(np.nanmean(data["sof_qof"]["ql_"+sdm][:, data["sof_qof"]["t0"] : data["sof_qof"]["t1"]], axis=1), data["sof_qof"]["z_half"], '-', c=cd1[sdm], label='scm_mean_'+sdm)
+        plt.plot(np.nanmean(data["sof_qon"]["ql_"+sdm][:, data["sof_qon"]["t_range"]], axis=1), data["sof_qon"]["z_half"], '-', c=cd2[sdm], label='scm_sgs_'+sdm)
+        plt.plot(np.nanmean(data["sof_qof"]["ql_"+sdm][:, data["sof_qof"]["t_range"]], axis=1), data["sof_qof"]["z_half"], '-', c=cd1[sdm], label='scm_mean_'+sdm)
     plt.xlabel("SCM-off ql [g/kg]")
     plt.xlim([params["ql_min"], params["ql_max"]])
     plt.ylim([params["z_min"], params["z_max"]])
@@ -48,8 +48,8 @@ def plot_les_online_offline(case, data, params):
 
     plt.subplot(2, 3, 3)
     for sdm in ["mean", "env", "upd"]:
-        plt.plot(np.nanmean(data["son_qon"]["ql_"+sdm][:, data["son_qon"]["t0"] : data["son_qon"]["t1"]], axis=1), data["son_qon"]["z_half"], '-', c=cd2[sdm], label='scm_sgs_'+sdm)
-        plt.plot(np.nanmean(data["son_qof"]["ql_"+sdm][:, data["son_qof"]["t0"] : data["son_qof"]["t1"]], axis=1), data["son_qof"]["z_half"], '-', c=cd1[sdm], label='scm_mean_'+sdm)
+        plt.plot(np.nanmean(data["son_qon"]["ql_"+sdm][:, data["son_qon"]["t_range"]], axis=1), data["son_qon"]["z_half"], '-', c=cd2[sdm], label='scm_sgs_'+sdm)
+        plt.plot(np.nanmean(data["son_qof"]["ql_"+sdm][:, data["son_qof"]["t_range"]], axis=1), data["son_qof"]["z_half"], '-', c=cd1[sdm], label='scm_mean_'+sdm)
     plt.xlabel("SCM-on ql [g/kg]")
     plt.xlim([params["ql_min"], params["ql_max"]])
     plt.ylim([params["z_min"], params["z_max"]])
@@ -57,7 +57,7 @@ def plot_les_online_offline(case, data, params):
 
     plt.subplot(2, 3, 4)
     for sdm in ["mean"]:
-        plt.plot(np.nanmean(data["les"]["qr_"+sdm][:, data["les"]["t0"] : data["les"]["t1"]], axis=1), data["les"]["z_half"], '-', c=cd1[sdm], label='les_'+sdm)
+        plt.plot(np.nanmean(data["les"]["qr_"+sdm][:, data["les"]["t_range"]], axis=1), data["les"]["z_half"], '-', c=cd1[sdm], label='les_'+sdm)
     plt.xlabel("LES qr [g/kg]")
     plt.ylabel("z [km]")
     plt.xlim([params["qr_min"], params["qr_max"]])
@@ -66,10 +66,10 @@ def plot_les_online_offline(case, data, params):
 
     plt.subplot(2, 3, 5)
     for sdm in ["mean"]:
-        plt.plot(np.nanmean(data["les"]["qr_"+sdm][:, data["les"]["t0"] : data["les"]["t1"]], axis=1), data["les"]["z_half"], '-', c="silver", label='les_'+sdm)
+        plt.plot(np.nanmean(data["les"]["qr_"+sdm][:, data["les"]["t_range"]], axis=1), data["les"]["z_half"], '-', c="silver", label='les_'+sdm)
     for sdm in ["mean", "env", "upd"]:
-        plt.plot(np.nanmean(data["sof_qon"]["qr_"+sdm][:, data["sof_qon"]["t0"] : data["sof_qon"]["t1"]], axis=1), data["sof_qon"]["z_half"], '-', c=cd2[sdm], label='scm_sgs_'+sdm)
-        plt.plot(np.nanmean(data["sof_qof"]["qr_"+sdm][:, data["sof_qof"]["t0"] : data["sof_qof"]["t1"]], axis=1), data["sof_qof"]["z_half"], '-', c=cd1[sdm], label='scm_mean_'+sdm)
+        plt.plot(np.nanmean(data["sof_qon"]["qr_"+sdm][:, data["sof_qon"]["t_range"]], axis=1), data["sof_qon"]["z_half"], '-', c=cd2[sdm], label='scm_sgs_'+sdm)
+        plt.plot(np.nanmean(data["sof_qof"]["qr_"+sdm][:, data["sof_qof"]["t_range"]], axis=1), data["sof_qof"]["z_half"], '-', c=cd1[sdm], label='scm_mean_'+sdm)
     plt.xlabel("SCM-off qr [g/kg]")
     plt.xlim([params["qr_min"], params["qr_max"]])
     plt.ylim([params["z_min"], params["z_max"]])
@@ -77,13 +77,13 @@ def plot_les_online_offline(case, data, params):
 
     plt.subplot(2, 3, 6)
     for sdm in ["mean"]:
-        plt.plot(np.nanmean(data["les"]["qr_"+sdm][:, data["les"]["t0"] : data["les"]["t1"]], axis=1), data["les"]["z_half"], '-', c="silver", label='les')
+        plt.plot(np.nanmean(data["les"]["qr_"+sdm][:, data["les"]["t_range"]], axis=1), data["les"]["z_half"], '-', c="silver", label='les')
     for sdm in ["mean"]:
-        plt.plot(np.nanmean(data["son_qon"]["qr_"+sdm][:, data["son_qon"]["t0"] : data["son_qon"]["t1"]], axis=1), data["son_qon"]["z_half"], '-', c=cd2[sdm], label='scm_sgs')
-        plt.plot(np.nanmean(data["son_qof"]["qr_"+sdm][:, data["son_qof"]["t0"] : data["son_qof"]["t1"]], axis=1), data["son_qof"]["z_half"], '-', c=cd1[sdm], label='scm_mean')
+        plt.plot(np.nanmean(data["son_qon"]["qr_"+sdm][:, data["son_qon"]["t_range"]], axis=1), data["son_qon"]["z_half"], '-', c=cd2[sdm], label='scm_sgs')
+        plt.plot(np.nanmean(data["son_qof"]["qr_"+sdm][:, data["son_qof"]["t_range"]], axis=1), data["son_qof"]["z_half"], '-', c=cd1[sdm], label='scm_mean')
     for sdm in ["env", "upd"]:
-        plt.plot(np.nanmean(data["son_qon"]["qr_"+sdm][:, data["son_qon"]["t0"] : data["son_qon"]["t1"]], axis=1), data["son_qon"]["z_half"], '-', c=cd2[sdm], label='scm_sgs_'+sdm)
-        plt.plot(np.nanmean(data["son_qof"]["qr_"+sdm][:, data["son_qof"]["t0"] : data["son_qof"]["t1"]], axis=1), data["son_qof"]["z_half"], '-', c=cd1[sdm], label='scm_mean_'+sdm)
+        plt.plot(np.nanmean(data["son_qon"]["qr_"+sdm][:, data["son_qon"]["t_range"]], axis=1), data["son_qon"]["z_half"], '-', c=cd2[sdm], label='scm_sgs_'+sdm)
+        plt.plot(np.nanmean(data["son_qof"]["qr_"+sdm][:, data["son_qof"]["t_range"]], axis=1), data["son_qof"]["z_half"], '-', c=cd1[sdm], label='scm_mean_'+sdm)
     plt.xlabel("SCM-on qr [g/kg]")
     plt.xlim([params["qr_min"], params["qr_max"]])
     plt.ylim([params["z_min"], params["z_max"]])
@@ -108,11 +108,8 @@ def plot_humidities(scm_data, les_data, params, title, folder="scampify_plots/ou
     """
     tmin = params["t0"]
     tmax = params["t1"]
-
-    t0_scm = int(np.where(np.array(scm_data["t"]) > tmin*3600.)[0][0])
-    t0_les = int(np.where(np.array(les_data["t"]) > tmin*3600.)[0][0])
-    t1_scm = int(np.where(np.array(tmax*3600.0 <= scm_data["t"]))[0][0])
-    t1_les = int(np.where(np.array(tmax*3600.0 <= les_data["t"]))[0][0])
+    scm_t = (np.where(scm_data["t"]  > tmin * 3600.) and np.where(scm_data["t"] <= tmax * 3600.))[0]
+    les_t = (np.where(les_data["t"]  > tmin * 3600.) and np.where(les_data["t"] <= tmax * 3600.))[0]
 
     _scm_data = copy.deepcopy(scm_data)
     _les_data = copy.deepcopy(les_data)
@@ -144,8 +141,8 @@ def plot_humidities(scm_data, les_data, params, title, folder="scampify_plots/ou
 
     for it in range(9):
         plt.subplot(3, 3, it+1)
-        plt.plot(np.nanmean(_les_data[data_arr[it]][:, t0_les : t1_les], axis=1), _les_data["z_half"] / 1000., '-', c='gray',      label='les', lw = 2)
-        plt.plot(np.nanmean(_scm_data[data_arr[it]][:, t0_scm : t1_scm], axis=1), _scm_data["z_half"] / 1000., "-", c="royalblue", label='scm', lw = 4)
+        plt.plot(np.nanmean(_les_data[data_arr[it]][:, les_t], axis=1), _les_data["z_half"] / 1000., '-', c='gray',      label='les', lw = 2)
+        plt.plot(np.nanmean(_scm_data[data_arr[it]][:, scm_t], axis=1), _scm_data["z_half"] / 1000., "-", c="royalblue", label='scm', lw = 4)
         plt.xlabel(label_arr[it])
         plt.ylim([params["z_min"], params["z_max"]])
         plt.grid(True)
@@ -171,11 +168,8 @@ def plot_cloud_rain_components(scm_data, les_data, params, title, folder="scampi
     """
     tmin = params["t0"]
     tmax = params["t1"]
-
-    t0_scm = int(np.where(np.array(scm_data["t"]) > tmin*3600.)[0][0])
-    t0_les = int(np.where(np.array(les_data["t"]) > tmin*3600.)[0][0])
-    t1_scm = int(np.where(np.array(tmax*3600.0 <= scm_data["t"]))[0][0])
-    t1_les = int(np.where(np.array(tmax*3600.0 <= les_data["t"]))[0][0])
+    scm_t = (np.where(scm_data["t"]  > tmin * 3600.) and np.where(scm_data["t"] <= tmax * 3600.))[0]
+    les_t = (np.where(les_data["t"]  > tmin * 3600.) and np.where(les_data["t"] <= tmax * 3600.))[0]
 
     scm_upd_area = scm_data["updraft_area"]
     scm_env_area = 1. - scm_upd_area
@@ -212,13 +206,13 @@ def plot_cloud_rain_components(scm_data, les_data, params, title, folder="scampi
                  "mean qr [g/kg]", "updraft qr [g/kg]", "env qr [g/kg]"]
 
     plt.subplot(1, 2, 1)
-    plt.plot(np.nanmean(les_mean_ql[:, t0_les : t1_les], axis=1), les_data["z_half"] / 1000., '-', c='grey',       label='les_mean', lw = 2)
-    plt.plot(np.nanmean(les_env_ql[:,  t0_les : t1_les], axis=1), les_data["z_half"] / 1000., '-', c='darksalmon', label='les_env', lw = 2)
-    plt.plot(np.nanmean(les_upd_ql[:,  t0_les : t1_les], axis=1), les_data["z_half"] / 1000., '-', c='skyblue',    label='les_upd', lw = 2)
+    plt.plot(np.nanmean(les_mean_ql[:, les_t], axis=1), les_data["z_half"] / 1000., '-', c='grey',       label='les_mean', lw = 2)
+    plt.plot(np.nanmean(les_env_ql[:,  les_t], axis=1), les_data["z_half"] / 1000., '-', c='darksalmon', label='les_env', lw = 2)
+    plt.plot(np.nanmean(les_upd_ql[:,  les_t], axis=1), les_data["z_half"] / 1000., '-', c='skyblue',    label='les_upd', lw = 2)
 
-    plt.plot(np.nanmean(scm_mean_ql[:, t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., '-', c='black', label='scm_mean', lw = 2)
-    plt.plot(np.nanmean(scm_env_ql[:,  t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., '-', c='red',   label='scm_env', lw = 2)
-    plt.plot(np.nanmean(scm_upd_ql[:,  t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., '-', c='blue',  label='scm_upd', lw = 2)
+    plt.plot(np.nanmean(scm_mean_ql[:, scm_t], axis=1), scm_data["z_half"] / 1000., '-', c='black', label='scm_mean', lw = 2)
+    plt.plot(np.nanmean(scm_env_ql[:,  scm_t], axis=1), scm_data["z_half"] / 1000., '-', c='red',   label='scm_env', lw = 2)
+    plt.plot(np.nanmean(scm_upd_ql[:,  scm_t], axis=1), scm_data["z_half"] / 1000., '-', c='blue',  label='scm_upd', lw = 2)
 
     plt.locator_params(axis='x', nbins=3)
     plt.xlabel("ql [g/kg]")
@@ -228,13 +222,13 @@ def plot_cloud_rain_components(scm_data, les_data, params, title, folder="scampi
     plt.grid(True)
 
     plt.subplot(1, 2, 2)
-    plt.plot(np.nanmean(les_mean_qr[:, t0_les : t1_les], axis=1), les_data["z_half"] / 1000., '-', c='grey',       label='les_mean', lw = 2)
-    plt.plot(np.nanmean(les_env_qr[:,  t0_les : t1_les], axis=1), les_data["z_half"] / 1000., '-', c='darksalmon', label='les_env', lw = 2)
-    plt.plot(np.nanmean(les_upd_qr[:,  t0_les : t1_les], axis=1), les_data["z_half"] / 1000., '-', c='skyblue',    label='les_upd', lw = 2)
+    plt.plot(np.nanmean(les_mean_qr[:, les_t], axis=1), les_data["z_half"] / 1000., '-', c='grey',       label='les_mean', lw = 2)
+    plt.plot(np.nanmean(les_env_qr[:,  les_t], axis=1), les_data["z_half"] / 1000., '-', c='darksalmon', label='les_env', lw = 2)
+    plt.plot(np.nanmean(les_upd_qr[:,  les_t], axis=1), les_data["z_half"] / 1000., '-', c='skyblue',    label='les_upd', lw = 2)
 
-    plt.plot(np.nanmean(scm_mean_qr[:, t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., '-', c='black', label='scm_mean', lw = 2)
-    plt.plot(np.nanmean(scm_env_qr[:,  t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., '-', c='red',   label='scm_env', lw = 2)
-    plt.plot(np.nanmean(scm_upd_qr[:,  t0_scm : t1_scm], axis=1), scm_data["z_half"] / 1000., '-', c='blue',  label='scm_upd', lw = 2)
+    plt.plot(np.nanmean(scm_mean_qr[:, scm_t], axis=1), scm_data["z_half"] / 1000., '-', c='black', label='scm_mean', lw = 2)
+    plt.plot(np.nanmean(scm_env_qr[:,  scm_t], axis=1), scm_data["z_half"] / 1000., '-', c='red',   label='scm_env', lw = 2)
+    plt.plot(np.nanmean(scm_upd_qr[:,  scm_t], axis=1), scm_data["z_half"] / 1000., '-', c='blue',  label='scm_upd', lw = 2)
 
     plt.locator_params(axis='x', nbins=3)
     plt.xlabel("qr [g/kg]")
@@ -262,11 +256,8 @@ def plot_updraft_properties(scm_data, les_data, params, title, folder="scampify_
     """
     tmin = params["t0"]
     tmax = params["t1"]
-
-    t0_scm = int(np.where(np.array(scm_data["t"]) > tmin * 3600.)[0][0])
-    t0_les = int(np.where(np.array(les_data["t"]) > tmin * 3600.)[0][0])
-    t1_scm = int(np.where(np.array(tmax*3600. <= scm_data["t"]))[0][0])
-    t1_les = int(np.where(np.array(tmax*3600. <= les_data["t"]))[0][0])
+    scm_t = (np.where(scm_data["t"]  > tmin * 3600.) and np.where(scm_data["t"] <= tmax * 3600.))[0]
+    les_t = (np.where(les_data["t"]  > tmin * 3600.) and np.where(les_data["t"] <= tmax * 3600.))[0]
 
     les_data["massflux"]  = np.multiply(les_data["updraft_fraction"], les_data["updraft_w"])
     scm_data["massflux"]  = np.multiply(scm_data["updraft_area"],     scm_data["updraft_w"])
@@ -288,8 +279,8 @@ def plot_updraft_properties(scm_data, les_data, params, title, folder="scampify_
 
     for it in range(6):
       plt.subplot(2,3,it+1)
-      plt.plot(np.nanmean(les_data[les_data_arr[it]][:, t0_les : t1_les], axis=1), les_data["z_half"]/1000., '-', c='gray',      label='les', lw = 4)
-      plt.plot(np.nanmean(scm_data[scm_data_arr[it]][:, t0_scm : t1_scm], axis=1), scm_data["z_half"]/1000., "-", c="royalblue", label='scm', lw = 2)
+      plt.plot(np.nanmean(les_data[les_data_arr[it]][:, les_t], axis=1), les_data["z_half"]/1000., '-', c='gray',      label='les', lw = 4)
+      plt.plot(np.nanmean(scm_data[scm_data_arr[it]][:, scm_t], axis=1), scm_data["z_half"]/1000., "-", c="royalblue", label='scm', lw = 2)
       plt.xlabel(label_arr[it])
       plt.grid(True)
       if it in [0,3]:

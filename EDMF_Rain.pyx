@@ -46,7 +46,7 @@ cdef class RainVariables:
             Py_ssize_t nzg = Gr.nzg
             Py_ssize_t k
 
-        self.QR           = RainVariable(nzg, 'qr',            'kg/kg')
+        self.QR           = RainVariable(nzg, 'qr_mean',       'kg/kg')
         # temporary variables for diagnostics to know where the rain is coming from
         self.Upd_QR       = RainVariable(nzg, 'upd_qr',        'kg/kg')
         self.Env_QR       = RainVariable(nzg, 'env_qr',        'kg/kg')
