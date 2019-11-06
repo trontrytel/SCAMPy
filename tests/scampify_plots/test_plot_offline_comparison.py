@@ -31,26 +31,26 @@ params["DYCOMS_RF01"] = \
      "cb_min": [285, 285, 288.75, 0, 0, 9, 0, 0, 0, 0, 0, 0, -0.16, 0, 0],\
      "cb_max": [307.5, 307.5, 289.5, 12.5, 12.5, 11, 0.8, 0.8, 0.64, 0.002, 0.002, 0.0012, 0, 0.24, 1.5],\
      "t0": 3, "t1": 4, "case_name": "drizzle_DYCOMS_RF01",\
-     "ql_max": 0.4, "qr_max": 1.1e-4, "ql_min": -1e-2, "qr_min": -1e-5, "z_min": -0.02, "z_max": 1.2,\
+     "ql_max": 0.4, "qr_max": 4.1e-4, "ql_min": -1e-2, "qr_min": -1e-5, "z_min": -0.02, "z_max": 1.2,\
      "les": "scampify_plots/data_les/DYCOMS_RF01_drizzle/CLIMA_1M_micro/Stats.DYCOMS_RF01.nc"}
 params["Rico"] = \
     {"gw": 3, "dz": 40., "nz": 150, "dt": 10., "t_max": 86400, "les_stats_freq": 100.,\
      "cb_min": [296, 296, 297, 0, 0, 7.5, 0, 0, 0, 0, 0, 0, -0.1, 0, 0],\
      "cb_max": [332, 332, 305, 17.5, 17.5, 18,  0.05, 0.02, 2.8, 0.007, 0.004, 0.56, 0, 0.24, 5] ,\
      "t0": 22, "t1": 24, "case_name": "Rico",\
-     "ql_max": 0.015, "qr_max": 3e-3, "ql_min": -1e-3, "qr_min": -1e-4, "z_min": -0.1, "z_max": 3.1,\
+     "ql_max": 0.015, "qr_max": 2e-3, "ql_min": -1e-3, "qr_min": -1e-4, "z_min": -0.1, "z_max": 3.1,\
      "les": "scampify_plots/data_les/Rico/CLIMA_1M_micro/Stats.Rico.nc"}
 params["TRMM_LBA"] = \
     {"gw": 3, "dz": 100., "nz": 220, "dt": 10., "t_max": 21600, "les_stats_freq": 100.,\
      "cb_min": [280, 280, 294, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.35, 0, 0],\
      "cb_max": [370, 370, 348, 20, 20, 20, 0.09, 0.028, 2.8, 0.09, 0.064, 0.06, 0, 0.28, 10.5],\
      "t0": 5, "t1": 6, "case_name": "TRMM_LBA",\
-     "ql_max": 0.07, "qr_max": 0.07, "ql_min": -1e-3, "qr_min": -1e-3, "z_min": -0.5, "z_max": 15,\
+     "ql_max": 0.04, "qr_max": 0.02, "ql_min": -1e-3, "qr_min": -1e-3, "z_min": -0.5, "z_max": 15,\
      "les": "scampify_plots/data_les/TRMM_LBA/CLIMA_1M_micro/Stats.TRMM_LBA.nc"}
 
-@pytest.mark.parametrize("case", cases)
-@pytest.mark.parametrize("sgs", ['mean', 'quadrature'])
-@pytest.mark.parametrize("mode", [False]) # True - quadrature - Rico, True - quadrature - TRMM
+@pytest.mark.parametrize("case", ["DYCOMS_RF01", "TRMM_LBA", "Rico"])
+@pytest.mark.parametrize("sgs", ['mean','quadrature'])
+@pytest.mark.parametrize("mode", [True, False])
 def test_plot_offline_individual(case, sgs, mode):
 
     # generate namelists and paramlists
@@ -64,9 +64,8 @@ def test_plot_offline_individual(case, sgs, mode):
     setup['namelist']['grid']['dz'] = params[case]["dz"]
     setup['namelist']['grid']['nz'] = params[case]["nz"]
 
-    setup["namelist"]['time_stepping']['dt'] = params[case]["dt"] / 10.
+    setup["namelist"]['time_stepping']['dt'] = params[case]["dt"]
     setup['namelist']['time_stepping']['t_max'] = params[case]["t_max"]
-    setup['namelist']['stats_io']['frequency'] /= 10.
 
     # additional parameters for offline runs
     scampifylist = {}
@@ -93,47 +92,49 @@ def test_plot_offline_individual(case, sgs, mode):
 
     #subprocess.call("python setup.py build_ext --inplace", shell=True, cwd='../')
     if scampifylist["offline"]:
-        scampy.main_scampify(setup["namelist"], setup["paramlist"], scampifylist)
+        #scampy.main_scampify(setup["namelist"], setup["paramlist"], scampifylist)
+        pass
     else:
-        scampy.main1d(setup["namelist"], setup["paramlist"])
+        #scampy.main1d(setup["namelist"], setup["paramlist"])
+        pass
 
     setup["scm_outfile"] = fpath + "/" + setup["scm_outfile"][1:]
     params[case]["s"+model[0:2]+"_q"+quad] = setup["scm_outfile"]
 
     # simulation results
-    scm_data = Dataset(setup["scm_outfile"], 'r')
-    les_data = Dataset(setup["les_outfile"], 'r')
-    sim_data = {}
-    sim_data["scm_data"] = scm_data
-    sim_data["les_data"] = les_data
-    sim_data["scampifylist"] = scampifylist
-    scm_data_to_plot = cmn.read_scm_data_srs(sim_data["scm_data"])
-    les_data_to_plot = cmn.read_les_data_srs(sim_data["les_data"])
-    scm_data_to_plot_timesrs = cmn.read_scm_data_timeseries(sim_data["scm_data"])
-    les_data_to_plot_timesrs = cmn.read_les_data_timeseries(sim_data["les_data"])
+    #scm_data = Dataset(setup["scm_outfile"], 'r')
+    #les_data = Dataset(setup["les_outfile"], 'r')
+    #sim_data = {}
+    #sim_data["scm_data"] = scm_data
+    #sim_data["les_data"] = les_data
+    #sim_data["scampifylist"] = scampifylist
+    #scm_data_to_plot = cmn.read_scm_data_srs(sim_data["scm_data"])
+    #les_data_to_plot = cmn.read_les_data_srs(sim_data["les_data"])
+    #scm_data_to_plot_timesrs = cmn.read_scm_data_timeseries(sim_data["scm_data"])
+    #les_data_to_plot_timesrs = cmn.read_les_data_timeseries(sim_data["les_data"])
 
     # plot setup
-    cb_min = params[case]["cb_min"]
-    cb_max = params[case]["cb_max"]
-    t0 = params[case]["t0"]
-    t1 = params[case]["t1"]
+    #cb_min = params[case]["cb_min"]
+    #cb_max = params[case]["cb_max"]
+    #t0 = params[case]["t0"]
+    #t1 = params[case]["t1"]
 
-    try:
-        os.mkdir(fpath + "/plots/")
-    except:
-        pass
-    folder = fpath + "/plots/" + params[case]["case_name"] + "/"
-    try:
-        os.mkdir(folder)
-    except:
-        pass
+    #try:
+    #    os.mkdir(fpath + "/plots/")
+    #except:
+    #    pass
+    #folder = fpath + "/plots/" + params[case]["case_name"] + "/"
+    #try:
+    #    os.mkdir(folder)
+    #except:
+    #    pass
 
-    # plot results
-    pls.plot_humidities(scm_data_to_plot, les_data_to_plot, params[case], "humidities.pdf", folder=folder)
-    pls.plot_cloud_rain_components(scm_data_to_plot, les_data_to_plot, params[case], "cloud_rain_comp.pdf", folder=folder)
-    pls.plot_updraft_properties(scm_data_to_plot, les_data_to_plot, params[case], "updraft_properties.pdf", folder=folder)
-    pls.plot_timeseries_1D(scm_data_to_plot_timesrs, les_data_to_plot_timesrs, folder=folder)
-    pls.plot_timeseries(scm_data_to_plot, les_data_to_plot, params[case], folder=folder)
+    ## plot results
+    #pls.plot_humidities(scm_data_to_plot, les_data_to_plot, params[case], "humidities.pdf", folder=folder)
+    #pls.plot_cloud_rain_components(scm_data_to_plot, les_data_to_plot, params[case], "cloud_rain_comp.pdf", folder=folder)
+    #pls.plot_updraft_properties(scm_data_to_plot, les_data_to_plot, params[case], "updraft_properties.pdf", folder=folder)
+    #pls.plot_timeseries_1D(scm_data_to_plot_timesrs, les_data_to_plot_timesrs, folder=folder)
+    #pls.plot_timeseries(scm_data_to_plot, les_data_to_plot, params[case], folder=folder)
 
 def test_plot_offline_all():
 
@@ -167,7 +168,7 @@ def test_plot_offline_all():
             rd[case][model]["ql_env"]  = np.multiply(rd[case][model]["env_area"], rd[case][model]["data"]["env_ql"])
             rd[case][model]["z_half"]  = rd[case][model]["data"]["z_half"] / 1000.
             rd[case][model]["t_range"] = (np.where(rd[case][model]["data"]["t"] >  params[case]["t0"] * 3600.) and\
-                                          np.where(rd[case][modle]["data"]["t"] <= params[case]["t1"] * 3600.))[0]
+                                          np.where(rd[case][model]["data"]["t"] <= params[case]["t1"] * 3600.))[0]
 
         # plot results
         pls.plot_les_online_offline(case, rd[case], params[case])
