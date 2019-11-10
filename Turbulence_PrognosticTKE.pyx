@@ -271,6 +271,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         self.ml_ratio = np.zeros((Gr.nzg,),dtype=np.double, order='c')
         self.l_entdet = np.zeros((Gr.nzg,),dtype=np.double, order='c')
         self.b = np.zeros((Gr.nzg,),dtype=np.double, order='c')
+
         return
 
     cpdef initialize(self, GridMeanVariables GMV):
@@ -644,6 +645,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     self.UpdVar.H.values[i,gw]
                 )
                 self.UpdVar.QL.values[i,gw] = sa.ql
+                self.UpdVar.QI.values[i,gw] = sa.qi
                 self.UpdVar.T.values[i, gw] = sa.T
 
                 for k in xrange(gw+1, self.Gr.nzg-gw):
@@ -658,6 +660,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                         self.UpdVar.H.values[i,k]
                     )
                     self.UpdVar.QL.values[i,k] = sa.ql
+                    self.UpdVar.QI.values[i,k] = sa.qi
                     self.UpdVar.T.values[i, k] = sa.T
 
         self.UpdVar.QT.set_bcs(self.Gr)
@@ -724,6 +727,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                         sa = eos(self.UpdThermo.t_to_prog_fp,self.UpdThermo.prog_to_t_fp, self.Ref.p0_half[k],
                                  self.UpdVar.QT.values[i,k], self.UpdVar.H.values[i,k])
                         self.UpdVar.QL.values[i,k] = sa.ql
+                        self.UpdVar.QI.values[i,k] = sa.qi
                         self.UpdVar.T.values[i,k] = sa.T
 
         # TODO - see comment (####)
@@ -824,7 +828,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 if ( shear2 - grad_b_thl/self.prandtl_nvec[k] - grad_b_qt/self.prandtl_nvec[k] < m_eps):
                     l3 = 1.0e6
 
-                # Limiting stratification scale (Deardorff, 1976)
+                # Limiting stratification scale (Deardorff, 1976) TODO_ICE
                 thv = theta_virt_c(self.Ref.p0_half[k], self.EnvVar.T.values[k], self.EnvVar.QT.values[k],
                     self.EnvVar.QL.values[k])
                 grad_thv_low = grad_thv_plus
@@ -929,20 +933,20 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
                 l3 = self.l_entdet[k]
 
-                # Limiting stratification scale (Deardorff, 1976)
+                # Limiting stratification scale (Deardorff, 1976) TODO_ICE
                 thv = theta_virt_c(self.Ref.p0_half[k], self.EnvVar.T.values[k], self.EnvVar.QT.values[k],
                     self.EnvVar.QL.values[k])
                 grad_thv_low = grad_thv_plus
                 grad_thv_plus = ( theta_virt_c(self.Ref.p0_half[k+1], self.EnvVar.T.values[k+1], self.EnvVar.QT.values[k+1],
                     self.EnvVar.QL.values[k+1]) - thv) * self.Gr.dzi
                 grad_thv = interp2pt(grad_thv_low, grad_thv_plus)
-                
+
                 th = theta_c(self.Ref.p0_half[k], self.EnvVar.T.values[k])
                 grad_th_low = grad_th_plus
                 grad_th_plus = ( theta_c(self.Ref.p0_half[k+1], self.EnvVar.T.values[k+1]) - th) * self.Gr.dzi
                 grad_th = interp2pt(grad_th_low, grad_th_plus)
 
-                # Effective static stability. lambda_stab reflects latent heat effects on stability.
+                # Effective static stability. lambda_stab reflects latent heat effects on stability. TODO_ICE
                 grad_th_eff = grad_thv - self.lambda_stab*(
                     1.0 + 0.61*self.EnvVar.QT.values[k] - (1.0 + 0.61)*self.EnvVar.QL.values[k]
                     )*(grad_th - grad_thl*th/self.EnvVar.THL.values[k])
@@ -1061,7 +1065,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             double zLL = self.Gr.z_half[self.Gr.gw]
             double ustar = Case.Sur.ustar, oblength = Case.Sur.obukhov_length
             double alpha0LL  = self.Ref.alpha0_half[self.Gr.gw]
-            
+
         if self.calc_tke:
             self.EnvVar.TKE.values[self.Gr.gw] = get_surface_tke(Case.Sur.ustar,
                                                      self.wstar,
@@ -1288,6 +1292,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     input.ml = self.mixing_length[k]
                     input.qt_env = self.EnvVar.QT.values[k]
                     input.ql_env = self.EnvVar.QL.values[k]
+                    #TODO_ICE
                     input.H_env = self.EnvVar.H.values[k]
                     input.T_env = self.EnvVar.T.values[k]
                     input.b_env = self.EnvVar.B.values[k]
@@ -1297,6 +1302,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     input.T_up = self.UpdVar.T.values[i,k]
                     input.qt_up = self.UpdVar.QT.values[i,k]
                     input.ql_up = self.UpdVar.QL.values[i,k]
+                    #TODO_ICE
                     input.p0 = self.Ref.p0_half[k]
                     input.alpha0 = self.Ref.alpha0_half[k]
                     input.env_Hvar = self.EnvVar.Hvar.values[k]
@@ -1440,6 +1446,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     self.UpdVar.QT.values[i,k] = GMV.QT.values[k]
                     self.UpdVar.T.values[i,k] = GMV.T.values[k]
                     self.UpdVar.QL.values[i,k] = GMV.QL.values[k]
+                    self.UpdVar.QI.values[i,k] = GMV.QI.values[k]
                     self.UpdVar.THL.values[i,k] = GMV.THL.values[k]
 
             if np.sum(self.UpdVar.Area.values[:,k])==0.0:
@@ -1449,6 +1456,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 self.EnvVar.QT.values[k] = GMV.QT.values[k]
                 self.EnvVar.T.values[k] = GMV.T.values[k]
                 self.EnvVar.QL.values[k] = GMV.QL.values[k]
+                self.EnvVar.QI.values[k] = GMV.QI.values[k]
                 self.EnvVar.THL.values[k] = GMV.THL.values[k]
 
         return
@@ -1467,6 +1475,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         self.EnvVar.H.set_bcs(self.Gr)
         self.EnvVar.T.set_bcs(self.Gr)
         self.EnvVar.QL.set_bcs(self.Gr)
+        self.EnvVar.QI.set_bcs(self.Gr)
         self.EnvVar.QT.set_bcs(self.Gr)
 
         return
@@ -1564,6 +1573,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                     self.UpdVar.H.new[i,gw]
                 )
                 self.UpdVar.QL.new[i,gw] = sa.ql
+                self.UpdVar.QI.new[i,gw] = sa.qi
                 self.UpdVar.T.new[i,gw] = sa.T
 
                 # starting from the bottom do entrainment at each level
@@ -1602,6 +1612,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                         self.UpdVar.H.new[i,k]
                     )
                     self.UpdVar.QL.new[i,k] = sa.ql
+                    self.UpdVar.QI.new[i,k] = sa.qi
                     self.UpdVar.T.new[i,k] = sa.T
 
         return
@@ -1847,13 +1858,16 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 GMV.QL.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.QL.bulkvalues[k] \
                                     + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.QL.values[k])
 
+                GMV.QI.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.QI.bulkvalues[k] \
+                                    + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.QI.values[k])
+
                 GMV.T.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.T.bulkvalues[k] \
                                     + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.T.values[k])
 
-                qv = GMV.QT.values[k] - GMV.QL.values[k]
+                qv = GMV.QT.values[k] - GMV.QL.values[k] - GMV.QI.values[k]
 
                 GMV.THL.values[k] = t_to_thetali_c(self.Ref.p0_half[k], GMV.T.values[k], GMV.QT.values[k],
-                                                   GMV.QL.values[k], 0.0)
+                                                   GMV.QL.values[k], GMV.QI.values[k])
 
                 GMV.B.values[k] = (self.UpdVar.Area.bulkvalues[k] * self.UpdVar.B.bulkvalues[k] \
                                     + (1.0 - self.UpdVar.Area.bulkvalues[k]) * self.EnvVar.B.values[k])

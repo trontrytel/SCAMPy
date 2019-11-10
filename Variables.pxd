@@ -40,6 +40,7 @@ cdef class GridMeanVariables:
         VariablePrognostic RH
 
         VariableDiagnostic QL
+        VariableDiagnostic QI
         VariableDiagnostic T
         VariableDiagnostic B
         VariableDiagnostic THL
@@ -58,6 +59,7 @@ cdef class GridMeanVariables:
         str EnvThermo_scheme
 
         double lwp
+        double iwp
         double cloud_base
         double cloud_top
         double cloud_cover

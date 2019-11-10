@@ -77,10 +77,10 @@ def read_scm_data(scm_data):
     Input:
     scm_data  - scampy netcdf dataset with simulation results
     """
-    variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean",\
+    variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean", "qi_mean",\
                  "buoyancy_mean", "b_mix","u_mean", "v_mean", "tke_mean",\
                  "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "updraft_thetal",\
-                 "env_qr", "updraft_qr", "updraft_w", "env_w", "env_thetal",\
+                 "env_qr", "updraft_qr", "updraft_w", "env_w", "env_thetal", "env_qi", "updraft_qi",\
                  "massflux_h", "diffusive_flux_h", "total_flux_h",\
                  "massflux_qt","diffusive_flux_qt","total_flux_qt","turbulent_entrainment",\
                  "eddy_viscosity", "eddy_diffusivity", "mixing_length", "mixing_length_ratio",\
@@ -100,7 +100,7 @@ def read_scm_data(scm_data):
 
     for var in variables:
         data[var] = []
-        if ("qt" in var or "ql" in var or "qr" in var):
+        if ("qt" in var or "ql" in var or "qr" in var or "qi" in var):
             try:
                 data[var] = np.transpose(np.array(scm_data["profiles/"  + var][:, :])) * 1000  #g/kg
             except:
@@ -134,6 +134,11 @@ def read_les_data(les_data):
 
     for var in variables:
         data[var] = np.transpose(np.array(les_data["profiles/"+var][:, :]))
+
+    data["qi_mean"]    = np.zeros_like(data["ql_mean"]) #TODO - add qi_mean to les stats
+    data["env_qi"]     = np.zeros_like(data["ql_mean"]) #TODO - add env_qi to les stats
+    data["updraft_qi"] = np.zeros_like(data["ql_mean"]) #TODO - add updraft_qi to les stats
+
     return data
 
 def read_scm_data_timeseries(scm_data):
@@ -143,7 +148,7 @@ def read_scm_data_timeseries(scm_data):
     scm_data - scampy netcdf dataset with simulation results
     """
     variables = ["cloud_cover_mean", "cloud_base_mean", "cloud_top_mean",\
-                 "ustar", "lwp_mean", "rwp_mean", "shf", "lhf", "Tsurface", "rd"]
+                 "ustar", "lwp_mean", "rwp_mean", "iwp_mean", "shf", "lhf", "Tsurface", "rd"]
 
     data = {"z_half" : np.array(scm_data["profiles/z_half"][:]),\
             "t" : np.array(scm_data["profiles/t"][:])}
@@ -184,5 +189,6 @@ def read_les_data_timeseries(les_data):
     data["lhf"] = np.array(les_data["timeseries/lhf_surface_mean"][:])
     data["lwp_mean"] = np.array(les_data["timeseries/lwp_mean"][:])
     data["rwp_mean"] = np.zeros_like(data["lwp_mean"]) #TODO - add rwp to les stats
+    data["iwp_mean"] = np.zeros_like(data["lwp_mean"]) #TODO - add rwp to les stats
 
     return data

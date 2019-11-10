@@ -70,6 +70,7 @@ cdef class UpdraftVariables:
         self.Area = UpdraftVariable(nu, nzg, 'half', 'scalar', 'area_fraction','[-]' )
         self.QT = UpdraftVariable(nu, nzg, 'half', 'scalar', 'qt','kg/kg' )
         self.QL = UpdraftVariable(nu, nzg, 'half', 'scalar', 'ql','kg/kg' )
+        self.QI = UpdraftVariable(nu, nzg, 'half', 'scalar', 'qi','kg/kg' )
         self.RH = UpdraftVariable(nu, nzg, 'half', 'scalar', 'RH','%' )
 
         if namelist['thermodynamics']['thermal_variable'] == 'entropy':
@@ -104,6 +105,7 @@ cdef class UpdraftVariables:
         self.updraft_top    = np.zeros((nu,),  dtype=np.double, order='c')
 
         self.lwp = 0.
+        self.iwp = 0.
         return
 
     cpdef initialize(self, GridMeanVariables GMV):
@@ -125,6 +127,7 @@ cdef class UpdraftVariables:
                         self.Area.values[i,k] = self.updraft_fraction/self.n_updrafts
                     self.QT.values[i,k] = GMV.QT.values[k]
                     self.QL.values[i,k] = GMV.QL.values[k]
+                    self.QI.values[i,k] = GMV.QI.values[k]
                     self.H.values[i,k]  = GMV.H.values[k]
                     self.T.values[i,k]  = GMV.T.values[k]
                     self.B.values[i,k]  = 0.0
@@ -141,6 +144,7 @@ cdef class UpdraftVariables:
         Stats.add_profile('updraft_w')
         Stats.add_profile('updraft_qt')
         Stats.add_profile('updraft_ql')
+        Stats.add_profile('updraft_qi')
         Stats.add_profile('updraft_RH')
 
         if self.H.name == 'thetal':
@@ -158,6 +162,8 @@ cdef class UpdraftVariables:
         Stats.add_ts('updraft_cloud_base')
         Stats.add_ts('updraft_cloud_top')
         Stats.add_ts('updraft_lwp')
+        Stats.add_ts('updraft_iwp')
+
         return
 
     cpdef set_means(self, GridMeanVariables GMV):
@@ -169,6 +175,7 @@ cdef class UpdraftVariables:
         self.W.bulkvalues[:] = 0.0
         self.QT.bulkvalues[:] = 0.0
         self.QL.bulkvalues[:] = 0.0
+        self.QI.bulkvalues[:] = 0.0
         self.H.bulkvalues[:] = 0.0
         self.T.bulkvalues[:] = 0.0
         self.B.bulkvalues[:] = 0.0
@@ -180,6 +187,7 @@ cdef class UpdraftVariables:
                     for i in xrange(self.n_updrafts):
                         self.QT.bulkvalues[k] += self.Area.values[i,k] * self.QT.values[i,k]/self.Area.bulkvalues[k]
                         self.QL.bulkvalues[k] += self.Area.values[i,k] * self.QL.values[i,k]/self.Area.bulkvalues[k]
+                        self.QI.bulkvalues[k] += self.Area.values[i,k] * self.QI.values[i,k]/self.Area.bulkvalues[k]
                         self.H.bulkvalues[k] += self.Area.values[i,k] * self.H.values[i,k]/self.Area.bulkvalues[k]
                         self.T.bulkvalues[k] += self.Area.values[i,k] * self.T.values[i,k]/self.Area.bulkvalues[k]
                         self.RH.bulkvalues[k] += self.Area.values[i,k] * self.RH.values[i,k]/self.Area.bulkvalues[k]
@@ -190,13 +198,14 @@ cdef class UpdraftVariables:
                 else:
                     self.QT.bulkvalues[k] = GMV.QT.values[k]
                     self.QL.bulkvalues[k] = 0.0
+                    self.QI.bulkvalues[k] = 0.0
                     self.H.bulkvalues[k] = GMV.H.values[k]
                     self.RH.bulkvalues[k] = GMV.RH.values[k]
                     self.T.bulkvalues[k] = GMV.T.values[k]
                     self.B.bulkvalues[k] = 0.0
                     self.W.bulkvalues[k] = 0.0
 
-                if self.QL.bulkvalues[k] > 1e-8 and self.Area.bulkvalues[k] > 1e-3:
+                if self.QL.bulkvalues[k] + self.QI.bulkvalues[k] > 1e-8 and self.Area.bulkvalues[k] > 1e-3:
                     self.cloud_fraction[k] = 1.0
                 else:
                     self.cloud_fraction[k] = 0.
@@ -211,6 +220,7 @@ cdef class UpdraftVariables:
                     self.Area.new[i,k] = self.Area.values[i,k]
                     self.QT.new[i,k] = self.QT.values[i,k]
                     self.QL.new[i,k] = self.QL.values[i,k]
+                    self.QI.new[i,k] = self.QI.values[i,k]
                     self.H.new[i,k] = self.H.values[i,k]
                     self.THL.new[i,k] = self.THL.values[i,k]
                     self.T.new[i,k] = self.T.values[i,k]
@@ -226,6 +236,7 @@ cdef class UpdraftVariables:
                     self.Area.old[i,k] = self.Area.values[i,k]
                     self.QT.old[i,k] = self.QT.values[i,k]
                     self.QL.old[i,k] = self.QL.values[i,k]
+                    self.QI.old[i,k] = self.QI.values[i,k]
                     self.H.old[i,k] = self.H.values[i,k]
                     self.THL.old[i,k] = self.THL.values[i,k]
                     self.T.old[i,k] = self.T.values[i,k]
@@ -241,6 +252,7 @@ cdef class UpdraftVariables:
                     self.Area.values[i,k] = self.Area.new[i,k]
                     self.QT.values[i,k] = self.QT.new[i,k]
                     self.QL.values[i,k] = self.QL.new[i,k]
+                    self.QI.values[i,k] = self.QI.new[i,k]
                     self.H.values[i,k] = self.H.new[i,k]
                     self.THL.values[i,k] = self.THL.new[i,k]
                     self.T.values[i,k] = self.T.new[i,k]
@@ -253,6 +265,7 @@ cdef class UpdraftVariables:
         Stats.write_profile('updraft_w', self.W.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('updraft_qt', self.QT.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('updraft_ql', self.QL.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        Stats.write_profile('updraft_qi', self.QI.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('updraft_RH', self.RH.bulkvalues[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
 
         if self.H.name == 'thetal':
@@ -274,11 +287,13 @@ cdef class UpdraftVariables:
         Stats.write_ts('updraft_cloud_base',  np.amin(self.cloud_base))
         Stats.write_ts('updraft_cloud_top',   np.amax(self.cloud_top))
         Stats.write_ts('updraft_lwp',         self.lwp)
+        Stats.write_ts('updraft_iwp',         self.iwp)
         return
 
     cpdef upd_cloud_diagnostics(self, ReferenceState.ReferenceState Ref):
         cdef Py_ssize_t i, k
         self.lwp = 0.
+        self.iwp = 0.
 
         for i in xrange(self.n_updrafts):
             #TODO check the setting of ghost point z_half
@@ -293,8 +308,9 @@ cdef class UpdraftVariables:
                 if self.Area.values[i,k] > 1e-3:
                     self.updraft_top[i] = fmax(self.updraft_top[i], self.Gr.z_half[k])
                     self.lwp += Ref.rho0_half[k] * self.QL.values[i,k] * self.Area.values[i,k] * self.Gr.dz
+                    self.iwp += Ref.rho0_half[k] * self.QI.values[i,k] * self.Area.values[i,k] * self.Gr.dz
 
-                    if self.QL.values[i,k] > 1e-8:
+                    if self.QL.values[i,k] + self.QI.values[i,k] > 1e-8:
                         self.cloud_base[i]  = fmin(self.cloud_base[i],  self.Gr.z_half[k])
                         self.cloud_top[i]   = fmax(self.cloud_top[i],   self.Gr.z_half[k])
                         self.cloud_cover[i] = fmax(self.cloud_cover[i], self.Area.values[i,k])
@@ -357,35 +373,36 @@ cdef class UpdraftThermodynamics:
                 for i in xrange(self.n_updraft):
                     for k in xrange(self.Gr.nzg):
                         if UpdVar.Area.values[i,k] > 0.0:
-                            qv = UpdVar.QT.values[i,k] - UpdVar.QL.values[i,k]
+                            qv = UpdVar.QT.values[i,k] - UpdVar.QL.values[i,k] - UpdVar.QI.values[i,k]
                             alpha = alpha_c(self.Ref.p0_half[k], UpdVar.T.values[i,k], UpdVar.QT.values[i,k], qv)
                             UpdVar.B.values[i,k] = buoyancy_c(self.Ref.alpha0_half[k], alpha) #- GMV.B.values[k]
                         else:
                             UpdVar.B.values[i,k] = EnvVar.B.values[k]
                         UpdVar.RH.values[i,k] = relative_humidity_c(self.Ref.p0_half[k], UpdVar.QT.values[i,k],
-                                                    UpdVar.QL.values[i,k], 0.0, UpdVar.T.values[i,k])
+                                                    UpdVar.QL.values[i,k], UpdVar.QI.values[i,k], UpdVar.T.values[i,k])
         else:
             with nogil:
                 for i in xrange(self.n_updraft):
                     for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
                         if UpdVar.Area.values[i,k] > 0.0:
                             qt = UpdVar.QT.values[i,k]
-                            qv = UpdVar.QT.values[i,k] - UpdVar.QL.values[i,k]
+                            qv = UpdVar.QT.values[i,k] - UpdVar.QL.values[i,k] - UpdVar.QI.values[i,k]
                             h = UpdVar.H.values[i,k]
                             t = UpdVar.T.values[i,k]
                             alpha = alpha_c(self.Ref.p0_half[k], t, qt, qv)
                             UpdVar.B.values[i,k] = buoyancy_c(self.Ref.alpha0_half[k], alpha)
-                            UpdVar.RH.values[i,k] = relative_humidity_c(self.Ref.p0_half[k], qt, qt-qv, 0.0, t)
+                            UpdVar.RH.values[i,k] = relative_humidity_c(self.Ref.p0_half[k],
+                                                                        qt, UpdVar.QL.values[i,k],
+                                                                        UpdVar.QI.values[i,k], t)
 
                         elif UpdVar.Area.values[i,k-1] > 0.0 and k>self.Gr.gw:
-                            sa = eos(self.t_to_prog_fp, self.prog_to_t_fp, self.Ref.p0_half[k],
-                                     qt, h)
-                            qt -= sa.ql
-                            qv = qt
+                            sa = eos(self.t_to_prog_fp, self.prog_to_t_fp,
+                                     self.Ref.p0_half[k], qt, h)
+                            qv = qt - sa.ql - sa.qi
                             t = sa.T
                             alpha = alpha_c(self.Ref.p0_half[k], t, qt, qv)
                             UpdVar.B.values[i,k] = buoyancy_c(self.Ref.alpha0_half[k], alpha)
-                            UpdVar.RH.values[i,k] = relative_humidity_c(self.Ref.p0_half[k], qt, qt-qv, 0.0, t)
+                            UpdVar.RH.values[i,k] = relative_humidity_c(self.Ref.p0_half[k], qt, sa.ql, sa.qi, t)
                         else:
                             UpdVar.B.values[i,k] = EnvVar.B.values[k]
                             UpdVar.RH.values[i,k] = EnvVar.RH.values[k]
@@ -421,7 +438,7 @@ cdef class UpdraftThermodynamics:
                     mph = microphysics_rain_src(
                         Rain.rain_model,
                         UpdVar.QT.new[i,k],
-                        UpdVar.QL.new[i,k],
+                        UpdVar.QL.new[i,k] + UpdVar.QI.new[i,k], #TODO_ICE
                         Rain.Upd_QR.values[k],
                         UpdVar.Area.new[i,k],
                         UpdVar.T.new[i,k],
