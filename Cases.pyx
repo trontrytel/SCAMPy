@@ -627,7 +627,7 @@ cdef class TRMM_LBA(CasesBase):
         for k in xrange(Gr.gw,Gr.nzg-Gr.gw):
             PV_star = pv_star(GMV.T.values[k])
             qv_star = PV_star*epsi/(p1[k]- PV_star + epsi*PV_star*RH[k]/100.0) # eq. 37 in pressel et al and the def of RH
-            qv = GMV.QT.values[k] - GMV.QL.values[k]
+            qv = GMV.QT.values[k] - GMV.QL.values[k] - GMV.QI.values[k]
             GMV.QT.values[k] = qv_star*RH[k]/100.0
             if GMV.H.name == 's':
                 GMV.H.values[k] = t_to_entropy_c(Ref.p0_half[k],GMV.T.values[k],

@@ -153,6 +153,7 @@ cdef class GridMeanVariables:
         # Diagnostic Variables--same class as the prognostic variables, but we append to diagnostics list
         # self.diagnostics_list  = []
         self.QL  = VariableDiagnostic(Gr.nzg, 'half', 'scalar', 'sym', 'ql',              'kg/kg')
+        self.QI  = VariableDiagnostic(Gr.nzg, 'half', 'scalar', 'sym', 'qi',              'kg/kg')
         self.T   = VariableDiagnostic(Gr.nzg, 'half', 'scalar', 'sym', 'temperature',     'K')
         self.B   = VariableDiagnostic(Gr.nzg, 'half', 'scalar', 'sym', 'buoyancy',        'm^2/s^3')
         self.THL = VariableDiagnostic(Gr.nzg, 'half', 'scalar', 'sym', 'thetal',          'K')
@@ -241,6 +242,7 @@ cdef class GridMeanVariables:
         Stats.add_profile('temperature_mean')
         Stats.add_profile('buoyancy_mean')
         Stats.add_profile('ql_mean')
+        Stats.add_profile('qi_mean')
         if self.calc_tke:
             Stats.add_profile('tke_mean')
         if self.calc_scalar_var:
@@ -251,6 +253,7 @@ cdef class GridMeanVariables:
         Stats.add_profile('cloud_fraction_mean')
 
         Stats.add_ts('lwp_mean')
+        Stats.add_ts('iwp_mean')
         Stats.add_ts('cloud_base_mean')
         Stats.add_ts('cloud_top_mean')
         Stats.add_ts('cloud_cover_mean')
@@ -264,6 +267,7 @@ cdef class GridMeanVariables:
         Stats.write_profile('v_mean',self.V.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('qt_mean',self.QT.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('ql_mean',self.QL.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
+        Stats.write_profile('qi_mean',self.QI.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('temperature_mean',self.T.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('RH_mean',self.RH.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('buoyancy_mean',self.B.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
@@ -284,6 +288,7 @@ cdef class GridMeanVariables:
 
         self.mean_cloud_diagnostics()
         Stats.write_ts('lwp_mean', self.lwp)
+        Stats.write_ts('iwp_mean', self.iwp)
         Stats.write_ts('cloud_base_mean',  self.cloud_base)
         Stats.write_ts('cloud_top_mean',   self.cloud_top)
         return
@@ -291,13 +296,15 @@ cdef class GridMeanVariables:
     cpdef mean_cloud_diagnostics(self):
         cdef Py_ssize_t k
         self.lwp = 0.
+        self.iwp = 0.
         self.cloud_base   = self.Gr.z_half[self.Gr.nzg - self.Gr.gw - 1]
         self.cloud_top    = 0.
 
         for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
             self.lwp += self.Ref.rho0_half[k] * self.QL.values[k] * self.Gr.dz
+            self.iwp += self.Ref.rho0_half[k] * self.QI.values[k] * self.Gr.dz
 
-            if self.QL.values[k] > 1e-8:
+            if self.QL.values[k] + self.QI.values[k] > 1e-8:
                 self.cloud_base  = fmin(self.cloud_base,  self.Gr.z_half[k])
                 self.cloud_top   = fmax(self.cloud_top,   self.Gr.z_half[k])
         return
@@ -315,11 +322,12 @@ cdef class GridMeanVariables:
                 p0 = self.Ref.p0_half[k]
                 sa = eos(self.t_to_prog_fp,self.prog_to_t_fp, p0, qt, h )
                 self.QL.values[k] = sa.ql
+                self.QI.values[k] = 0.0
                 self.T.values[k] = sa.T
-                qv = qt - sa.ql
-                self.THL.values[k] = t_to_thetali_c(p0, sa.T, qt, sa.ql,0.0)
+                qv = qt - sa.ql - self.QI.values[k]
+                self.THL.values[k] = t_to_thetali_c(p0, sa.T, qt, sa.ql, self.QI.values[k])
                 alpha = alpha_c(p0, sa.T, qt, qv)
                 self.B.values[k] = buoyancy_c(self.Ref.alpha0_half[k], alpha)
-                self.RH.values[k] = relative_humidity_c(self.Ref.p0_half[k], qt, qt-qv, 0.0, self.T.values[k])
+                self.RH.values[k] = relative_humidity_c(self.Ref.p0_half[k], qt, self.QL.values[k], self.QI.values[k], self.T.values[k])
 
         return
