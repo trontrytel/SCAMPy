@@ -263,7 +263,7 @@ cdef class EnvironmentThermodynamics:
         EnvVar.H.values[k]   = H
         EnvVar.QT.values[k]  = qt
         EnvVar.QL.values[k]  = ql
-        EnvVar.QL.values[k]  = qi
+        EnvVar.QI.values[k]  = qi
         EnvVar.B.values[k]   = buoyancy_c(self.Ref.alpha0_half[k], alpha)
         EnvVar.RH.values[k]  = relative_humidity_c(self.Ref.p0_half[k], qt , ql , qi, T)
         return

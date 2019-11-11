@@ -205,7 +205,7 @@ cdef class UpdraftVariables:
                     self.B.bulkvalues[k] = 0.0
                     self.W.bulkvalues[k] = 0.0
 
-                if self.QL.bulkvalues[k] + self.QL.bulkvalues[k] > 1e-8 and self.Area.bulkvalues[k] > 1e-3:
+                if self.QL.bulkvalues[k] + self.QI.bulkvalues[k] > 1e-8 and self.Area.bulkvalues[k] > 1e-3:
                     self.cloud_fraction[k] = 1.0
                 else:
                     self.cloud_fraction[k] = 0.
