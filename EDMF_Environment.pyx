@@ -346,7 +346,7 @@ cdef class EnvironmentThermodynamics:
                 mph = microphysics_rain_src(
                     Rain.rain_model,
                     EnvVar.QT.values[k],
-                    sa.ql,
+                    sa.ql + sa.qi, #TODO_ICE
                     Rain.Env_QR.values[k],
                     EnvVar.Area.values[k],
                     sa.T,
@@ -443,7 +443,7 @@ cdef class EnvironmentThermodynamics:
                             mph = microphysics_rain_src(
                                 Rain.rain_model,
                                 qt_hat,
-                                sa.ql,
+                                sa.ql + sa.qi, #TODO_ICE
                                 Rain.Env_QR.values[k],
                                 EnvVar.Area.values[k],
                                 sa.T,
@@ -513,7 +513,7 @@ cdef class EnvironmentThermodynamics:
                     mph = microphysics_rain_src(
                         Rain.rain_model,
                         EnvVar.QT.values[k],
-                        sa.ql,
+                        sa.ql + sa.qi, #TODO_ICE
                         Rain.Env_QR.values[k],
                         EnvVar.Area.values[k],
                         sa.T,

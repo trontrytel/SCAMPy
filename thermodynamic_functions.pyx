@@ -8,7 +8,6 @@ include "parameters.pxi"
 cdef  double sd_c(double pd, double T) nogil :
     return sd_tilde + cpd*log(T/T_tilde) -Rd*log(pd/p_tilde)
 
-
 cdef  double sv_c(double pv, double T) nogil  :
     return sv_tilde + cpv*log(T/T_tilde) - Rv * log(pv/p_tilde)
 
@@ -18,10 +17,8 @@ cdef  double sc_c(double L, double T) nogil  :
 cdef double exner_c(double p0, double kappa = kappa) nogil  :
     return (p0/p_tilde)**kappa
 
-
 cdef  double theta_c(double p0, double T) nogil :
     return T / exner_c(p0)
-
 
 cdef  double thetali_c(double p0, double T, double qt, double ql, double qi, double L) nogil  :
     # Liquid ice potential temperature consistent with Triopoli and Cotton (1981)
@@ -48,17 +45,14 @@ cdef  double pd_c(double p0, double qt, double qv)  nogil :
 cdef  double pv_c(double p0, double qt, double qv) nogil  :
     return p0 * eps_vi * qv /(1.0 - qt + eps_vi * qv)
 
-
 cdef  double density_temperature_c(double T, double qt, double qv) nogil  :
     return T * (1.0 - qt + eps_vi * qv)
 
 cdef  double theta_rho_c(double p0, double T, double qt, double qv) nogil  :
     return density_temperature_c(T,qt,qv)/exner_c(p0)
 
-
 cdef  double cpm_c(double qt) nogil  :
     return (1.0-qt) * cpd + qt * cpv
-
 
 cdef   double thetas_entropy_c(double s, double qt) nogil  :
     return T_tilde*exp((s-(1.0-qt)*sd_tilde - qt*sv_tilde)/cpm_c(qt))
@@ -69,7 +63,6 @@ cdef double relative_humidity_c(double p0, double qt, double ql, double qi, doub
     cdef double pv_star_ = pv_star(T)
     return 100.0*pv/pv_star_
 
-
 cdef  double thetas_t_c(double p0, double T, double qt, double qv, double qc, double L) nogil  :
     cdef double qd = 1.0 - qt
     cdef double pd_ = pd_c(p0,qt,qt-qc)
@@ -77,10 +70,8 @@ cdef  double thetas_t_c(double p0, double T, double qt, double qv, double qc, do
     cdef double cpm_ = cpm_c(qt)
     return T * pow(p_tilde/pd_,qd * Rd/cpm_)*pow(p_tilde/pv_,qt*Rv/cpm_)*exp(-L * qc/(cpm_*T))
 
-
 cdef double entropy_from_thetas_c(double thetas, double qt)  nogil :
     return cpm_c(qt) * log(thetas/T_tilde) + (1.0 - qt)*sd_tilde + qt * sv_tilde
-
 
 cdef  double buoyancy_c(double alpha0, double alpha)nogil  :
     return g * (alpha - alpha0)/alpha0
@@ -88,10 +79,8 @@ cdef  double buoyancy_c(double alpha0, double alpha)nogil  :
 cdef double qv_star_c(const double p0, const double qt, const double pv) nogil  :
     return eps_v * (1.0 - qt) * pv / (p0 - pv)
 
-
 cdef  double alpha_c(double p0, double T, double  qt, double qv) nogil  :
     return (Rd * T)/p0 * (1.0 - qt + eps_vi * qv)
-
 
 cdef   double t_to_entropy_c(double p0, double T,  double qt, double ql, double qi) nogil  :
     cdef double qv = qt - ql - qi
@@ -99,7 +88,6 @@ cdef   double t_to_entropy_c(double p0, double T,  double qt, double ql, double 
     cdef double pd = pd_c(p0, qt, qv)
     cdef double L = latent_heat(T)
     return sd_c(pd,T) * (1.0 - qt) + sv_c(pv,T) * qt + sc_c(L,T)*(ql + qi)
-
 
 cdef  double t_to_thetali_c(double p0, double T,  double qt, double ql, double qi) nogil  :
     cdef double L = latent_heat(T)
@@ -119,21 +107,30 @@ cdef  double latent_heat(double T) nogil  :
     return (2500.8 - 2.36 * TC + 0.0016 * TC *
             TC - 0.00006 * TC * TC * TC) * 1000.0
 
-
-
 cdef  double eos_first_guess_thetal(double H, double pd, double pv, double qt)  nogil :
     cdef double p0 = pd + pv
     return H * exner_c(p0)
+
+cdef double phase_partition(double T) nogil:
+    cdef double T_warm = 273.
+    cdef double T_cold = 235.
+    cdef double n = 0.1
+
+    cdef double _ret
+
+    if T >= T_warm:
+        _ret = 1.
+    elif T <= T_cold:
+        _ret = 0.
+    else:
+        _ret = pow((T - T_cold) / (T_warm - T_cold), n)
+
+    return _ret
 
 cdef double eos_first_guess_entropy(double H, double pd, double pv, double qt ) nogil   :
     cdef double qd = 1.0 - qt
     return (T_tilde *exp((H - qd*(sd_tilde - Rd *log(pd/p_tilde))
                               - qt * (sv_tilde - Rv * log(pv/p_tilde)))/((qd*cpd + qt * cpv))))
-
-
-
-
-
 
 cdef eos_struct eos( double (*t_to_prog)(double, double,double,double, double) nogil,
                      double (*prog_to_t)(double,double, double, double) nogil,
@@ -141,17 +138,21 @@ cdef eos_struct eos( double (*t_to_prog)(double, double,double,double, double) n
 
     cdef eos_struct _ret
 
-    cdef double qv = qt
-    cdef double ql = 0.0
-
-    cdef double pv_1 = pv_c(p0,qt,qt )
+    cdef double pv_1 = pv_c(p0, qt, qt)
     cdef double pd_1 = p0 - pv_1
     cdef double T_1 = prog_to_t(prog, pd_1, pv_1, qt)
     cdef double pv_star_1 = pv_star(T_1)
     cdef double qv_star_1 = qv_star_c(p0,qt,pv_star_1)
 
-    cdef double ql_1, prog_1, f_1, T_2, delta_T
-    cdef double qv_star_2, ql_2=0.0, pv_star_2, pv_2, pd_2, prog_2, f_2
+    cdef double pv_2, pd_2, T_2, pv_star_2, qv_star_2
+
+    cdef double delta_T
+
+    cdef double ql_1, prog_1, f_1,
+    cdef double ql_2, prog_2, f_2
+
+    cdef double qc_1, qc_2=0.0
+
     # If not saturated
     if(qt <= qv_star_1):
         _ret.T = T_1
@@ -159,19 +160,35 @@ cdef eos_struct eos( double (*t_to_prog)(double, double,double,double, double) n
         _ret.qi = 0.0
 
     else:
-        ql_1 = qt - qv_star_1
-        prog_1 = t_to_prog(p0, T_1, qt, ql_1, 0.0)
+        #with gil:
+        #    print "-------------------"
+        #    print "first guess pp(",T_1,") = ", phase_partition(T_1)
+
+        qc_1 = qt - qv_star_1
+        ql_1 = phase_partition(T_1) * qc_1
+        qi_1 = qc_1 - ql_1
+
+        prog_1 = t_to_prog(p0, T_1, qt, ql_1, qi_1)
         f_1 = prog - prog_1
-        T_2 = T_1 + ql_1 * latent_heat(T_1) /((1.0 - qt)*cpd + qv_star_1 * cpv)
+        T_2 = T_1 + qc_1 * latent_heat(T_1) / ((1.0 - qt)*cpd + qv_star_1 * cpv)
         delta_T  = fabs(T_2 - T_1)
 
-        while delta_T > 1.0e-3 or ql_2 < 0.0:
+        #with gil:
+        #    print "sat_adj is searching between T = (", T_1, ",",  T_2,")"
+
+        while delta_T > 1.0e-3 or qc_2 < 0.0:
             pv_star_2 = pv_star(T_2)
-            qv_star_2 = qv_star_c(p0,qt,pv_star_2)
+            qv_star_2 = qv_star_c(p0, qt, pv_star_2)
             pv_2 = pv_c(p0, qt, qv_star_2)
             pd_2 = p0 - pv_2
-            ql_2 = qt - qv_star_2
-            prog_2 =  t_to_prog(p0,T_2,qt, ql_2, 0.0   )
+
+            qc_2 = qt - qv_star_2
+            ql_2 = phase_partition(T_2) * qc_2
+            qi_2 = qc_2 - ql_2
+            #with gil:
+            #    print "pp(",T_2,") = ", phase_partition(T_2)
+
+            prog_2 =  t_to_prog(p0, T_2, qt, ql_2, qi_2)
             f_2 = prog - prog_2
             T_n = T_2 - f_2*(T_2 - T_1)/(f_2 - f_1)
             T_1 = T_2
@@ -179,9 +196,12 @@ cdef eos_struct eos( double (*t_to_prog)(double, double,double,double, double) n
             f_1 = f_2
             delta_T  = fabs(T_2 - T_1)
 
+        #with gil:
+        #    print " -> final pp(",T_2,") = ", phase_partition(T_2)
+
         _ret.T  = T_2
         qv = qv_star_2
         _ret.ql = ql_2
-        _ret.qi = 0.0
+        _ret.qi = qi_2
 
     return _ret

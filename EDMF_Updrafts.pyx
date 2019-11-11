@@ -438,7 +438,7 @@ cdef class UpdraftThermodynamics:
                     mph = microphysics_rain_src(
                         Rain.rain_model,
                         UpdVar.QT.new[i,k],
-                        UpdVar.QL.new[i,k],
+                        UpdVar.QL.new[i,k] + UpdVar.QI.new[i,k], #TODO_ICE
                         Rain.Upd_QR.values[k],
                         UpdVar.Area.new[i,k],
                         UpdVar.T.new[i,k],

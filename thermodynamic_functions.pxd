@@ -28,6 +28,7 @@ cdef double t_to_thetali_c(double p0, double T,  double qt, double ql, double qi
 cdef double pv_star(double T)   nogil
 cdef double qv_star_t(double p0, double T) nogil
 cdef double latent_heat(double T) nogil
+cdef double phase_partition(double T) nogil
 cdef double eos_first_guess_thetal(double H, double pd, double pv, double qt)    nogil
 cdef double eos_first_guess_entropy(double H, double pd, double pv, double qt )   nogil
 cdef eos_struct eos( double (*t_to_prog)(double, double, double, double, double) nogil,

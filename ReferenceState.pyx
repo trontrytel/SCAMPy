@@ -122,6 +122,7 @@ cdef class ReferenceState:
         for k in xrange(Gr.nzg):
             s = t_to_entropy_c(p_half[k], temperature_half[k], self.qtg, ql_half[k], qi_half[k])
             if np.abs(s - self.sg)/self.sg > 0.01:
+                print s, " vs ", self.sg
                 print('Error in reference profiles entropy not constant !')
                 print('Likely error in saturation adjustment')
 
