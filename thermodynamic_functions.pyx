@@ -41,7 +41,7 @@ cdef  double theta_eq_c( double p0, double T, double qt, double ql) nogil :
     # qr = mr/md+mv+ml+mi
     # Ignacio: This formulation holds when qt = qv + ql (negligible/no ice)
     return theta_c(p0, T) * exp(latent_heat(T)*(qt-ql)/(T*cpd));
-    
+
 cdef  double pd_c(double p0, double qt, double qv)  nogil :
     return p0*(1.0-qt)/(1.0 - qt + eps_vi * qv)
 
@@ -138,10 +138,11 @@ cdef double eos_first_guess_entropy(double H, double pd, double pv, double qt ) 
 cdef eos_struct eos( double (*t_to_prog)(double, double,double,double, double) nogil,
                      double (*prog_to_t)(double,double, double, double) nogil,
                      double p0, double qt, double prog) nogil:
-    cdef double qv = qt
-    cdef double ql = 0.0
 
     cdef eos_struct _ret
+
+    cdef double qv = qt
+    cdef double ql = 0.0
 
     cdef double pv_1 = pv_c(p0,qt,qt )
     cdef double pd_1 = p0 - pv_1
@@ -155,6 +156,7 @@ cdef eos_struct eos( double (*t_to_prog)(double, double,double,double, double) n
     if(qt <= qv_star_1):
         _ret.T = T_1
         _ret.ql = 0.0
+        _ret.qi = 0.0
 
     else:
         ql_1 = qt - qv_star_1
@@ -180,5 +182,6 @@ cdef eos_struct eos( double (*t_to_prog)(double, double,double,double, double) n
         _ret.T  = T_2
         qv = qv_star_2
         _ret.ql = ql_2
+        _ret.qi = 0.0
 
     return _ret

@@ -27,6 +27,7 @@ cdef class UpdraftVariables:
         UpdraftVariable Area
         UpdraftVariable QT
         UpdraftVariable QL
+        UpdraftVariable QI
         UpdraftVariable H
         UpdraftVariable RH
         UpdraftVariable THL
@@ -44,6 +45,7 @@ cdef class UpdraftVariables:
 
         double updraft_fraction
         double lwp
+        double iwp
 
     cpdef initialize(self, GridMeanVariables GMV)
     cpdef initialize_io(self, NetCDFIO_Stats Stats)

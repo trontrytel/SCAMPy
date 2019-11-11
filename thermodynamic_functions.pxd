@@ -1,6 +1,7 @@
 cdef struct eos_struct:
     double T
     double ql
+    double qi
 
 cdef double sd_c(double pd, double T)   nogil
 cdef double sv_c(double pv, double T)   nogil

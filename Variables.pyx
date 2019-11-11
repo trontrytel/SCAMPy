@@ -126,6 +126,7 @@ cdef class GridMeanVariables:
         self.Ref = Ref
 
         self.lwp = 0.
+        self.iwp = 0.
         self.cloud_base   = 0.
         self.cloud_top    = 0.
         self.cloud_cover  = 0.
@@ -322,12 +323,13 @@ cdef class GridMeanVariables:
                 p0 = self.Ref.p0_half[k]
                 sa = eos(self.t_to_prog_fp,self.prog_to_t_fp, p0, qt, h )
                 self.QL.values[k] = sa.ql
-                self.QI.values[k] = 0.0
+                self.QI.values[k] = sa.qi
                 self.T.values[k] = sa.T
-                qv = qt - sa.ql - self.QI.values[k]
-                self.THL.values[k] = t_to_thetali_c(p0, sa.T, qt, sa.ql, self.QI.values[k])
+                qv = qt - sa.ql - sa.qi
+                self.THL.values[k] = t_to_thetali_c(p0, sa.T, qt, sa.ql, sa.qi)
                 alpha = alpha_c(p0, sa.T, qt, qv)
                 self.B.values[k] = buoyancy_c(self.Ref.alpha0_half[k], alpha)
-                self.RH.values[k] = relative_humidity_c(self.Ref.p0_half[k], qt, self.QL.values[k], self.QI.values[k], self.T.values[k])
+                self.RH.values[k] = relative_humidity_c(self.Ref.p0_half[k],
+                                                        qt, sa.ql, sa.qi, sa.T)
 
         return

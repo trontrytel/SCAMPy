@@ -85,7 +85,6 @@ cdef class ReferenceState:
         p = np.exp(p)
         p_half = np.exp(p_half)
 
-
         cdef double[:] p_ = p
         cdef double[:] p_half_ = p_half
         cdef double[:] temperature = np.zeros(Gr.nzg, dtype=np.double, order='c')
@@ -107,11 +106,13 @@ cdef class ReferenceState:
             ret = eos(t_to_entropy_c, eos_first_guess_entropy, p_[k], self.qtg, self.sg)
             temperature[k] = ret.T
             ql[k] = ret.ql
+            qi[k] = ret.qi
             qv[k] = self.qtg - (ql[k] + qi[k])
             alpha[k] = alpha_c(p_[k], temperature[k], self.qtg, qv[k])
             ret = eos(t_to_entropy_c, eos_first_guess_entropy, p_half_[k], self.qtg, self.sg)
             temperature_half[k] = ret.T
             ql_half[k] = ret.ql
+            qi_half[k] = ret.qi
             qv_half[k] = self.qtg - (ql_half[k] + qi_half[k])
             alpha_half[k] = alpha_c(p_half_[k], temperature_half[k], self.qtg, qv_half[k])
 
@@ -119,14 +120,10 @@ cdef class ReferenceState:
         # saturation adjustment
         cdef double s
         for k in xrange(Gr.nzg):
-            s = t_to_entropy_c(p_half[k],temperature_half[k],self.qtg,ql_half[k],qi_half[k])
+            s = t_to_entropy_c(p_half[k], temperature_half[k], self.qtg, ql_half[k], qi_half[k])
             if np.abs(s - self.sg)/self.sg > 0.01:
                 print('Error in reference profiles entropy not constant !')
                 print('Likely error in saturation adjustment')
-
-
-
-
 
         # print(np.array(Gr.extract_local_ghosted(alpha_half,2)))
         self.alpha0_half = alpha_half
