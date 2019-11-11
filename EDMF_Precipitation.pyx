@@ -17,9 +17,8 @@ from microphysics_functions cimport  *
 
 include "parameters.pxi"
 
-cdef class RainVariable:
+cdef class PrecipVariable:
     def __init__(self, nz, name, units):
-
         self.loc   = 'half'
         self.kind  = 'scalar'
         self.name  = name
@@ -36,79 +35,115 @@ cdef class RainVariable:
         for k in xrange(Gr.gw):
             self.values[Gr.nzg - Gr.gw + k] = self.values[Gr.nzg-Gr.gw - 1 - k]
             self.values[Gr.gw - 1 - k]      = self.values[Gr.gw + k]
-
         return
 
-cdef class RainVariables:
+cdef class PrecipVariables:
     def __init__(self, namelist, Grid.Grid Gr):
         self.Gr = Gr
         cdef:
             Py_ssize_t nzg = Gr.nzg
             Py_ssize_t k
 
-        self.QR           = RainVariable(nzg, 'qr_mean',       'kg/kg')
+        self.QR           = PrecipVariable(nzg, 'qr_mean',       'kg/kg')
         # temporary variables for diagnostics to know where the rain is coming from
-        self.Upd_QR       = RainVariable(nzg, 'upd_qr',        'kg/kg')
-        self.Env_QR       = RainVariable(nzg, 'env_qr',        'kg/kg')
+        self.Upd_QR       = PrecipVariable(nzg, 'upd_qr',        'kg/kg')
+        self.Env_QR       = PrecipVariable(nzg, 'env_qr',        'kg/kg')
         # in the future we could test prognostic equations for stratiform and updraft rain
-        self.RainArea     = RainVariable(nzg, 'rain_area',     'rain_area_fraction [-]' )
-        self.Upd_RainArea = RainVariable(nzg, 'upd_rain_area', 'updraft_rain_area_fraction [-]' )
-        self.Env_RainArea = RainVariable(nzg, 'env_rain_area', 'environment_rain_area_fraction [-]' )
+        self.RainArea     = PrecipVariable(nzg, 'rain_area',     'rain_area_fraction [-]' )
+        self.Upd_RainArea = PrecipVariable(nzg, 'upd_rain_area', 'updraft_rain_area_fraction [-]' )
+        self.Env_RainArea = PrecipVariable(nzg, 'env_rain_area', 'environment_rain_area_fraction [-]' )
+
+        self.QS           = PrecipVariable(nzg, 'qs_mean',       'kg/kg')
+        # temporary variables for diagnostics to know where the rain is coming from
+        self.Upd_QS       = PrecipVariable(nzg, 'upd_qs',        'kg/kg')
+        self.Env_QS       = PrecipVariable(nzg, 'env_qs',        'kg/kg')
+        # in the future we could test prognostic equations for stratiform and updraft rain
+        self.SnowArea     = PrecipVariable(nzg, 'snow_area',     'snow_area_fraction [-]' )
+        self.Upd_SnowArea = PrecipVariable(nzg, 'upd_snow_area', 'updraft_snow_area_fraction [-]' )
+        self.Env_SnowArea = PrecipVariable(nzg, 'env_snow_area', 'environment_snow_area_fraction [-]' )
 
         self.mean_rwp = 0.
         self.upd_rwp = 0.
         self.env_rwp = 0.
 
+        self.mean_swp = 0.
+        self.upd_swp = 0.
+        self.env_swp = 0.
+
         try:
-            self.rain_model = str(namelist['microphysics']['rain_model'])
+            self.precip_model = str(namelist['microphysics']['precip_model'])
         except:
             print "EDMF_Rain: defaulting to no rain"
-            self.rain_model = "None"
+            self.precip_model = "None"
 
-        if self.rain_model not in ["None", "cutoff", "clima_1m"]:
-            sys.exit('rain model not recognized')
-
+        if self.precip_model not in ["None", "cutoff", "clima_1m", "snow_testing"]:
+            sys.exit('precipitation model not recognized')
         return
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats):
         Stats.add_profile('qr_mean')
+        Stats.add_profile('qs_mean')
         Stats.add_profile('updraft_qr')
+        Stats.add_profile('updraft_qs')
         Stats.add_profile('env_qr')
+        Stats.add_profile('env_qs')
         Stats.add_profile('rain_area')
+        Stats.add_profile('snow_area')
         Stats.add_profile('updraft_rain_area')
+        Stats.add_profile('updraft_snow_area')
         Stats.add_profile('env_rain_area')
+        Stats.add_profile('env_snow_area')
         Stats.add_ts('rwp_mean')
+        Stats.add_ts('swp_mean')
         Stats.add_ts('updraft_rwp')
+        Stats.add_ts('updraft_swp')
         Stats.add_ts('env_rwp')
+        Stats.add_ts('env_swp')
         return
 
     cpdef io(self, NetCDFIO_Stats Stats, ReferenceState.ReferenceState Ref):
         Stats.write_profile('qr_mean',           self.QR.values[self.Gr.gw           : self.Gr.nzg - self.Gr.gw])
+        Stats.write_profile('qs_mean',           self.QS.values[self.Gr.gw           : self.Gr.nzg - self.Gr.gw])
         Stats.write_profile('updraft_qr',        self.Upd_QR.values[self.Gr.gw       : self.Gr.nzg - self.Gr.gw])
+        Stats.write_profile('updraft_qs',        self.Upd_QS.values[self.Gr.gw       : self.Gr.nzg - self.Gr.gw])
         Stats.write_profile('env_qr',            self.Env_QR.values[self.Gr.gw       : self.Gr.nzg - self.Gr.gw])
+        Stats.write_profile('env_qs',            self.Env_QS.values[self.Gr.gw       : self.Gr.nzg - self.Gr.gw])
         Stats.write_profile('rain_area',         self.RainArea.values[self.Gr.gw     : self.Gr.nzg - self.Gr.gw])
+        Stats.write_profile('snow_area',         self.SnowArea.values[self.Gr.gw     : self.Gr.nzg - self.Gr.gw])
         Stats.write_profile('updraft_rain_area', self.Upd_RainArea.values[self.Gr.gw : self.Gr.nzg - self.Gr.gw])
+        Stats.write_profile('updraft_snow_area', self.Upd_SnowArea.values[self.Gr.gw : self.Gr.nzg - self.Gr.gw])
         Stats.write_profile('env_rain_area',     self.Env_RainArea.values[self.Gr.gw : self.Gr.nzg - self.Gr.gw])
+        Stats.write_profile('env_snow_area',     self.Env_SnowArea.values[self.Gr.gw : self.Gr.nzg - self.Gr.gw])
 
-        self.rain_diagnostics(Ref)
+        self.precip_diagnostics(Ref)
         Stats.write_ts('rwp_mean', self.mean_rwp)
         Stats.write_ts('updraft_rwp', self.upd_rwp)
         Stats.write_ts('env_rwp', self.env_rwp)
+        Stats.write_ts('swp_mean', self.mean_swp)
+        Stats.write_ts('updraft_swp', self.upd_swp)
+        Stats.write_ts('env_swp', self.env_swp)
         return
 
-    cpdef rain_diagnostics(self, ReferenceState.ReferenceState Ref):
+    cpdef precip_diagnostics(self, ReferenceState.ReferenceState Ref):
         cdef Py_ssize_t k
-        self.upd_rwp  = 0.
-        self.env_rwp  = 0.
         self.mean_rwp = 0.
+        self.mean_swp = 0.
+        self.upd_rwp  = 0.
+        self.upd_swp  = 0.
+        self.env_rwp  = 0.
+        self.env_swp  = 0.
 
         for k in xrange(self.Gr.gw, self.Gr.nzg-self.Gr.gw):
             self.upd_rwp  += Ref.rho0_half[k] * self.Upd_QR.values[k] * self.Upd_RainArea.values[k] * self.Gr.dz
             self.env_rwp  += Ref.rho0_half[k] * self.Env_QR.values[k] * self.Env_RainArea.values[k] * self.Gr.dz
             self.mean_rwp += Ref.rho0_half[k] * self.QR.values[k]     * self.RainArea.values[k]     * self.Gr.dz
+
+            self.upd_swp  += Ref.rho0_half[k] * self.Upd_QS.values[k] * self.Upd_SnowArea.values[k] * self.Gr.dz
+            self.env_swp  += Ref.rho0_half[k] * self.Env_QS.values[k] * self.Env_SnowArea.values[k] * self.Gr.dz
+            self.mean_swp += Ref.rho0_half[k] * self.QS.values[k]     * self.SnowArea.values[k]     * self.Gr.dz
         return
 
-    cpdef sum_subdomains_rain(self, UpdraftThermodynamics UpdThermo, EnvironmentThermodynamics EnvThermo):
+    cpdef sum_subdomains_precip(self, UpdraftThermodynamics UpdThermo, EnvironmentThermodynamics EnvThermo):
         with nogil:
             for k in xrange(self.Gr.nzg):
 
@@ -123,9 +158,11 @@ cdef class RainVariables:
                     self.Upd_RainArea.values[k] = 1
                 if self.Env_QR.values[k] > 0.:
                     self.Env_RainArea.values[k] = 1
+
+                # TODO_SNOW
         return
 
-cdef class RainPhysics:
+cdef class PrecipPhysics:
     def __init__(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref):
         self.Gr = Gr
         self.Ref = Ref
@@ -135,12 +172,12 @@ cdef class RainPhysics:
 
         return
 
-    cpdef solve_rain_fall(
+    cpdef solve_precip_fall(
         self,
         GridMeanVariables GMV,
         TimeStepping TS,
-        RainVariable QR,
-        RainVariable RainArea
+        PrecipVariable QP,
+        PrecipVariable PrecipArea
     ):
         cdef:
             Py_ssize_t k
@@ -164,7 +201,7 @@ cdef class RainPhysics:
         # TODO: assuming GMV.W = 0
         for k in xrange(nzg - gw - 1, gw - 1, -1):
             term_vel[k] = terminal_velocity(
-                              QR.values[k],
+                              QP.values[k],
                               self.Ref.rho0_half[k]
                            )
 
@@ -184,22 +221,22 @@ cdef class RainPhysics:
                     CFL_in = dt_rain / dz * term_vel[k+1]
 
                 rho_frac  = self.Ref.rho0_half[k+1] / self.Ref.rho0_half[k]
-                area_frac = 1. # RainArea.values[k] / RainArea.new[k]
+                area_frac = 1. # PrecipArea.values[k] / PrecipArea.new[k]
 
-                QR.new[k] = (QR.values[k]   * (1 - CFL_out) +\
-                             QR.values[k+1] * CFL_in * rho_frac) * area_frac
-                if QR.new[k] != 0.:
-                    RainArea.new[k] = 1.
+                QP.new[k] = (QP.values[k]   * (1 - CFL_out) +\
+                             QP.values[k+1] * CFL_in * rho_frac) * area_frac
+                if QP.new[k] != 0.:
+                    PrecipArea.new[k] = 1.
 
                 term_vel_new[k] = terminal_velocity(
-                                      QR.new[k],
+                                      QP.new[k],
                                       self.Ref.rho0_half[k]
                                   )
 
             t_elapsed += dt_rain
 
-            QR.values[:] = QR.new[:]
-            RainArea.values[:] = RainArea.new[:]
+            QP.values[:] = QP.new[:]
+            PrecipArea.values[:] = PrecipArea.new[:]
 
             term_vel[:] = term_vel_new[:]
 
@@ -216,8 +253,8 @@ cdef class RainPhysics:
         self,
         GridMeanVariables GMV,
         TimeStepping TS,
-        RainVariable QR,
-        RainVariable RainArea
+        PrecipVariable QR,
+        PrecipVariable RainArea
     ):
         cdef:
             Py_ssize_t k

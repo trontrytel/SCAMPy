@@ -11,7 +11,7 @@ import sys
 from Grid cimport Grid
 cimport EDMF_Updrafts
 cimport EDMF_Environment
-cimport EDMF_Rain
+cimport EDMF_Precipitation
 from Variables cimport VariablePrognostic, VariableDiagnostic, GridMeanVariables
 from Surface cimport SurfaceBase
 from Cases cimport  CasesBase
@@ -188,20 +188,20 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         self.minimum_area = 1e-5
 
         # Create the class for rain
-        self.Rain = EDMF_Rain.RainVariables(namelist, Gr)
-        if self.use_steady_updrafts == True and self.Rain.rain_model != "None":
-            sys.exit('PrognosticTKE: rain model is available for prognostic updrafts only')
-        self.RainPhysics = EDMF_Rain.RainPhysics(Gr, Ref)
+        self.Precip = EDMF_Precipitation.PrecipVariables(namelist, Gr)
+        if self.use_steady_updrafts == True and self.Precip.precip_model != "None":
+            sys.exit('PrognosticTKE: precipitation model is available for prognostic updrafts only')
+        self.PrecipPhysics = EDMF_Precipitation.PrecipPhysics(Gr, Ref)
 
         # Create the updraft variable class (major diagnostic and prognostic variables)
         self.UpdVar = EDMF_Updrafts.UpdraftVariables(self.n_updrafts, namelist,paramlist, Gr)
         # Create the class for updraft thermodynamics
-        self.UpdThermo = EDMF_Updrafts.UpdraftThermodynamics(self.n_updrafts, Gr, Ref, self.UpdVar, self.Rain)
+        self.UpdThermo = EDMF_Updrafts.UpdraftThermodynamics(self.n_updrafts, Gr, Ref, self.UpdVar, self.Precip)
 
         # Create the environment variable class (major diagnostic and prognostic variables)
         self.EnvVar = EDMF_Environment.EnvironmentVariables(namelist,Gr)
         # Create the class for environment thermodynamics
-        self.EnvThermo = EDMF_Environment.EnvironmentThermodynamics(namelist, Gr, Ref, self.EnvVar, self.Rain)
+        self.EnvThermo = EDMF_Environment.EnvironmentThermodynamics(namelist, Gr, Ref, self.EnvVar, self.Precip)
 
         # Entrainment rates
         self.entr_sc = np.zeros((self.n_updrafts, Gr.nzg),dtype=np.double,order='c')
@@ -283,7 +283,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         self.UpdVar.initialize_io(Stats)
         self.EnvVar.initialize_io(Stats)
-        self.Rain.initialize_io(Stats)
+        self.Precip.initialize_io(Stats)
 
         Stats.add_profile('eddy_viscosity')
         Stats.add_profile('eddy_diffusivity')
@@ -386,7 +386,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         self.UpdVar.io(Stats, self.Ref)
         self.EnvVar.io(Stats, self.Ref)
-        self.Rain.io(Stats, self.Ref)
+        self.Precip.io(Stats, self.Ref)
 
         Stats.write_profile('eddy_viscosity', self.KM.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
         Stats.write_profile('eddy_diffusivity', self.KH.values[self.Gr.gw:self.Gr.nzg-self.Gr.gw])
@@ -511,7 +511,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         self.wstar = get_wstar(Case.Sur.bflux, self.zi)
         if TS.nstep == 0:
             self.decompose_environment(GMV, 'values')
-            self.EnvThermo.microphysics(self.EnvVar, self.Rain, TS.dt)
+            self.EnvThermo.microphysics(self.EnvVar, self.Precip, TS.dt)
             self.initialize_covariance(GMV, Case)
 
             with nogil:
@@ -541,7 +541,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         #   - the buoyancy of updrafts and environment is updated such that
         #     the mean buoyancy with repect to reference state alpha_0 is zero.
         self.decompose_environment(GMV, 'mf_update')
-        self.EnvThermo.microphysics(self.EnvVar, self.Rain, TS.dt) # saturation adjustment + rain creation
+        self.EnvThermo.microphysics(self.EnvVar, self.Precip, TS.dt) # saturation adjustment + rain creation
         # Sink of environmental QT and H due to rain creation is applied in tridiagonal solver
         self.UpdThermo.buoyancy(self.UpdVar, self.EnvVar, GMV, self.extrapolate_buoyancy)
 
@@ -549,19 +549,19 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         self.update_GMV_ED(GMV, Case, TS)
         self.compute_covariance(GMV, Case, TS)
 
-        if self.Rain.rain_model == "clima_1m":
+        if self.Precip.precip_model == "clima_1m":
             # sum updraft and environment rain into bulk rain
-            self.Rain.sum_subdomains_rain(self.UpdThermo, self.EnvThermo)
+            self.Precip.sum_subdomains_precip(self.UpdThermo, self.EnvThermo)
 
             # rain fall (all three categories are assumed to be falling though "grid-mean" conditions
-            self.RainPhysics.solve_rain_fall(GMV, TS, self.Rain.QR,     self.Rain.RainArea)
-            self.RainPhysics.solve_rain_fall(GMV, TS, self.Rain.Upd_QR, self.Rain.Upd_RainArea)
-            self.RainPhysics.solve_rain_fall(GMV, TS, self.Rain.Env_QR, self.Rain.Env_RainArea)
+            self.PrecipPhysics.solve_precip_fall(GMV, TS, self.Precip.QR,     self.Precip.RainArea)
+            self.PrecipPhysics.solve_precip_fall(GMV, TS, self.Precip.Upd_QR, self.Precip.Upd_RainArea)
+            self.PrecipPhysics.solve_precip_fall(GMV, TS, self.Precip.Env_QR, self.Precip.Env_RainArea)
 
             # rain evaporation (all three categories are assumed to be evaporating in "grid-mean" conditions
-            self.RainPhysics.solve_rain_evap(GMV, TS, self.Rain.QR,     self.Rain.RainArea)
-            self.RainPhysics.solve_rain_evap(GMV, TS, self.Rain.Upd_QR, self.Rain.Upd_RainArea)
-            self.RainPhysics.solve_rain_evap(GMV, TS, self.Rain.Env_QR, self.Rain.Env_RainArea)
+            self.PrecipPhysics.solve_rain_evap(GMV, TS, self.Precip.QR,     self.Precip.RainArea)
+            self.PrecipPhysics.solve_rain_evap(GMV, TS, self.Precip.Upd_QR, self.Precip.Upd_RainArea)
+            self.PrecipPhysics.solve_rain_evap(GMV, TS, self.Precip.Env_QR, self.Precip.Env_RainArea)
 
         # update grid-mean cloud fraction and cloud cover
         for k in xrange(self.Gr.nzg):
@@ -600,7 +600,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             self.compute_nh_pressure()
             self.solve_updraft_velocity_area()
             self.solve_updraft_scalars(GMV)
-            self.UpdThermo.microphysics(self.UpdVar, self.Rain, TS.dt)
+            self.UpdThermo.microphysics(self.UpdVar, self.Precip, TS.dt)
             self.UpdVar.set_values_with_new()
             self.zero_area_fraction_cleanup(GMV)
             time_elapsed += self.dt_upd
@@ -1716,7 +1716,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                                    GMV.QT.mf_update[k+gw]\
                                    + ae[k+gw] *(x[k] - self.EnvVar.QT.values[k+gw])\
                                    + self.EnvThermo.prec_source_qt[k+gw]\
-                                   + self.RainPhysics.rain_evap_source_qt[k+gw]
+                                   + self.PrecipPhysics.rain_evap_source_qt[k+gw]
                                    ,0.0)
                 self.diffusive_tendency_qt[k+gw] = (GMV.QT.new[k+gw] - GMV.QT.mf_update[k+gw]) * TS.dti
             # get the diffusive flux
@@ -1736,7 +1736,7 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
                 GMV.H.new[k+gw] = GMV.H.mf_update[k+gw]\
                                   + ae[k+gw] *(x[k] - self.EnvVar.H.values[k+gw])\
                                   + self.EnvThermo.prec_source_h[k+gw]\
-                                  + self.RainPhysics.rain_evap_source_h[k+gw]
+                                  + self.PrecipPhysics.rain_evap_source_h[k+gw]
                 self.diffusive_tendency_h[k+gw] = (GMV.H.new[k+gw] - GMV.H.mf_update[k+gw]) * TS.dti
             # get the diffusive flux
             self.diffusive_flux_h[gw] = interp2pt(Case.Sur.rho_hflux, -rho_ae_K[gw] * dzi *(self.EnvVar.H.values[gw+1]-self.EnvVar.H.values[gw]) )

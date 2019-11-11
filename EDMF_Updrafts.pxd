@@ -3,7 +3,7 @@ cimport ReferenceState
 from Variables cimport GridMeanVariables
 from NetCDFIO cimport NetCDFIO_Stats
 from EDMF_Environment cimport EnvironmentVariables
-from EDMF_Rain cimport RainVariables
+from EDMF_Precipitation cimport PrecipVariables
 
 cdef class UpdraftVariable:
     cdef:
@@ -79,4 +79,4 @@ cdef class UpdraftThermodynamics:
     cpdef clear_precip_sources(self)
     cpdef update_total_precip_sources(self)
 
-    cpdef microphysics(self, UpdraftVariables UpdVar, RainVariables Rain, double dt)
+    cpdef microphysics(self, UpdraftVariables UpdVar, PrecipVariables Precip, double dt)

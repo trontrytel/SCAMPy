@@ -11,7 +11,7 @@ from microphysics_functions cimport  *
 import cython
 cimport Grid
 cimport ReferenceState
-cimport EDMF_Rain
+cimport EDMF_Precipitation
 from Variables cimport GridMeanVariables
 from NetCDFIO cimport NetCDFIO_Stats
 from EDMF_Environment cimport EnvironmentVariables
@@ -96,7 +96,7 @@ cdef class UpdraftVariables:
             self.prognostic = False
             self.updraft_fraction = paramlist['turbulence']['EDMF_BulkSteady']['surface_area']
 
-        # cloud and rain diagnostics for output
+        # cloud diagnostics for output
         self.cloud_fraction = np.zeros((nzg,), dtype=np.double, order='c')
 
         self.cloud_base     = np.zeros((nu,),  dtype=np.double, order='c')
@@ -321,7 +321,7 @@ cdef class UpdraftVariables:
 cdef class UpdraftThermodynamics:
     def __init__(self, n_updraft, Grid.Grid Gr,
                  ReferenceState.ReferenceState Ref, UpdraftVariables UpdVar,
-                 RainVariables Rain):
+                 PrecipVariables Precip):
         self.Gr = Gr
         self.Ref = Ref
         self.n_updraft = n_updraft
@@ -419,14 +419,13 @@ cdef class UpdraftThermodynamics:
 
         return
 
-    cpdef microphysics(self, UpdraftVariables UpdVar, RainVariables Rain, double dt):
+    cpdef microphysics(self, UpdraftVariables UpdVar, PrecipVariables Precip, double dt):
         """
         compute precipitation source terms
         """
         cdef:
             Py_ssize_t k, i
 
-            rain_struct rst
             mph_struct  mph
             eos_struct  sa
 
@@ -436,10 +435,10 @@ cdef class UpdraftThermodynamics:
 
                     # autoconversion and accretion
                     mph = microphysics_rain_src(
-                        Rain.rain_model,
+                        Precip.precip_model,
                         UpdVar.QT.new[i,k],
                         UpdVar.QL.new[i,k] + UpdVar.QI.new[i,k], #TODO_ICE
-                        Rain.Upd_QR.values[k],
+                        Precip.Upd_QR.values[k],
                         UpdVar.Area.new[i,k],
                         UpdVar.T.new[i,k],
                         self.Ref.p0_half[k],

@@ -77,10 +77,13 @@ def read_scm_data(scm_data):
     Input:
     scm_data  - scampy netcdf dataset with simulation results
     """
-    variables = ["temperature_mean", "thetal_mean", "qt_mean", "ql_mean", "qr_mean", "qi_mean",\
+    variables = ["temperature_mean", "thetal_mean",\
+                 "qt_mean", "ql_mean", "qr_mean", "qi_mean", "qs_mean",\
                  "buoyancy_mean", "b_mix","u_mean", "v_mean", "tke_mean",\
-                 "updraft_buoyancy", "updraft_area", "env_qt", "updraft_qt", "env_ql", "updraft_ql", "updraft_thetal",\
-                 "env_qr", "updraft_qr", "updraft_w", "env_w", "env_thetal", "env_qi", "updraft_qi",\
+                 "updraft_buoyancy", "updraft_area", "updraft_thetal", "updraft_w",\
+                 "env_w", "env_thetal",\
+                 "updraft_qt", "updraft_ql", "updraft_qr", "updraft_qi", "updraft_qs",\
+                 "env_qt", "env_ql", "env_qr", "env_qi", "env_qs",\
                  "massflux_h", "diffusive_flux_h", "total_flux_h",\
                  "massflux_qt","diffusive_flux_qt","total_flux_qt","turbulent_entrainment",\
                  "eddy_viscosity", "eddy_diffusivity", "mixing_length", "mixing_length_ratio",\
@@ -100,7 +103,7 @@ def read_scm_data(scm_data):
 
     for var in variables:
         data[var] = []
-        if ("qt" in var or "ql" in var or "qr" in var or "qi" in var):
+        if ("qt" in var or "ql" in var or "qr" in var or "qi" in var or "qs" in var):
             try:
                 data[var] = np.transpose(np.array(scm_data["profiles/"  + var][:, :])) * 1000  #g/kg
             except:
@@ -117,15 +120,21 @@ def read_les_data(les_data):
     Input:
     les_data - pycles netcdf dataset with specific fileds taken from LES stats file
     """
-    variables = ["temperature_mean", "thetali_mean", "qt_mean", "ql_mean", "buoyancy_mean",\
-                "u_mean", "v_mean", "tke_mean","v_translational_mean", "u_translational_mean",\
-                 "updraft_buoyancy", "updraft_fraction", "env_thetali", "updraft_thetali",\
-                 "env_qt", "updraft_qt", "env_ql", "updraft_ql",\
-                 "qr_mean", "env_qr", "updraft_qr", "updraft_w", "env_w",  "env_buoyancy", "updraft_ddz_p_alpha",\
-                 "thetali_mean2", "qt_mean2", "env_thetali2", "env_qt2", "env_qt_thetali",\
+    #TODO: add qi_mean, qs_mean
+    #          env_qi, env_qs
+    #          updraft_qi, updraft_qs
+    variables = ["temperature_mean", "thetali_mean","buoyancy_mean", "thetali_mean2",\
+                 "u_mean", "v_mean", "tke_mean", "v_translational_mean", "u_translational_mean",\
+                 "qt_mean", "ql_mean", "qt_mean2", "qr_mean",\
+                 "env_thetali", "env_thetali2", "env_w", "env_buoyancy",\
+                 "env_qt", "env_ql", "env_qr", "env_qt2", "env_qt_thetali",\
+                 "updraft_buoyancy", "updraft_fraction", "updraft_thetali",\
+                 "updraft_w", "updraft_ddz_p_alpha",\
+                 "updraft_qt", "updraft_ql", "updraft_qr",\
                  "tke_prod_A" ,"tke_prod_B" ,"tke_prod_D" ,"tke_prod_P" ,"tke_prod_T" ,"tke_prod_S",\
                  "Hvar_mean" ,"QTvar_mean" ,"env_Hvar" ,"env_QTvar" ,"env_HQTcov",\
-                 "massflux_h" ,"massflux_qt" ,"total_flux_h" ,"total_flux_qt" ,"diffusive_flux_h" ,"diffusive_flux_qt"]
+                 "massflux_h" ,"massflux_qt" ,"total_flux_h" ,"total_flux_qt",\
+                 "diffusive_flux_h" ,"diffusive_flux_qt"]
 
     data = {"z_half" : np.array(les_data["z_half"][:]),\
             "t" : np.array(les_data["t"][:]),\
@@ -139,6 +148,10 @@ def read_les_data(les_data):
     data["env_qi"]     = np.zeros_like(data["ql_mean"]) #TODO - add env_qi to les stats
     data["updraft_qi"] = np.zeros_like(data["ql_mean"]) #TODO - add updraft_qi to les stats
 
+    data["qs_mean"]    = np.zeros_like(data["ql_mean"]) #TODO - add qs_mean to les stats
+    data["env_qs"]     = np.zeros_like(data["ql_mean"]) #TODO - add env_qs to les stats
+    data["updraft_qs"] = np.zeros_like(data["ql_mean"]) #TODO - add updraft_qs to les stats
+
     return data
 
 def read_scm_data_timeseries(scm_data):
@@ -148,7 +161,8 @@ def read_scm_data_timeseries(scm_data):
     scm_data - scampy netcdf dataset with simulation results
     """
     variables = ["cloud_cover_mean", "cloud_base_mean", "cloud_top_mean",\
-                 "ustar", "lwp_mean", "rwp_mean", "iwp_mean", "shf", "lhf", "Tsurface", "rd"]
+                 "ustar", "lwp_mean", "rwp_mean", "iwp_mean", "swp_mean",\
+                 "shf", "lhf", "Tsurface", "rd"]
 
     data = {"z_half" : np.array(scm_data["profiles/z_half"][:]),\
             "t" : np.array(scm_data["profiles/t"][:])}
@@ -189,6 +203,8 @@ def read_les_data_timeseries(les_data):
     data["lhf"] = np.array(les_data["timeseries/lhf_surface_mean"][:])
     data["lwp_mean"] = np.array(les_data["timeseries/lwp_mean"][:])
     data["rwp_mean"] = np.zeros_like(data["lwp_mean"]) #TODO - add rwp to les stats
-    data["iwp_mean"] = np.zeros_like(data["lwp_mean"]) #TODO - add rwp to les stats
+    data["iwp_mean"] = np.zeros_like(data["lwp_mean"]) #TODO - add iwp to les stats
+    data["swp_mean"] = np.zeros_like(data["lwp_mean"]) #TODO - add swp to les stats
 
     return data
+

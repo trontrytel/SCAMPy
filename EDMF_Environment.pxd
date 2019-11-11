@@ -1,7 +1,7 @@
 from NetCDFIO cimport NetCDFIO_Stats
 from Grid cimport  Grid
 from ReferenceState cimport ReferenceState
-from EDMF_Rain cimport RainVariables
+from EDMF_Precipitation cimport PrecipVariables
 
 cdef class EnvironmentVariable:
     cdef:
@@ -95,7 +95,7 @@ cdef class EnvironmentThermodynamics:
 
         void saturation_adjustment(self, EnvironmentVariables EnvVar)
 
-        void sgs_mean(self, EnvironmentVariables EnvVar, RainVariables Rain, double dt)
-        void sgs_quadrature(self, EnvironmentVariables EnvVar, RainVariables Rain, double dt)
+        void sgs_mean(self, EnvironmentVariables EnvVar, PrecipVariables Precip, double dt)
+        void sgs_quadrature(self, EnvironmentVariables EnvVar, PrecipVariables Precip, double dt)
 
-    cpdef microphysics(self, EnvironmentVariables EnvVar, RainVariables Rain, double dt)
+    cpdef microphysics(self, EnvironmentVariables EnvVar, PrecipVariables Precip, double dt)

@@ -1,6 +1,6 @@
 cimport EDMF_Updrafts
 cimport EDMF_Environment
-cimport EDMF_Rain
+cimport EDMF_Precipitation
 
 from Grid cimport Grid
 from Variables cimport VariablePrognostic, VariableDiagnostic, GridMeanVariables
@@ -22,8 +22,8 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         EDMF_Environment.EnvironmentVariables EnvVar
         EDMF_Environment.EnvironmentThermodynamics EnvThermo
 
-        EDMF_Rain.RainVariables Rain
-        EDMF_Rain.RainPhysics RainPhysics
+        EDMF_Precipitation.PrecipVariables Precip
+        EDMF_Precipitation.PrecipPhysics PrecipPhysics
 
         entr_struct (*entr_detr_fp) (entr_in_struct entr_in) nogil
 

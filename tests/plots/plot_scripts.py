@@ -32,37 +32,49 @@ def plot_mean_prof(scm_data, les_data, tmin, tmax, folder="plots/output/"):
                   r'$q_{i} mean [\mathrm{g/kg}]$',
                   r'$q_{r} mean [\mathrm{g/kg}]$',
                   r'$q_{v} mean [\mathrm{g/kg}]$',
+                  r'$q_{s} mean [\mathrm{g/kg}]$',
                   r'$\theta_{l} [\mathrm{K}]$',
                   r'$TKE [\mathrm{m^2/s^2}]$',
                   'u [m/s]',
                   'v [m/s]',
                   r'$\bar{w}_{upd} [\mathrm{m/s}]$',
                   r'$\bar{b}_{upd} [\mathrm{m/s^2}]$',
+                  "updraft area [%]",
                   r'$\bar{q}_{l,upd} [\mathrm{g/kg}]$',
                   r'$\bar{q}_{i,upd} [\mathrm{g/kg}]$',
                   r'$\bar{q}_{r,upd} [\mathrm{g/kg}]$',
-                  "updraft area [%]",
+                  r'$\bar{q}_{s,upd} [\mathrm{g/kg}]$',
                   r'$\bar{q}_{l,env} [\mathrm{g/kg}]$',
                   r'$\bar{q}_{i,env} [\mathrm{g/kg}]$',
-                  r'$\bar{q}_{r,env} [\mathrm{g/kg}]$']
+                  r'$\bar{q}_{r,env} [\mathrm{g/kg}]$',
+                  r'$\bar{q}_{s,env} [\mathrm{g/kg}]$']
 
-    fig_name  =  ["mean_qt", "mean_ql", "mean_qi", "mean_qr", "mean_qv", "mean_thetal",\
-                  "mean_TKE", "mean_u", "mean_v", "updraft_w", "updraft_buoyancy",\
-                  "updraft_ql", "updraft_qi", "updraft_qr", "updraft_area", "env_ql", "env_qi", "env_qr"]
+    fig_name  =  ["mean_qt", "mean_ql", "mean_qi", "mean_qr", "mean_qv", "mean_qs",\
+                  "mean_thetal", "mean_TKE", "mean_u", "mean_v",\
+                  "updraft_w", "updraft_buoyancy", "updraft_area",\
+                  "updraft_ql", "updraft_qi", "updraft_qr", "updraft_qs",\
+                  "env_ql", "env_qi", "env_qr", "env_qs"]
 
-    plot_x_scm = [scm_data["qt_mean"], scm_data["ql_mean"], scm_data["qi_mean"], scm_data["qr_mean"],\
-                  qv_mean_scm, scm_data["thetal_mean"], scm_data["tke_mean"],\
+    plot_x_scm = [scm_data["qt_mean"], scm_data["ql_mean"], scm_data["qi_mean"],\
+                  scm_data["qr_mean"], qv_mean_scm, scm_data["qs_mean"],\
+                  scm_data["thetal_mean"], scm_data["tke_mean"],\
                   scm_data["u_mean"], scm_data["v_mean"], scm_data["updraft_w"],\
-                  scm_data["updraft_buoyancy"], scm_data["updraft_ql"], scm_data["updraft_qi"],\
-                  scm_data["updraft_qr"], scm_data["updraft_area"], scm_data["env_ql"],\
-                  scm_data["env_qi"], scm_data["env_qr"]]
+                  scm_data["updraft_buoyancy"], scm_data["updraft_area"],\
+                  scm_data["updraft_ql"], scm_data["updraft_qi"],\
+                  scm_data["updraft_qr"], scm_data["updraft_qs"],\
+                  scm_data["env_ql"], scm_data["env_qi"],\
+                  scm_data["env_qr"], scm_data["env_qs"]]
 
-    plot_x_les = [les_data["qt_mean"], les_data["ql_mean"], les_data["qi_mean"], les_data["qr_mean"],\
-                  qv_mean_les, les_data["thetali_mean"], les_data["tke_mean"],\
+    plot_x_les = [les_data["qt_mean"], les_data["ql_mean"], les_data["qi_mean"],\
+                  les_data["qr_mean"], qv_mean_les, les_data["qs_mean"],\
+                  les_data["thetali_mean"], les_data["tke_mean"],\
                   les_data["u_translational_mean"], les_data["v_translational_mean"],\
                   les_data["updraft_w"], les_data["updraft_buoyancy"],\
-                  les_data["updraft_ql"], les_data["updraft_qi"], les_data["updraft_qr"],\
-                  les_data["updraft_fraction"], les_data["env_ql"], les_data["env_qi"], les_data["env_qr"]]
+                  les_data["updraft_fraction"],\
+                  les_data["updraft_ql"], les_data["updraft_qi"],\
+                  les_data["updraft_qr"], les_data["updraft_qs"],\
+                  les_data["env_ql"], les_data["env_qi"],\
+                  les_data["env_qr"], les_data["env_qs"]]
 
     plots = []
     for plot_it in range(len(x_labels)):
@@ -273,6 +285,21 @@ def plot_spec_hum(scm_data, les_data, tmin, tmax, title, folder="plots/output/")
                     les_data["z_half"], '-', color='silver', label='les ice', lw=3)
            plt.plot(np.nanmean(scm_data["env_qi"][:, t0_scm:t1_scm],axis=1),\
                     scm_data["z_half"]/1e3, "-", color="cyan", label='scm ice', lw=3)
+        if it == 6:
+           plt.plot(np.nanmean(les_data["qs_mean"][:, t0_les:t1_les],axis=1),\
+                    les_data["z_half"], '-', color='silver', label='les snow', lw=3)
+           plt.plot(np.nanmean(scm_data["qs_mean"][:, t0_scm:t1_scm],axis=1),\
+                    scm_data["z_half"]/1e3, "-", color="cyan", label='scm snow', lw=3)
+        if it == 7:
+           plt.plot(np.nanmean(les_data["updraft_qs"][:, t0_les:t1_les],axis=1),\
+                    les_data["z_half"], '-', color='silver', label='les snow', lw=3)
+           plt.plot(np.nanmean(scm_data["updraft_qs"][:, t0_scm:t1_scm],axis=1),\
+                    scm_data["z_half"]/1e3, "-", color="cyan", label='scm snow', lw=3)
+        if it == 8:
+           plt.plot(np.nanmean(les_data["env_qs"][:, t0_les:t1_les],axis=1),\
+                    les_data["z_half"], '-', color='silver', label='les snow', lw=3)
+           plt.plot(np.nanmean(scm_data["env_qs"][:, t0_scm:t1_scm],axis=1),\
+                    scm_data["z_half"]/1e3, "-", color="cyan", label='scm snow', lw=3)
 
     plt.tight_layout()
     plt.savefig(folder + title)
@@ -590,12 +617,15 @@ def plot_1D(scm_data, les_data, case, folder="plots/output/"):
     plot_scm_y = [scm_data["lwp_mean"],\
                   scm_data["cloud_cover_mean"],\
                   scm_data["rwp_mean"],\
-                  scm_data["cloud_top_mean"]/1e3, scm_data["cloud_base_mean"]/1e3]
+                  scm_data["cloud_top_mean"]/1e3,
+                  scm_data["cloud_base_mean"]/1e3]
     plot_les_y = [les_data["lwp_mean"],\
                   les_data["cloud_cover_mean"],\
                   les_data["rwp_mean"],\
-                  les_data["cloud_top_mean"]/1e3, les_data["cloud_base_mean"]/1e3]
-    y_lab      = ['lwp, iwp', 'cloud_cover', 'rwp', 'CB, CT [km]']
+                  les_data["cloud_top_mean"]/1e3,
+                  les_data["cloud_base_mean"]/1e3]
+
+    y_lab      = ['lwp, iwp', 'cloud_cover', 'rwp, swp', 'CB, CT [km]']
 
     fig = plt.figure(1)
     for plot_it in range(4):
@@ -605,6 +635,9 @@ def plot_1D(scm_data, les_data, case, folder="plots/output/"):
         if plot_it == 0:
             plt.plot(les_data["t"][1:], les_data["iwp_mean"][1:], '-', color="silver", lw=3)
             plt.plot(scm_data["t"][1:]/3600., scm_data["iwp_mean"][1:], '-', color="cyan", lw=3)
+        if plot_it == 2:
+            plt.plot(les_data["t"][1:], les_data["swp_mean"][1:], '-', color="silver", lw=3)
+            plt.plot(scm_data["t"][1:]/3600., scm_data["swp_mean"][1:], '-', color="cyan", lw=3)
         if plot_it == 3:
             plt.plot(les_data["t"][1:], plot_les_y[4][1:], '-', color="gray", lw=3)
             plt.plot(scm_data["t"][1:]/3600., plot_scm_y[4][1:], '-', color="b", lw=3)
@@ -650,6 +683,7 @@ def plot_contour_t(scm_data, les_data, fixed_cbar, cb_min_t, cb_max_t, folder="p
                  "qi_mean", "env_qi", "updraft_qi",\
                  "qr_mean", "env_qr", "updraft_qr",\
                  "qt_mean", "env_qt", "updraft_qt",\
+                 "qs_mean", "env_qs", "updraft_qs",\
                  "env_w", "updraft_w", "u_translational_mean", "v_translational_mean",\
                  "updraft_fraction", "updraft_buoyancy", "tke_mean",\
                  "massflux_h", "diffusive_flux_h", "total_flux_h",\
@@ -660,6 +694,7 @@ def plot_contour_t(scm_data, les_data, fixed_cbar, cb_min_t, cb_max_t, folder="p
                  "qi_mean", "env_qi", "updraft_qi",\
                  "qr_mean", "env_qr", "updraft_qr",\
                  "qt_mean", "env_qt", "updraft_qt",\
+                 "qs_mean", "env_qs", "updraft_qs",\
                  "env_w", "updraft_w", "u_mean", "v_mean",\
                  "updraft_area", "updraft_buoyancy", "tke_mean",\
                  "massflux_h", "diffusive_flux_h", "total_flux_h",\
@@ -670,6 +705,7 @@ def plot_contour_t(scm_data, les_data, fixed_cbar, cb_min_t, cb_max_t, folder="p
                  "mean qi [g/kg]", "env qi [g/kg]", "updr qi [g/kg]",\
                  "mean qr [g/kg]", "env qr [g/kg]", "updr qr [g/kg",\
                  "mean qt [g/kg]", "env qt [g/kg]", "updr qt [g/kg]",\
+                 "mean qs [g/kg]", "env qs [g/kg]", "updr qs [g/kg]",\
                  "env w [m/s]", "updr w [m/s]", "u [m/s]", "v [m/s]",\
                  "updr area [%]", "updr buoyancy [m/s^2]", "mean TKE [m2/s2]",\
                  "massflux_h [kg*K/ms^2]", "diffusive_flux_h [kg*K/ms^2]","total_flux_h [kg*K/ms^2]",\
@@ -680,6 +716,7 @@ def plot_contour_t(scm_data, les_data, fixed_cbar, cb_min_t, cb_max_t, folder="p
                  "mean_qi", "env_qi", "upd_qi",\
                  "mean_qr", "env_qr", "upd_qr",\
                  "mean_qt", "env_qt", "upd_qt",\
+                 "mean_qs", "env_qs", "upd_qs",\
                  "env_w", "upd_w", "mean_u", "mean_v",\
                  "upd_area", "upd_buoyancy", "mean_TKE",\
                  "edmf_massflux_h", "edmf_diffusive_flux_h", "edmf_total_flux_h",\

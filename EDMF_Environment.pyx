@@ -10,7 +10,7 @@ import cython
 
 include "parameters.pxi"
 
-from EDMF_Rain cimport RainVariables
+from EDMF_Precipitation cimport PrecipVariables
 from Grid cimport  Grid
 from TimeStepping cimport TimeStepping
 from ReferenceState cimport ReferenceState
@@ -224,7 +224,7 @@ cdef class EnvironmentVariables:
         return
 
 cdef class EnvironmentThermodynamics:
-    def __init__(self, namelist, Grid Gr, ReferenceState Ref, EnvironmentVariables EnvVar, RainVariables Rain):
+    def __init__(self, namelist, Grid Gr, ReferenceState Ref, EnvironmentVariables EnvVar, PrecipVariables Precip):
         self.Gr = Gr
         self.Ref = Ref
         try:
@@ -324,7 +324,7 @@ cdef class EnvironmentThermodynamics:
         return
 
 
-    cdef void sgs_mean(self, EnvironmentVariables EnvVar, RainVariables Rain, double dt):
+    cdef void sgs_mean(self, EnvironmentVariables EnvVar, PrecipVariables Precip, double dt):
 
         cdef:
             Py_ssize_t k
@@ -344,10 +344,10 @@ cdef class EnvironmentThermodynamics:
                 )
                 # autoconversion and accretion
                 mph = microphysics_rain_src(
-                    Rain.rain_model,
+                    Precip.precip_model,
                     EnvVar.QT.values[k],
                     sa.ql + sa.qi, #TODO_ICE
-                    Rain.Env_QR.values[k],
+                    Precip.Env_QR.values[k],
                     EnvVar.Area.values[k],
                     sa.T,
                     self.Ref.p0_half[k],
@@ -360,7 +360,7 @@ cdef class EnvironmentThermodynamics:
                 self.update_EnvRain_sources(k, EnvVar, mph.qr_src, mph.thl_rain_src)
         return
 
-    cdef void sgs_quadrature(self, EnvironmentVariables EnvVar, RainVariables Rain, double dt):
+    cdef void sgs_quadrature(self, EnvironmentVariables EnvVar, PrecipVariables Precip, double dt):
         a, w = np.polynomial.hermite.hermgauss(self.quadrature_order)
 
         #TODO - remember you output source terms multipierd by dt (bec. of instanteneous autoconcv)
@@ -441,10 +441,10 @@ cdef class EnvironmentThermodynamics:
                             )
                             # autoconversion and accretiom
                             mph = microphysics_rain_src(
-                                Rain.rain_model,
+                                Precip.precip_model,
                                 qt_hat,
                                 sa.ql + sa.qi, #TODO_ICE
-                                Rain.Env_QR.values[k],
+                                Precip.Env_QR.values[k],
                                 EnvVar.Area.values[k],
                                 sa.T,
                                 self.Ref.p0_half[k],
@@ -511,10 +511,10 @@ cdef class EnvironmentThermodynamics:
                         EnvVar.H.values[k]
                     )
                     mph = microphysics_rain_src(
-                        Rain.rain_model,
+                        Precip.precip_model,
                         EnvVar.QT.values[k],
                         sa.ql + sa.qi, #TODO_ICE
-                        Rain.Env_QR.values[k],
+                        Precip.Env_QR.values[k],
                         EnvVar.Area.values[k],
                         sa.T,
                         self.Ref.p0_half[k],
@@ -532,13 +532,13 @@ cdef class EnvironmentThermodynamics:
 
         return
 
-    cpdef microphysics(self, EnvironmentVariables EnvVar, RainVariables Rain, double dt):
+    cpdef microphysics(self, EnvironmentVariables EnvVar, PrecipVariables Precip, double dt):
 
         if EnvVar.EnvThermo_scheme == 'mean':
-            self.sgs_mean(EnvVar, Rain, dt)
+            self.sgs_mean(EnvVar, Precip, dt)
 
         elif EnvVar.EnvThermo_scheme == 'quadrature':
-            self.sgs_quadrature(EnvVar, Rain, dt)
+            self.sgs_quadrature(EnvVar, Precip, dt)
 
         else:
             sys.exit('EDMF_Environment: Unrecognized EnvThermo_scheme. Possible options: mean, quadrature')
