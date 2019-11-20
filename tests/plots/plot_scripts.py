@@ -251,8 +251,8 @@ def plot_spec_hum(scm_data, les_data, tmin, tmax, title, folder="plots/output/")
            "qr_mean", "updraft_qr", "env_qr"]
 
     lab = ["mean qv [g/kg]", "updraft qv [g/kg]", "env qv [g/kg]",\
-           "mean ql [g/kg]", "updraft ql [g/kg]", "env ql [g/kg]",\
-           "mean qr [g/kg]", "updraft qr [g/kg]", "env qr [g/kg]"]
+           "mean ql, qi [g/kg]", "updraft ql, qi [g/kg]", "env ql, qi [g/kg]",\
+           "mean qr, qs [g/kg]", "updraft qr, qs [g/kg]", "env qr, qs [g/kg]"]
 
     fig = plt.figure(1)
     fig.set_figheight(12)

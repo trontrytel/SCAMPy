@@ -71,14 +71,24 @@ cdef class PrecipVariables:
         self.env_swp = 0.
 
         try:
-            self.precip_model = str(namelist['microphysics']['precip_model'])
+            self.rain_model = str(namelist['microphysics']['rain_model'])
         except:
-            print "EDMF_Rain: defaulting to no rain"
-            self.precip_model = "None"
+            print "EDMF_Precipitation: defaulting to no rain"
+            self.rain_model = "None"
 
-        if self.precip_model not in ["None", "cutoff", "clima_1m", "snow_testing"]:
+        try:
+            self.snow_model = str(namelist['microphysics']['snow_model'])
+        except:
+            print "EDMF_Precipitation: defaulting to no snow"
+            self.snow_model = "None"
+
+        if self.rain_model not in ["None", "cutoff", "clima_1m"]:
+            sys.exit('precipitation model not recognized')
+
+        if self.snow_model not in ["None", "snow_testing"]:
             sys.exit('precipitation model not recognized')
         return
+
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats):
         Stats.add_profile('qr_mean')
@@ -143,13 +153,13 @@ cdef class PrecipVariables:
             self.mean_swp += Ref.rho0_half[k] * self.QS.values[k]     * self.SnowArea.values[k]     * self.Gr.dz
         return
 
-    cpdef sum_subdomains_precip(self, UpdraftThermodynamics UpdThermo, EnvironmentThermodynamics EnvThermo):
+    cpdef sum_subdomains_rain(self, UpdraftThermodynamics UpdThermo, EnvironmentThermodynamics EnvThermo):
         with nogil:
             for k in xrange(self.Gr.nzg):
 
-                self.QR.values[k]       -= (EnvThermo.prec_source_qt[k] + UpdThermo.prec_source_qt_tot[k])
-                self.Upd_QR.values[k]   -= UpdThermo.prec_source_qt_tot[k]
-                self.Env_QR.values[k]   -= EnvThermo.prec_source_qt[k]
+                self.QR.values[k]     += (EnvThermo.prec_source_qr[k] + UpdThermo.prec_source_qr_tot[k])
+                self.Upd_QR.values[k] += UpdThermo.prec_source_qr_tot[k]
+                self.Env_QR.values[k] += EnvThermo.prec_source_qr[k]
 
                 # TODO Assuming that updraft and environment rain area fractions are either 1 or 0.
                 if self.QR.values[k] > 0.:
@@ -159,8 +169,26 @@ cdef class PrecipVariables:
                 if self.Env_QR.values[k] > 0.:
                     self.Env_RainArea.values[k] = 1
 
-                # TODO_SNOW
         return
+
+    cpdef sum_subdomains_snow(self, UpdraftThermodynamics UpdThermo, EnvironmentThermodynamics EnvThermo):
+        with nogil:
+            for k in xrange(self.Gr.nzg):
+
+                self.QS.values[k]     += (EnvThermo.prec_source_qs[k] + UpdThermo.prec_source_qs_tot[k])
+                self.Upd_QS.values[k] += UpdThermo.prec_source_qs_tot[k]
+                self.Env_QS.values[k] += EnvThermo.prec_source_qs[k]
+
+                # TODO Assuming that updraft and environment rain area fractions are either 1 or 0.
+                if self.QS.values[k] > 0.:
+                    self.SnowArea.values[k] = 1
+                if self.Upd_QR.values[k] > 0.:
+                    self.Upd_SnowArea.values[k] = 1
+                if self.Env_QR.values[k] > 0.:
+                    self.Env_SnowArea.values[k] = 1
+
+        return
+
 
 cdef class PrecipPhysics:
     def __init__(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref):
@@ -275,6 +303,7 @@ cdef class PrecipPhysics:
             tmp_evap = max(0, conv_q_rai_to_q_vap(QR.values[k],
                                                   GMV.QT.values[k],
                                                   GMV.QL.values[k],
+                                                  GMV.QI.values[k],
                                                   GMV.T.values[k],
                                                   self.Ref.p0_half[k],
                                                   self.Ref.rho0[k]
@@ -286,7 +315,7 @@ cdef class PrecipPhysics:
 
             self.rain_evap_source_qt[k] = tmp_evap * RainArea.values[k]
 
-            self.rain_evap_source_h[k]  = rain_source_to_thetal(
+            self.rain_evap_source_h[k]  = precip_source_to_thetal(
                 self.Ref.p0[k],
                 GMV.T.values[k],
                 - tmp_evap

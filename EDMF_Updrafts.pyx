@@ -333,13 +333,17 @@ cdef class UpdraftThermodynamics:
             self.t_to_prog_fp = t_to_thetali_c
             self.prog_to_t_fp = eos_first_guess_thetal
 
-        # rain source from each updraft from all sub-timesteps
+        # precipitation source from each updraft from all sub-timesteps
         self.prec_source_h  = np.zeros((n_updraft, Gr.nzg), dtype=np.double, order='c')
         self.prec_source_qt = np.zeros((n_updraft, Gr.nzg), dtype=np.double, order='c')
+        self.prec_source_qr = np.zeros((n_updraft, Gr.nzg), dtype=np.double, order='c')
+        self.prec_source_qs = np.zeros((n_updraft, Gr.nzg), dtype=np.double, order='c')
 
-        # rain source from all updrafts from all sub-timesteps
+        # precipitation source from all updrafts from all sub-timesteps
         self.prec_source_h_tot  = np.zeros((Gr.nzg,), dtype=np.double, order='c')
         self.prec_source_qt_tot = np.zeros((Gr.nzg,), dtype=np.double, order='c')
+        self.prec_source_qr_tot = np.zeros((Gr.nzg,), dtype=np.double, order='c')
+        self.prec_source_qs_tot = np.zeros((Gr.nzg,), dtype=np.double, order='c')
 
         return
 
@@ -348,7 +352,10 @@ cdef class UpdraftThermodynamics:
         clear precipitation source terms for QT and H from each updraft
         """
         self.prec_source_qt[:,:] = 0.
+        self.prec_source_qr[:,:] = 0.
+        self.prec_source_qs[:,:] = 0.
         self.prec_source_h[:,:]  = 0.
+
         return
 
     cpdef update_total_precip_sources(self):
@@ -357,6 +364,9 @@ cdef class UpdraftThermodynamics:
         """
         self.prec_source_h_tot  = np.sum(self.prec_source_h,  axis=0)
         self.prec_source_qt_tot = np.sum(self.prec_source_qt, axis=0)
+        self.prec_source_qr_tot = np.sum(self.prec_source_qr, axis=0)
+        self.prec_source_qs_tot = np.sum(self.prec_source_qs, axis=0)
+
         return
 
     cpdef buoyancy(self, UpdraftVariables UpdVar, EnvironmentVariables EnvVar,
@@ -434,24 +444,29 @@ cdef class UpdraftThermodynamics:
                 for k in xrange(self.Gr.nzg):
 
                     # autoconversion and accretion
-                    mph = microphysics_rain_src(
-                        Precip.precip_model,
+                    mph = microphysics_precip_src(
+                        Precip.rain_model,
+                        Precip.snow_model,
                         UpdVar.QT.new[i,k],
-                        UpdVar.QL.new[i,k] + UpdVar.QI.new[i,k], #TODO_ICE
+                        UpdVar.QL.new[i,k],
                         Precip.Upd_QR.values[k],
+                        UpdVar.QI.new[i,k],
+                        Precip.Upd_QS.values[k],
                         UpdVar.Area.new[i,k],
                         UpdVar.T.new[i,k],
                         self.Ref.p0_half[k],
                         self.Ref.rho0_half[k],
                         dt
                     )
-
                     # update Updraft.new
                     UpdVar.QT.new[i,k] = mph.qt
                     UpdVar.QL.new[i,k] = mph.ql
+                    UpdVar.QI.new[i,k] = mph.qi
                     UpdVar.H.new[i,k]  = mph.thl
 
                     # update rain sources of state variables
-                    self.prec_source_qt[i,k] -= mph.qr_src * UpdVar.Area.new[i,k]
-                    self.prec_source_h[i,k]  += mph.thl_rain_src * UpdVar.Area.new[i,k]
+                    self.prec_source_qt[i,k] -= (mph.qr_src + mph.qs_src) * UpdVar.Area.new[i,k]
+                    self.prec_source_qr[i,k] += mph.qr_src * UpdVar.Area.new[i,k]
+                    self.prec_source_qs[i,k] += mph.qs_src * UpdVar.Area.new[i,k]
+                    self.prec_source_h[i,k]  += mph.thl_precip_src * UpdVar.Area.new[i,k]
         return

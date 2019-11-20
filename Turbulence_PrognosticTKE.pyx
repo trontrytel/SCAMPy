@@ -189,8 +189,10 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
 
         # Create the class for rain
         self.Precip = EDMF_Precipitation.PrecipVariables(namelist, Gr)
-        if self.use_steady_updrafts == True and self.Precip.precip_model != "None":
-            sys.exit('PrognosticTKE: precipitation model is available for prognostic updrafts only')
+        if self.use_steady_updrafts == True and self.Precip.rain_model != "None":
+            sys.exit('PrognosticTKE: rain model is available for prognostic updrafts only')
+        if self.use_steady_updrafts == True and self.Precip.snow_model != "None":
+            sys.exit('PrognosticTKE: snow model is available for prognostic updrafts only')
         self.PrecipPhysics = EDMF_Precipitation.PrecipPhysics(Gr, Ref)
 
         # Create the updraft variable class (major diagnostic and prognostic variables)
@@ -546,9 +548,9 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
         self.update_GMV_ED(GMV, Case, TS)
         self.compute_covariance(GMV, Case, TS)
 
-        if self.Precip.precip_model == "clima_1m":
+        if self.Precip.rain_model == "clima_1m":
             # sum updraft and environment rain into bulk rain
-            self.Precip.sum_subdomains_precip(self.UpdThermo, self.EnvThermo)
+            self.Precip.sum_subdomains_rain(self.UpdThermo, self.EnvThermo)
 
             # rain fall (all three categories are assumed to be falling though "grid-mean" conditions
             self.PrecipPhysics.solve_precip_fall(GMV, TS, self.Precip.QR,     self.Precip.RainArea)
@@ -559,6 +561,10 @@ cdef class EDMF_PrognosticTKE(ParameterizationBase):
             self.PrecipPhysics.solve_rain_evap(GMV, TS, self.Precip.QR,     self.Precip.RainArea)
             self.PrecipPhysics.solve_rain_evap(GMV, TS, self.Precip.Upd_QR, self.Precip.Upd_RainArea)
             self.PrecipPhysics.solve_rain_evap(GMV, TS, self.Precip.Env_QR, self.Precip.Env_RainArea)
+
+        if self.Precip.snow_model == "snow_testing":
+            # sum updraft and environment snow into bulk snow
+            self.Precip.sum_subdomains_snow(self.UpdThermo, self.EnvThermo)
 
         # update grid-mean cloud fraction and cloud cover
         for k in xrange(self.Gr.nzg):

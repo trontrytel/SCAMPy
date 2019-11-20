@@ -67,8 +67,13 @@ cdef class UpdraftThermodynamics:
 
         double [:,:] prec_source_h
         double [:,:] prec_source_qt
+        double [:,:] prec_source_qr
+        double [:,:] prec_source_qs
+
         double [:] prec_source_h_tot
         double [:] prec_source_qt_tot
+        double [:] prec_source_qr_tot
+        double [:] prec_source_qs_tot
 
     cpdef buoyancy(
         self, UpdraftVariables UpdVar, EnvironmentVariables EnvVar,

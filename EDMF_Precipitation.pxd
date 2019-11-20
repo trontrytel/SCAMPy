@@ -21,7 +21,8 @@ cdef class PrecipVariable:
 
 cdef class PrecipVariables:
     cdef:
-        str precip_model
+        str rain_model
+        str snow_model
 
         double mean_rwp
         double env_rwp
@@ -49,7 +50,8 @@ cdef class PrecipVariables:
 
     cpdef initialize_io(self, NetCDFIO_Stats Stats)
     cpdef io(self, NetCDFIO_Stats, ReferenceState.ReferenceState Ref)
-    cpdef sum_subdomains_precip(self, UpdraftThermodynamics UpdThermo, EnvironmentThermodynamics EnvThermo)
+    cpdef sum_subdomains_rain(self, UpdraftThermodynamics UpdThermo, EnvironmentThermodynamics EnvThermo)
+    cpdef sum_subdomains_snow(self, UpdraftThermodynamics UpdThermo, EnvironmentThermodynamics EnvThermo)
     cpdef precip_diagnostics(self, ReferenceState.ReferenceState Ref)
 
 cdef class PrecipPhysics:

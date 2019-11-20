@@ -19,6 +19,9 @@ def sim_data(request):
     cmn.removing_files
     setup = cmn.simulation_setup('TRMM_LBA')
 
+    setup["namelist"]["microphysics"]["rain_model"] = "clima_1m"
+    setup["namelist"]["microphysics"]["snow_model"] = "snow_testing"
+
     # run scampy
     subprocess.call("python setup.py build_ext --inplace", shell=True, cwd='../')
     scampy.main1d(setup["namelist"], setup["paramlist"])
